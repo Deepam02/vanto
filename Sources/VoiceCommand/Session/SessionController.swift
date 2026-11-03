@@ -1,0 +1,551 @@
+import AppKit
+import VoiceCommandCore
+
+/// The session state machine (build spec) as amended by "Final review":
+/// Idle → Warming → Listening ⇄ Speaking → Routing → Executing / Pending, plus Muted and
+/// Drafting. One fixed commit delay (~450 ms) replaces speculation; newer speech bumps
+/// the generation ID, cancels in-flight routing, and stale results never run.
+@MainActor
+final class SessionController {
+    enum State: String {
+        case idle, warming, listening, speaking, routing, executing, pending, muted
+    }
+
+    private(set) var state: State = .idle { didSet { onStateChange?(state) } }
+    var onStateChange: ((State) -> Void)?
+    var isActive: Bool { state != .idle }
+
+    private let speech: SpeechEngine
+    private let snapshots: SnapshotBuilder
+    private let executor: Executor
+    private let client: ClaudeClient
+    private let hud: HUDPanel
+    private let log: CommandLog
+    private let settings = AppSettings.shared
+
+    // Session data
+    private var sessionID = ""
+    private var startedAt = Date()
+    private var buffer = TranscriptBuffer()
+    private var history = SessionHistory()
+    private var partial = ""
+    private var generation = 0
+    private var lastActivity = Date()
+    private var lastSpeechEnd: Date?
+    private var holdActive = false
+    private var muted = false
+    private var pending: (call: ToolCall, prompt: String, recordID: String)?
+    private var lastActedRecordID: String?
+    private var routeTask: Task<Void, Never>?
+    private var scheduledRoute: Task<Void, Never>?
+    private var ticker: Timer?
+    private var observers: [NSObjectProtocol] = []
+    private var unloadTimer: Timer?
+
+    init(speech: SpeechEngine, snapshots: SnapshotBuilder, executor: Executor, client: ClaudeClient, hud: HUDPanel, log: CommandLog) {
+        self.speech = speech; self.snapshots = snapshots; self.executor = executor
+        self.client = client; self.hud = hud; self.log = log
+        speech.onEvent = { [weak self] e in self?.handle(e) }
+        speech.capture.onDeviceChange = { [weak self] in
+            guard let self, self.isActive else { return }
+            self.end(reason: "mic changed", message: "Microphone changed — session ended")
+        }
+    }
+
+    // MARK: Start / stop
+
+    func toggle() {
+        if isActive { end(reason: "hotkey") } else { start() }
+    }
+
+    func start() {
+        guard state == .idle else { return }
+        guard let key = APIKeyStore.load() else {
+            NotificationCenter.default.post(name: .openSettings, object: nil)
+            hud.setVisible(true)
+            hud.model.mode = .listening
+            hud.model.show(.failure("Add your Anthropic API key in Settings"), for: 3)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.2) { [weak self] in
+                if self?.state == .idle { self?.hud.setVisible(false); self?.hud.model.mode = .hidden }
+            }
+            return
+        }
+        client.apiKey = key
+        unloadTimer?.invalidate()
+        sessionID = UUID().uuidString
+        startedAt = Date()
+        lastActivity = Date()
+        buffer.reset(); history.reset(); partial = ""; pending = nil; holdActive = false; muted = false
+        hud.model.liveText = ""; hud.model.pendingPrompt = nil; hud.model.draftPreview = nil; hud.model.flash = nil
+        hud.setVisible(true)
+        snapshots.beginLive()
+        Task { await client.warmUp() }
+
+        if !speech.modelsLoaded {
+            state = .warming
+            hud.model.mode = .warming
+            Task {
+                do {
+                    try await speech.loadModels { [weak self] p in
+                        MainActor.assumeIsolated { self?.hud.model.downloadProgress = p < 1 ? p : nil }
+                    }
+                    hud.model.downloadProgress = nil
+                    guard state == .warming else { return }
+                    await beginListening()
+                } catch {
+                    hud.model.downloadProgress = nil
+                    end(reason: "model load failed", message: "Speech models failed to load: \(error.localizedDescription)")
+                }
+            }
+        } else {
+            Task { await beginListening() }
+        }
+    }
+
+    private func beginListening() async {
+        let snap = await snapshots.refresh()
+        await speech.setVocabulary(extra: snap.apps.map(\.name))
+        guard state == .warming || state == .idle else { return }
+        do {
+            try speech.startListening(useBuiltIn: settings.useBuiltInMic)
+        } catch {
+            end(reason: "mic failed", message: "\(error)")
+            return
+        }
+        state = .listening
+        hud.model.mode = .listening
+        hud.model.warning = snap.secureInputOn ? "Secure keyboard entry is on in some app — typing may not work" : nil
+        ticker = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.tick() }
+        }
+        installSystemObservers()
+    }
+
+    func end(reason: String, message: String? = nil) {
+        guard state != .idle else { return }
+        generation += 1
+        routeTask?.cancel(); scheduledRoute?.cancel()
+        routeTask = nil; scheduledRoute = nil
+        speech.stopListening()
+        ticker?.invalidate(); ticker = nil
+        observers.forEach { NSWorkspace.shared.notificationCenter.removeObserver($0); DistributedNotificationCenter.default().removeObserver($0) }
+        observers.removeAll()
+        snapshots.endLive()
+
+        // Final review 8: an open draft stays typed but unsent; a pending action is cancelled.
+        var notes: [String] = []
+        if executor.draft != nil { notes.append("draft left unsent") }
+        if let p = pending {
+            notes.append("pending action cancelled")
+            log.append(CorrectionRecord(commandID: p.recordID, sessionID: sessionID, how: "cancel_pending"))
+        }
+        pending = nil
+        executor.endSession()
+        log.append(SessionRecord(sessionID: sessionID, startedAt: startedAt, endedAt: Date(), endReason: reason))
+
+        state = .idle
+        let text = message ?? (notes.isEmpty ? "Session ended" : "Session ended — " + notes.joined(separator: ", "))
+        hud.model.pendingPrompt = nil
+        hud.model.draftPreview = nil
+        hud.model.mode = .listening
+        hud.model.show(message == nil ? .info(text) : .failure(text), for: 1.6)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.7) { [weak self] in
+            guard let self, self.state == .idle else { return }
+            self.hud.model.mode = .hidden
+            self.hud.setVisible(false)
+        }
+        // Load on first use, unload after 10 idle minutes.
+        unloadTimer = Timer.scheduledTimer(withTimeInterval: 600, repeats: false) { [weak self] _ in
+            Task { await self?.speech.unloadModels() }
+        }
+    }
+
+    func setMuted(_ on: Bool) {
+        guard isActive, state != .warming else { return }
+        muted = on
+        if on {
+            generation += 1
+            routeTask?.cancel(); scheduledRoute?.cancel()
+            state = .muted
+            hud.model.mode = .muted
+        } else {
+            state = .listening
+            hud.model.mode = executor.draft != nil ? .drafting : .listening
+            lastActivity = Date()
+        }
+    }
+
+    var isMuted: Bool { muted }
+
+    private func installSystemObservers() {
+        let ws = NSWorkspace.shared.notificationCenter
+        for name in [NSWorkspace.willSleepNotification, NSWorkspace.screensDidSleepNotification, NSWorkspace.sessionDidResignActiveNotification] {
+            observers.append(ws.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                Task { @MainActor in self?.end(reason: "sleep or lock") }
+            })
+        }
+        observers.append(DistributedNotificationCenter.default().addObserver(forName: .init("com.apple.screenIsLocked"), object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.end(reason: "screen locked") }
+        })
+    }
+
+    // MARK: Timers
+
+    private func tick() {
+        guard isActive, state != .warming else { return }
+        let now = Date()
+        if now.timeIntervalSince(startedAt) > Double(AppSettings.hardSessionCapSec) {
+            end(reason: "10 minute cap", message: "Session ended after 10 minutes")
+            return
+        }
+        if buffer.dropStale(now: now) { refreshLiveText() }
+        // Idle time only; suspended while a draft is open, an action is pending, or after "hold on".
+        let suspended = executor.draft != nil || pending != nil || holdActive || state == .routing || state == .executing || state == .speaking
+        if !suspended && !muted && now.timeIntervalSince(lastActivity) > Double(settings.idleTimeoutSec) {
+            end(reason: "idle")
+        }
+    }
+
+    // MARK: Speech events
+
+    private func handle(_ e: SpeechEngine.Event) {
+        guard isActive, state != .warming else { return }
+        switch e {
+        case .speechStarted:
+            lastActivity = Date()
+            holdActive = false
+            // New speech: anything in flight is stale (generation ID), and nothing scheduled fires.
+            generation += 1
+            scheduledRoute?.cancel()
+            if state == .routing { routeTask?.cancel() }
+            if !muted && state != .executing && state != .pending { state = .speaking }
+            if !muted { hud.model.mode = .speaking }
+
+        case .partial(let text):
+            partial = text
+            refreshLiveText()
+
+        case .segment(let text, let live, _, let endedAt, _):
+            lastActivity = Date()
+            partial = ""
+            lastSpeechEnd = endedAt
+            if muted {
+                if TextMatching.contains(text, anyOf: ["resume", "resume listening", "start listening", "unpause"]) {
+                    setMuted(false)
+                    hud.model.show(.info("Listening again"), for: 1.2)
+                }
+                return
+            }
+            let id = buffer.append(text.isEmpty ? live : text, endedAt: endedAt)
+            _ = id
+            buffer.dropStale()
+            refreshLiveText()
+            if state == .speaking { state = pending != nil ? .pending : .listening }
+            hud.model.mode = modeForIdle()
+            scheduleRoute(after: endedAt)
+        case .failure(let message):
+            hud.model.show(.failure(message))
+        }
+    }
+
+    private func refreshLiveText() {
+        let pieces = [buffer.latest, partial].filter { !$0.isEmpty }
+        hud.model.liveText = pieces.joined(separator: " ")
+    }
+
+    private func modeForIdle() -> HUDModel.Mode {
+        if muted { return .muted }
+        if pending != nil { return .pending }
+        if executor.draft != nil { return .drafting }
+        return .listening
+    }
+
+    // MARK: Routing
+
+    private static let trailingWaitWords: Set<String> = ["um", "uh", "er", "erm", "hmm", "and", "so", "then", "or", "but", "because"]
+    private static let holdPhrases = ["hold on", "wait", "let me think", "one sec", "one second", "give me a sec"]
+    private static let mutePhrases = ["pause listening", "stop listening for now", "mute yourself"]
+
+    private func scheduleRoute(after speechEnd: Date) {
+        scheduledRoute?.cancel()
+        let gen = generation
+        let delay = max(0, Double(settings.commitDelayMs) / 1000 - Date().timeIntervalSince(speechEnd))
+        scheduledRoute = Task { [weak self] in
+            if delay > 0 { try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000)) }
+            guard let self, !Task.isCancelled, self.generation == gen else { return }
+            self.routeNow(generation: gen)
+        }
+    }
+
+    private func routeNow(generation gen: Int) {
+        let transcript = buffer.latest
+        guard !transcript.isEmpty else { return }
+        let words = TextMatching.words(transcript).map(\.norm)
+
+        // Spoken mute is local: no round trip needed.
+        if TextMatching.contains(transcript, anyOf: Self.mutePhrases) && words.count <= 5 {
+            buffer.consumeAll()
+            refreshLiveText()
+            setMuted(true)
+            return
+        }
+        // Thinking pauses: trailing filler/connectors always wait, without a router call.
+        if settings.thinkingPauses, let last = words.last, Self.trailingWaitWords.contains(last) {
+            hud.model.mode = modeForIdle()
+            return
+        }
+        if Self.holdPhrases.contains(where: { TextMatching.normalized(transcript).hasSuffix($0) }) { holdActive = true }
+
+        let segmentIDs = buffer.latestSegmentIDs
+        routeTask?.cancel()
+        routeTask = Task { [weak self] in
+            await self?.route(transcript: transcript, segmentIDs: segmentIDs, generation: gen)
+        }
+    }
+
+    private func route(transcript: String, segmentIDs: [Int], generation gen: Int) async {
+        let previousState = state
+        state = .routing
+        hud.model.mode = .thinking
+        var record = CommandRecord(sessionID: sessionID, generation: gen, transcript: transcript)
+        record.liveTranscript = hud.model.liveText
+        record.speechEndAt = lastSpeechEnd?.timeIntervalSince1970
+        record.transcriptFinalAt = Date().timeIntervalSince1970
+        if let end = lastSpeechEnd { record.pauseMs = Int(Date().timeIntervalSince(end) * 1000) }
+
+        let snap = await snapshots.refresh()
+        guard generation == gen, !Task.isCancelled else { restore(previousState); return }
+
+        let input = RouterInput(history: history.render(), snapshot: snap, draft: executor.draftForRouter,
+                                pending: pending.map { "\($0.call.summary) — waiting for a spoken yes" }, transcript: transcript)
+        var policy = ActionPolicy.ReplyEvaluator(context: PolicyContext(
+            transcript: transcript, snapshot: snap, draftOpen: executor.draft != nil,
+            draftText: executor.draft?.typedText ?? "", hasPending: pending != nil, pendingSummary: pending?.call.summary))
+
+        var outcomeLines: [String] = []
+        var acted = false, waited = false, ignored = false, ended = false, anyFailed = false, anyHeld = false
+        var stopExecuting = false
+
+        func runReply(_ attempt: Int) async throws -> Bool {
+            var sawTool = false
+            record.requestSentAt = Date().timeIntervalSince1970
+            let deadline = Date().addingTimeInterval(3)
+            // Cancel this route only: a newer route may own `routeTask` by the time it fires.
+            let thisRoute = routeTask
+            let watchdog = Task {
+                try? await Task.sleep(nanoseconds: 3_000_000_000)
+                if !Task.isCancelled { thisRoute?.cancel() }
+            }
+            defer { watchdog.cancel() }
+            for try await event in client.route(input) {
+                guard generation == gen, !Task.isCancelled else { throw CancellationError() }
+                switch event {
+                case .toolStarted(_, let name, let at):
+                    sawTool = true
+                    if record.firstToolAt == nil { record.firstToolAt = at.timeIntervalSince1970 }
+                    record.tools.append(name)
+                case .toolCompleted(_, let name, let result, let raw, _):
+                    guard !stopExecuting else { continue }
+                    switch result {
+                    case .failure(let err):
+                        record.decisions.append("\(name): invalid input (\(err)) \(raw.prefix(120))")
+                        anyFailed = true
+                        outcomeLines.append("Couldn't understand the \(name) request")
+                    case .success(let call):
+                        let r = await handleCall(call, policy: &policy, record: &record, generation: gen)
+                        switch r {
+                        case .waited: waited = true
+                        case .ignored: ignored = true
+                        case .acted(let ok, let msg): acted = true; if !ok { anyFailed = true }; outcomeLines.append(msg)
+                        case .held(let msg): anyHeld = true; outcomeLines.append(msg); stopExecuting = true
+                        case .ended: ended = true; stopExecuting = true
+                        case .rejected(let msg): anyFailed = true; outcomeLines.append(msg)
+                        case .stale: throw CancellationError()
+                        }
+                    }
+                case .finished(let stop, let usage):
+                    record.usage = usage
+                    if stop == "refusal" { throw RouterError.refusal }
+                    if stop == "max_tokens" && !sawTool { throw RouterError.truncated }
+                    if stop == "overloaded" { throw RouterError.overloaded }
+                    if let s = stop, s.hasPrefix("error:") { throw RouterError.http(500, String(s.dropFirst(6))) }
+                case .text, .firstInputDelta:
+                    break
+                }
+                if Date() > deadline && !sawTool { throw RouterError.timeout }
+            }
+            _ = attempt
+            return sawTool
+        }
+
+        do {
+            var got = try await runReply(0)
+            if !got {
+                // No tool call: retry once (build spec), then give up.
+                record.retried = true
+                got = try await runReply(1)
+            }
+            if !got { throw RouterError.noToolCall }
+        } catch is CancellationError {
+            // Turn resumed or the watchdog fired.
+            if generation == gen && !stopExecuting && !acted {
+                record.outcome = "error"; record.error = RouterError.timeout.description
+                hud.model.show(.failure(RouterError.timeout.hudMessage))
+                buffer.consume(through: segmentIDs.last ?? -1)
+            } else {
+                record.outcome = "cancelled"
+            }
+            finish(record, previousState: previousState, gen: gen)
+            return
+        } catch let e as RouterError {
+            record.outcome = "error"; record.error = e.description
+            hud.model.show(.failure(e.hudMessage), for: 3)
+            // Never auto-retry an action: drop the utterance.
+            buffer.consume(through: segmentIDs.last ?? -1)
+            finish(record, previousState: previousState, gen: gen)
+            return
+        } catch {
+            record.outcome = "error"; record.error = "\(error)"
+            hud.model.show(.failure("Router error — nothing ran"))
+            buffer.consume(through: segmentIDs.last ?? -1)
+            finish(record, previousState: previousState, gen: gen)
+            return
+        }
+
+        // Segmentation (Final review 3): actions or ignore move the cursor; wait_for_more doesn't.
+        if acted || ignored || anyHeld || ended || anyFailed || !waited {
+            buffer.consume(through: segmentIDs.last ?? -1)
+        }
+        if acted || anyHeld {
+            history.add(.init(transcript: transcript, actions: record.decisions, outcome: outcomeLines.joined(separator: "; ")))
+            lastActedRecordID = record.id
+        }
+        record.actionDoneAt = Date().timeIntervalSince1970
+        record.outcome = anyHeld ? "pending" : (acted ? (anyFailed ? "failed" : "ok") : (waited ? "waiting" : (ignored ? "ignored" : (anyFailed ? "rejected" : "ok"))))
+        record.results = outcomeLines
+        refreshLiveText()
+
+        if let last = outcomeLines.last {
+            if anyHeld {
+                // Prompt stays on screen until approved or cancelled.
+            } else if anyFailed {
+                hud.model.show(.failure(last), for: 3)
+            } else if acted {
+                hud.model.show(.success(last), for: 1.8)
+            }
+        }
+        finish(record, previousState: previousState, gen: gen)
+        if ended { end(reason: "spoken") }
+    }
+
+    private func restore(_ previous: State) {
+        if state == .routing { state = pending != nil ? .pending : (previous == .speaking ? .speaking : .listening) }
+    }
+
+    private func finish(_ record: CommandRecord, previousState: State, gen: Int) {
+        log.append(record)
+        guard isActive else { return }
+        if state == .routing || state == .executing {
+            state = muted ? .muted : (pending != nil ? .pending : .listening)
+        }
+        if generation == gen { hud.model.mode = modeForIdle() }
+        hud.model.draftPreview = executor.draft.map { $0.typedText.isEmpty ? "(empty)" : $0.typedText }
+        hud.model.pendingPrompt = pending?.prompt
+    }
+
+    private enum CallResult {
+        case waited, ignored, ended, stale
+        case acted(ok: Bool, String)
+        case held(String)
+        case rejected(String)
+    }
+
+    /// Apply policy, then execute or hold one call.
+    private func handleCall(_ call: ToolCall, policy: inout ActionPolicy.ReplyEvaluator, record: inout CommandRecord, generation gen: Int) async -> CallResult {
+        switch call {
+        case .waitForMore:
+            record.decisions.append("wait_for_more")
+            return .waited
+        case .ignore:
+            record.decisions.append("ignore")
+            return .ignored
+        case .say(let message):
+            record.decisions.append("say")
+            return .acted(ok: true, message)
+        case .endSession:
+            record.decisions.append("end_session")
+            return .ended
+        default:
+            break
+        }
+
+        let decision = policy.next(call)
+        switch decision {
+        case .reject(let msg):
+            record.decisions.append("\(call.summary) → rejected: \(msg)")
+            return .rejected(msg)
+
+        case .hold(let held, let prompt):
+            record.decisions.append("\(held.summary) → pending")
+            pending = (held, prompt, record.id)
+            state = .pending
+            hud.model.pendingPrompt = prompt
+            hud.model.mode = .pending
+            return .held(prompt)
+
+        case .run(let toRun, let minPauseMs, let note):
+            if let note { record.mismatchNotes.append(note) }
+            // Non-free actions wait for ~600 ms of pause and a current generation ID.
+            if minPauseMs > 0, let end = lastSpeechEnd {
+                let wait = Double(minPauseMs) / 1000 - Date().timeIntervalSince(end)
+                if wait > 0 { try? await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000)) }
+            }
+            guard generation == gen, !Task.isCancelled else { return .stale }
+
+            switch toRun {
+            case .cancelPending:
+                if let p = pending { log.append(CorrectionRecord(commandID: p.recordID, sessionID: sessionID, how: "cancel_pending")) }
+                pending = nil
+                hud.model.pendingPrompt = nil
+                record.decisions.append("cancel_pending")
+                return .acted(ok: true, "Cancelled")
+            case .confirmPending:
+                guard let p = pending else { return .rejected("Nothing is waiting for approval") }
+                pending = nil
+                hud.model.pendingPrompt = nil
+                state = .executing
+                hud.model.mode = .executing
+                let out = await executor.execute(p.call)
+                record.decisions.append("confirm_pending → \(p.call.summary)")
+                record.irreversible = out.succeeded
+                return .acted(ok: out.succeeded, out.message)
+            default:
+                break
+            }
+
+            // A new command replaces a pending one.
+            if pending != nil, !isDraftAction(toRun) {
+                if let p = pending { log.append(CorrectionRecord(commandID: p.recordID, sessionID: sessionID, how: "cancel_pending")) }
+                pending = nil
+                hud.model.pendingPrompt = nil
+            }
+            if case .undoLast = toRun, let last = lastActedRecordID {
+                log.append(CorrectionRecord(commandID: last, sessionID: sessionID, how: "undo"))
+            }
+            state = .executing
+            hud.model.mode = .executing
+            let out = await executor.execute(toRun)
+            record.decisions.append("\(toRun.summary) → \(out.succeeded ? "ok" : "failed: \(out.message)")")
+            if out.succeeded, case .submit = toRun { record.irreversible = true }
+            if out.succeeded, case .terminalRun = toRun { record.irreversible = true }
+            return .acted(ok: out.succeeded, out.message)
+        }
+    }
+
+    private func isDraftAction(_ call: ToolCall) -> Bool {
+        switch call {
+        case .typeText, .newline, .clearTyped, .submit: return true
+        default: return false
+        }
+    }
+}

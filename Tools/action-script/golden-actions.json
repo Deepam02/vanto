@@ -1,0 +1,40 @@
+{
+  "steps": [
+    {"note": "Before running: open Chrome with a GitHub tab, Terminal with one tab running claude and one plain shell, and Slack.", "pause_ms": 0},
+
+    {"tool": "open_app", "input": {"app": "Google Chrome"}, "note": "switch to chrome"},
+    {"tool": "browser_switch_tab", "input": {"tab_id": "{tab:github}"}, "note": "go to the github tab"},
+    {"tool": "browser_open_url", "input": {"url": "https://dashboard.stripe.com", "new_tab": true}, "note": "open stripe dashboard in a new tab"},
+    {"tool": "undo_last", "note": "undo → closes the Stripe tab"},
+    {"tool": "browser_open_url", "input": {"url": "https://example.com", "new_tab": true}},
+    {"tool": "browser_close_tab", "input": {"tab_id": "{tab:example.com}"}, "note": "close this tab"},
+    {"tool": "undo_last", "note": "undo → reopens example.com"},
+    {"tool": "browser_close_tab", "input": {"tab_id": "{tab:example.com}"}},
+    {"tool": "browser_navigate", "input": {"action": "reload"}},
+    {"tool": "browser_search", "input": {"query": "swift async let"}},
+    {"tool": "browser_close_tab", "input": {"tab_id": "{tab:active}"}},
+    {"tool": "scroll", "input": {"direction": "down", "amount": "small"}},
+
+    {"tool": "terminal_focus", "input": {"session_id": "{terminal:shell}"}},
+    {"tool": "terminal_run", "input": {"session_id": "{terminal:shell}", "command": "echo voicecommand-ok", "source": "verbatim", "risk": "read_only"}, "note": "run echo (read-only, dictated)"},
+    {"tool": "terminal_run", "input": {"session_id": "{terminal:shell}", "command": "rm -rf build", "source": "composed", "risk": "destructive"}, "expect": "hold", "note": "clean up the build folder → held for a spoken yes"},
+    {"tool": "terminal_run", "input": {"session_id": "{terminal:shell}", "command": "sudo ls", "source": "verbatim", "risk": "read_only"}, "expect": "reject", "note": "sudo is never run"},
+
+    {"tool": "type_text", "input": {"target": "terminal", "session_id": "{terminal:claude}", "payload": "why the build is failing"}, "note": "ask claude code why the build is failing (no send)"},
+    {"tool": "type_text", "input": {"target": "terminal", "session_id": "{terminal:claude}", "payload": "and also check the logs"}, "note": "draft continues"},
+    {"tool": "newline"},
+    {"tool": "clear_typed", "note": "removes only what VoiceCommand typed"},
+    {"tool": "submit", "input": {"send_phrase": "send"}, "expect": "reject", "note": "nothing left to send after clearing"},
+
+    {"tool": "open_app", "input": {"app": "Slack"}},
+    {"tool": "type_text", "input": {"target": "chat_box", "app": "Slack", "payload": "voicecommand test, please ignore"}, "note": "finds Slack's message box"},
+    {"tool": "clear_typed"},
+
+    {"tool": "open_app", "input": {"app": "Claude"}},
+    {"tool": "type_text", "input": {"target": "chat_box", "app": "Claude", "payload": "voicecommand test"}, "note": "finds Claude desktop's composer"},
+    {"tool": "clear_typed"},
+
+    {"tool": "press_keys", "input": {"keys": "cmd+shift+]"}, "note": "a shortcut"},
+    {"tool": "focus_window", "input": {"window_id": "{window:Chrome:}"}}
+  ]
+}

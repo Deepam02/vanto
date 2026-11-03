@@ -56,19 +56,28 @@ public enum ActionPolicy {
     /// Evaluate the calls of one router reply, in order. Later calls see the effect of
     /// earlier ones (a type_text earlier in the reply opens a draft for a later submit).
     public static func evaluate(_ calls: [ToolCall], context: PolicyContext) -> [PolicyDecision] {
-        var ctx = context
-        var payloadEndWord: Int? = nil   // where this reply's typed payload ends in the transcript
-        var out: [PolicyDecision] = []
-        for call in calls {
-            let d = evaluate(call, context: ctx, payloadEndWord: payloadEndWord)
-            out.append(d)
+        var seq = ReplyEvaluator(context: context)
+        return calls.map { seq.next($0) }
+    }
+
+    /// Incremental form of `evaluate(_:context:)` for calls that arrive one by one while
+    /// the router reply is still streaming.
+    public struct ReplyEvaluator: Sendable {
+        public private(set) var context: PolicyContext
+        private var payloadEndWord: Int?   // where this reply's typed payload ends in the transcript
+
+        public init(context: PolicyContext) { self.context = context }
+
+        public mutating func next(_ call: ToolCall) -> PolicyDecision {
+            let d = ActionPolicy.evaluate(call, context: context, payloadEndWord: payloadEndWord)
             if case .run(let c, _, _) = d, case .typeText(_, _, _, let payload) = c {
-                ctx.draftOpen = true
-                ctx.draftText += (ctx.draftText.isEmpty ? "" : " ") + payload
-                payloadEndWord = TextMatching.transcriptSpan(for: payload, in: ctx.transcript)?.wordEnd
+                context.draftOpen = true
+                context.draftText += (context.draftText.isEmpty ? "" : " ") + payload
+                payloadEndWord = TextMatching.transcriptSpan(for: payload, in: context.transcript)?.wordEnd
             }
+            if case .run(.confirmPending, _, _) = d { context.hasPending = false }
+            return d
         }
-        return out
     }
 
     public static func evaluate(_ call: ToolCall, context ctx: PolicyContext, payloadEndWord: Int? = nil) -> PolicyDecision {
@@ -185,6 +194,10 @@ public enum ActionPolicy {
 public struct KeyCombo: Equatable, Sendable {
     public var command = false, shift = false, option = false, control = false
     public var key: String
+
+    public init(command: Bool = false, shift: Bool = false, option: Bool = false, control: Bool = false, key: String) {
+        self.command = command; self.shift = shift; self.option = option; self.control = control; self.key = key
+    }
 
     public static let namedKeys: Set<String> = [
         "return", "enter", "escape", "esc", "tab", "space", "delete", "backspace", "forwarddelete",

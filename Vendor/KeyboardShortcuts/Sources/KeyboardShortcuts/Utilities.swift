@@ -15,7 +15,7 @@ extension String {
 	Makes the string localizable.
 	*/
 	var localized: String {
-		NSLocalizedString(self, bundle: .module, comment: self)
+		NSLocalizedString(self, bundle: .keyboardShortcutsResources, comment: self)
 	}
 }
 
@@ -664,4 +664,19 @@ extension Notification {
 	nonisolated var recorderIsActive: Bool {
 		(userInfo?[NotificationUserInfoKey.isActive] as? Bool) ?? false
 	}
+}
+
+
+// VoiceCommand patch: SwiftPM's `Bundle.module` looks for the resource bundle at the root of
+// the .app (which breaks code signing) and otherwise crashes. Look in Contents/Resources first.
+extension Bundle {
+	static let keyboardShortcutsResources: Bundle = {
+		let name = "KeyboardShortcuts_KeyboardShortcuts.bundle"
+		for base in [Bundle.main.resourceURL, Bundle.main.bundleURL].compactMap({ $0 }) {
+			if let bundle = Bundle(url: base.appendingPathComponent(name)) {
+				return bundle
+			}
+		}
+		return .main
+	}()
 }
