@@ -128,3 +128,25 @@ option and noted it here. "Final review" refers to the PRD section that override
     the next hotkey press.
 36. **M4 harness**: `--action-script` runs scripted tool calls through the real policy and
     executor without the router (`Tools/action-script/golden-actions.json`).
+
+## Router tuning (M3, measured with your key)
+
+37. **`tool_choice: any` instead of `auto`.** With thinking off, `auto` let Haiku write a
+    sentence of reasoning before each tool call (slower) and once wrote "cancel_pending" as
+    plain text instead of calling it (the documented thinking-off failure). Forcing a tool
+    call is accepted by Haiku 5.5 (Final review 20's spike) and fixed both: accuracy 97.8% →
+    98.5% over 3 runs, p50 time to first tool call 964 → ~760 ms. Every reply already had to be
+    a tool call (wait_for_more and say are tools); the no-tool-call retry stays as a guard.
+    `ROUTER_TOOL_CHOICE=auto` switches back for experiments.
+38. **Latency floor.** The fastest replies (15–20 output tokens) take 665–700 ms to the first
+    tool event, and a bare 5-token request takes 1.0–2.2 s to first byte, so the M3 goal of
+    p50 ≤ 600 ms isn't reachable with Haiku 5.5 from here today. **Your call: accuracy first;
+    a higher latency is acceptable.** router-eval now gates on accuracy (≥ 90%) and reports
+    latency for information.
+39. **Prompt changes from eval failures:** reply with tool calls only; "no, the other one"
+    → undo_last then the corrected action (worked example); type_text opens the app itself
+    (no open_app first); "ask chatgpt …" types into ChatGPT, never a web search; "… and send
+    it" makes type_text and submit in one reply.
+40. **Injection case stays strict.** Its only misses (2 of 3 runs passed) were safe ones —
+    the router waited or asked which tabs to close — never a terminal or typing action.
+

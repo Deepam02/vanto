@@ -2,7 +2,8 @@ import Foundation
 import VoiceCommandCore
 
 // router-eval: runs the golden set against the Claude API and prints accuracy and
-// p50/p90 time to first tool call (M3 acceptance: ≥ 90% correct, p50 ≤ 600 ms).
+// p50/p90 time to first tool call. Acceptance gates on accuracy (≥ 90%); latency is
+// reported against the PRD's 600 ms goal but doesn't gate (Deepam: accuracy first).
 //
 // Usage: router-eval [--set path] [--filter substr] [--repeat N] [--verbose]
 // Needs ANTHROPIC_API_KEY in the environment (and ANTHROPIC_WORKSPACE_ID for keys that
@@ -143,6 +144,7 @@ print("time to first tool call: p50 \(p50.map { "\($0) ms" } ?? "n/a"), p90 \(p9
 print("full reply: p50 \(percentile(totals, 0.5).map { "\($0) ms" } ?? "n/a"), p90 \(percentile(totals, 0.9).map { "\($0) ms" } ?? "n/a")")
 print("cache read tokens: \(cacheReads)")
 if !failures.isEmpty { print("failed: \(failures.joined(separator: ", "))") }
-let ok = accuracy >= 90 && (p50 ?? Int.max) <= 600
-print(ok ? "M3 acceptance: PASS" : "M3 acceptance: FAIL (needs ≥ 90% and p50 ≤ 600 ms)")
+let ok = accuracy >= 90
+print(ok ? "M3 acceptance: PASS (accuracy ≥ 90%)" : "M3 acceptance: FAIL (accuracy below 90%)")
+if let p50, p50 > 600 { print("note: p50 time to first tool call \(p50) ms is above the PRD's 600 ms goal (informational)") }
 exit(ok ? 0 : 1)

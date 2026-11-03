@@ -21,6 +21,7 @@ import Testing
         #expect((body["thinking"] as? [String: String])?["type"] == "disabled")
         #expect((body["output_config"] as? [String: String])?["effort"] == "low")
         #expect(body["temperature"] == nil)
+        #expect((body["tool_choice"] as? [String: String])?["type"] == "any")
         // Stable bytes for the cached prefix.
         let a = try JSONSerialization.data(withJSONObject: ToolSchemas.definitions, options: [.sortedKeys])
         let b = try JSONSerialization.data(withJSONObject: ToolSchemas.definitions, options: [.sortedKeys])

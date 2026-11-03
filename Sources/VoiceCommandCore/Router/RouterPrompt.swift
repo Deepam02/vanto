@@ -26,6 +26,10 @@ public struct RouterInput: Sendable {
 public enum RouterPrompt {
     public static let model = "claude-haiku-5-5"
     public static let maxTokens = 400
+    /// "any" forces a tool call (every reply is one: wait_for_more and say are tools), which
+    /// removes preamble text and tool calls written as text. Overridable for experiments
+    /// with ROUTER_TOOL_CHOICE.
+    public static let toolChoice = ProcessInfo.processInfo.environment["ROUTER_TOOL_CHOICE"] ?? "any"
 
     /// Static system prompt (cached). Starting draft from the PRD plus worked examples.
     public static let system = """
@@ -45,9 +49,9 @@ public enum RouterPrompt {
     Prefer one tool call; use several
     only when the person asked for several things.
 
-    Every reply is one or more tool calls. You may say a brief sentence first. If no tool can
-    express what the person asked for, call say instead of guessing. Do not include internal
-    or system XML tags in your response.
+    Reply with tool calls only: no text before or after them, no explanations. If no tool can
+    express what the person asked for, call say instead of guessing. Never write a tool call
+    as text, and do not include internal or system XML tags in your response.
 
     Rules of thumb:
     - "switch to X", "go to X", "open X" where X is an app: open_app with the app's name.
@@ -60,7 +64,11 @@ public enum RouterPrompt {
       running claude (prefer the [selected] one), payload = only the words after the instruction
       ("why the build is failing"). "ask cursor ..." / "ask chatgpt ..." / "in slack type ..." →
       type_text target chat_box with app set. "type ..." with no app → target focused.
+      type_text opens and focuses the app itself: don't call open_app first. "ask chatgpt ..."
+      or "ask claude ..." means typing into that app, never a web search.
     - Never call submit in the same reply as type_text unless the person also asked to send.
+      When they did (the text is followed by "send", "and send it", "enter it"), make both
+      calls in one reply: type_text, then submit.
     - "run <command>" with the command dictated → terminal_run source verbatim, with spoken
       symbols written out ("dash dash watch" → "--watch"). A goal described in words
       ("clean up the build folder") → terminal_run source composed with an honest risk label.
@@ -86,12 +94,15 @@ public enum RouterPrompt {
     transcript: "close this tab" → browser_close_tab(tab_id: <the [active] tab>)
     transcript: "ask claude code why the build is failing" → type_text(target: "terminal", session_id: <session running claude>, payload: "why the build is failing")
     transcript: "ask claude code why the build is failing, send" → type_text(target: "terminal", session_id: <session running claude>, payload: "why the build is failing"), then submit(send_phrase: "send")
+    transcript: "ask chatgpt what's the capital of peru" → type_text(target: "chat_box", app: "ChatGPT", payload: "what's the capital of peru")
+    transcript: "tell cursor to rename the parser module and send it" → type_text(target: "chat_box", app: "Cursor", payload: "rename the parser module"), then submit(app: "Cursor", send_phrase: "send it")
     transcript: "type hello team, the deploy is done" → type_text(target: "focused", payload: "hello team, the deploy is done")
     transcript: "run npm test" → terminal_run(session_id: <shell session>, command: "npm test", source: "verbatim", risk: "read_only")
     transcript: "clean up the build folder" → terminal_run(session_id: <shell session>, command: "rm -rf build", source: "composed", risk: "destructive")
     transcript: "ask cursor to um" → wait_for_more()
     transcript: "open slack, no wait, discord" → open_app(app: "Discord")
     transcript: "undo that" → undo_last()
+    transcript: "no, the other one" (history: focus_window(w2) just ran) → undo_last(), then focus_window(window_id: <the other window>)
     transcript: "that's all" → end_session()
     transcript: "in slack tell the team the deploy is done" → type_text(target: "chat_box", app: "Slack", payload: "the deploy is done")
     transcript: "send it" (draft open in Slack) → submit(app: "Slack", send_phrase: "send it")
@@ -133,7 +144,7 @@ public enum RouterPrompt {
             "stream": stream,
             "thinking": ["type": "disabled"],
             "output_config": ["effort": "low"],
-            "tool_choice": ["type": "auto"],
+            "tool_choice": ["type": toolChoice],
             "tools": ToolSchemas.definitions,
             "system": [["type": "text", "text": system, "cache_control": ["type": "ephemeral"]]],
             "messages": [["role": "user", "content": userMessage(input)]],

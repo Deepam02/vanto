@@ -120,7 +120,9 @@ ANTHROPIC_API_KEY=$(security find-generic-password -s VoiceCommand -a anthropic-
 ```
 
 Runs `Tools/router-eval/golden-set.json` (44 cases) against the API and prints accuracy and
-p50/p90 time to first tool call. M3 acceptance: ≥ 90% and p50 ≤ 600 ms.
+p50/p90 time to first tool call. Acceptance is ≥ 90% accuracy (last result: 98.5%,
+p50 ~760 ms). If your API key isn't scoped to a workspace, also set `ANTHROPIC_WORKSPACE_ID`
+(and the Workspace ID field in Settings).
 
 ## Executor check without the router (M4)
 
