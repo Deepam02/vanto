@@ -60,5 +60,6 @@ echo "==> built $APP ($(du -sh $APP | cut -f1)), signed by: $IDENTITY"
 
 if (( OPEN )); then
   pkill -x VoiceCommand 2>/dev/null || true
+  for _ in {1..20}; do pgrep -x VoiceCommand >/dev/null || break; sleep 0.25; done
   open $APP
 fi
