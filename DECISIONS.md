@@ -45,8 +45,13 @@ option and noted it here. "Final review" refers to the PRD section that override
 11. **Segments:** each VAD speech run is one transcript segment, re-transcribed once when it
     ends. Segments over 14 s are split by the VAD (`maxSpeechDuration`). Clips under 1 s are
     zero-padded for TDT.
-12. **Mic device change ends the session** (Final review 8) rather than reconnecting; the
-    change is debounced 500 ms on the audio queue so it can't crash mid-rebuild.
+12. **A mic change ends the session only if the mic in use is gone or replaced** (Final review
+    8). Starting the mic makes macOS post configuration/device notifications, which at first
+    ended every session within a second ("mic changed" in the log). Now, after a 500 ms
+    debounce on the audio queue: our device missing (or, when following the system default,
+    the default moved) → end; same device but the engine was stopped to reconfigure →
+    restart on it (at most 5 times); otherwise ignore. AirPods connecting while the built-in
+    mic is in use no longer ends anything.
 
 ## Turn handling
 
