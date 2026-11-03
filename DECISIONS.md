@@ -39,7 +39,7 @@ option and noted it here. "Final review" refers to the PRD section that override
    Codex, Slack, pnpm, Xcode, localhost, Vercel, Linear, Chrome, PR, README, plus running app
    names at session start. If the CTC model fails to load, transcription continues without
    boosting.
-10. **Endpointing:** VAD `minSilenceDuration` 0.3 s on 256 ms chunks, then the fixed commit
+10. **Endpointing:** VAD `minSilenceDuration` 0.1 s on 256 ms chunks (end confirmed ~0.5 s after you stop; 0.3 s took ~0.75 s), then the fixed commit
     delay (default 450 ms, Settings 250–1500 ms) measured from the VAD's end-of-speech sample.
     Speculation and the amend window are cut (Final review 9).
 11. **Segments:** each VAD speech run is one transcript segment, re-transcribed once when it

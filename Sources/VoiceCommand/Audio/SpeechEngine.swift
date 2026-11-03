@@ -116,9 +116,9 @@ final class SpeechEngine: @unchecked Sendable {
     }
 
     /// Debug: run an audio file through the exact pipeline (VAD → streaming EOU → TDT),
-    /// in mic-sized chunks, followed by a second of silence so the last segment closes.
+    /// in mic-sized chunks, followed by 2 s of silence so the last segment closes.
     func simulate(file url: URL) async throws {
-        let samples = try AudioConverter().resampleAudioFile(url) + [Float](repeating: 0, count: Self.sampleRate)
+        let samples = try AudioConverter().resampleAudioFile(url) + [Float](repeating: 0, count: 2 * Self.sampleRate)
         var state = PipelineState(sessionStart: Date())
         await eou?.reset()
         var i = 0
@@ -146,8 +146,11 @@ final class SpeechEngine: @unchecked Sendable {
 
     private static let vadChunk = VadManager.chunkSize          // 4096 samples = 256 ms
     private static let preRollSamples = 8192                    // keep 0.5 s before speech starts
+    /// minSilenceDuration 0.1 s: on 256 ms chunks the end is confirmed on the second silent
+    /// chunk (~0.5 s after you stop) instead of the third. Extra splits at short pauses are
+    /// harmless; segments join in the transcript buffer and routing waits for the last one.
     private static let segmentation = VadSegmentationConfig(
-        minSpeechDuration: 0.15, minSilenceDuration: 0.3, maxSpeechDuration: 14.0, speechPadding: 0.1)
+        minSpeechDuration: 0.15, minSilenceDuration: 0.1, maxSpeechDuration: 14.0, speechPadding: 0.1)
 
     private func emit(_ e: Event) {
         DispatchQueue.main.async { [weak self] in self?.onEvent?(e) }

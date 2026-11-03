@@ -27,3 +27,11 @@ means it can only be accepted with a person at the Mac (permissions, microphone,
   context snapshot, executors, session state machine, JSONL log.
 - **`./build.sh`** produces a hardened-runtime signed `dist/VoiceCommand.app` (ad-hoc until a
   signing identity exists; see README › Signing).
+- **Speech pipeline verified on synthetic speech** (`say` clips through the real VAD →
+  streaming → TDT path via `VoiceCommand --transcribe-file`): "Switch to cursor", "Ask Claude
+  Code why the build is failing", "Run npm test dash dash watch", "Undo that.", "Send it." all
+  transcribed exactly; TDT re-transcription 44–158 ms per segment. A 1.5 s thinking pause
+  splits into segments ("Ask cursor to" / "Uh" / "Add tests for the parser"), as designed.
+  Found and fixed: end-of-speech took ~0.75 s to confirm; now ~0.5 s (DECISIONS 10).
+  Known noise: CoreML prints one "E5RT … zero shape error" line per run; no transcript is
+  affected.
