@@ -21,6 +21,8 @@ final class AppSettings: ObservableObject {
     /// Default input is the built-in mic even when AirPods are the output.
     @Published var useBuiltInMic: Bool { didSet { d.set(useBuiltInMic, forKey: "useBuiltInMic") } }
     @Published var thinkingPauses: Bool { didSet { d.set(thinkingPauses, forKey: "thinkingPauses") } }
+    /// Only for API keys that aren't scoped to a workspace (sent as anthropic-workspace-id).
+    @Published var workspaceID: String { didSet { d.set(workspaceID, forKey: "workspaceID") } }
 
     static let hardSessionCapSec = 600
 
@@ -34,6 +36,7 @@ final class AppSettings: ObservableObject {
         fnKeyEnabled = d.bool(forKey: "fnKeyEnabled")
         useBuiltInMic = d.bool(forKey: "useBuiltInMic")
         thinkingPauses = d.bool(forKey: "thinkingPauses")
+        workspaceID = d.string(forKey: "workspaceID") ?? ""
     }
 }
 

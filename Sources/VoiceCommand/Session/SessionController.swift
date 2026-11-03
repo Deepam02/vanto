@@ -71,6 +71,7 @@ final class SessionController {
             return
         }
         client.apiKey = key
+        client.workspaceID = settings.workspaceID
         unloadTimer?.invalidate()
         sessionID = UUID().uuidString
         startedAt = Date()

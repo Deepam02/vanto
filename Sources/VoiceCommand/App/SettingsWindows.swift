@@ -45,6 +45,8 @@ struct SettingsView: View {
                 }
                 Text(keySaved ? "Key stored in the login Keychain." : "No key yet. The router needs one.")
                     .font(.caption).foregroundStyle(.secondary)
+                TextField("Workspace ID (only for keys not scoped to a workspace)", text: $settings.workspaceID)
+                    .font(.system(.body, design: .monospaced))
             }
             Section("Hotkey") {
                 Toggle("Tap Fn/🌐 to start or stop a session", isOn: $settings.fnKeyEnabled)

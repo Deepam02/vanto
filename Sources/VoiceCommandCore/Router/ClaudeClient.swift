@@ -65,9 +65,12 @@ public final class ClaudeClient: @unchecked Sendable {
 
     private let session: URLSession
     public var apiKey: String?
+    /// Sent as `anthropic-workspace-id`; needed only for keys not scoped to a workspace.
+    public var workspaceID: String?
 
-    public init(apiKey: String?) {
+    public init(apiKey: String?, workspaceID: String? = nil) {
         self.apiKey = apiKey
+        self.workspaceID = workspaceID
         let config = URLSessionConfiguration.ephemeral
         config.httpMaximumConnectionsPerHost = 2
         config.timeoutIntervalForRequest = 10
@@ -83,6 +86,9 @@ public final class ClaudeClient: @unchecked Sendable {
         req.setValue("application/json", forHTTPHeaderField: "content-type")
         req.setValue(key, forHTTPHeaderField: "x-api-key")
         req.setValue(Self.apiVersion, forHTTPHeaderField: "anthropic-version")
+        if let ws = workspaceID?.trimmingCharacters(in: .whitespaces), !ws.isEmpty {
+            req.setValue(ws, forHTTPHeaderField: "anthropic-workspace-id")
+        }
         req.httpBody = try JSONSerialization.data(withJSONObject: body, options: [.sortedKeys])
         return req
     }

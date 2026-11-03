@@ -5,7 +5,8 @@ import VoiceCommandCore
 // p50/p90 time to first tool call (M3 acceptance: ≥ 90% correct, p50 ≤ 600 ms).
 //
 // Usage: router-eval [--set path] [--filter substr] [--repeat N] [--verbose]
-// Needs ANTHROPIC_API_KEY in the environment.
+// Needs ANTHROPIC_API_KEY in the environment (and ANTHROPIC_WORKSPACE_ID for keys that
+// aren't scoped to a workspace).
 
 struct Options {
     var setPath = "Tools/router-eval/golden-set.json"
@@ -86,7 +87,7 @@ do { set = try GoldenSet.load(URL(fileURLWithPath: opts.setPath)) } catch {
 }
 
 let cases = set.cases.filter { c in opts.filter.map { c.id.contains($0) } ?? true }
-let client = ClaudeClient(apiKey: key)
+let client = ClaudeClient(apiKey: key, workspaceID: ProcessInfo.processInfo.environment["ANTHROPIC_WORKSPACE_ID"])
 
 print("router-eval: \(cases.count) cases × \(opts.repeatCount), model \(RouterPrompt.model)")
 await client.warmUp()
