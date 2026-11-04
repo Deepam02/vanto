@@ -1,12 +1,18 @@
-# VoiceCommand
+# Vanto
 
-A voice-first macOS menu-bar app. Tap **Fn/🌐**, speak naturally, and it switches apps and
+Vanto is a voice-first macOS menu-bar app. Tap **Fn/🌐**, speak naturally, and it switches apps and
 Chrome tabs, runs terminal commands, and types prompts into Claude Code, Cursor, ChatGPT,
 Claude desktop and Slack — sending only when you say so.
 
 Speech is transcribed on your Mac (Parakeet via FluidAudio on the Neural Engine). Only the
 routing call goes to the Claude API (Claude Haiku 5.5), with a text snapshot of your desktop.
-The spec is `PRD.md`; choices it left open are in `DECISIONS.md`; status is in `PROGRESS.md`.
+The spec is `PRD.md`; choices it left open are in `DECISIONS.md`; status is in `PROGRESS.md`;
+what's next is in `PLAN.md`.
+
+**Name.** Vanto is the product name. The code still uses its working name, VoiceCommand: the
+app builds as `VoiceCommand.app`, and the bundle ID, Keychain item, signing identity and log
+and settings folders below all say VoiceCommand. Renaming those is a separate change, because
+a new bundle ID means granting every permission again.
 
 ## Requirements
 
@@ -65,6 +71,8 @@ disables the Fn key. Change it in Settings.
 ## Using it
 
 - **Tap Fn** (or ⌃⌥Space) to start a session. The HUD at the top shows what it hears.
+- **Hold Fn** to dictate: everything you say while holding it is typed into the focused field
+  when you let go. Nothing is sent, and pauses or "um"s can't cut it short.
 - Speak commands one after another; pause as long as you like mid-thought.
 - **Tap Fn again**, say "that's all", or stay silent for 20 s to end the session.
 - **"Pause listening"** mutes without ending; **"resume"** brings it back.

@@ -1,4 +1,4 @@
-# Decisions
+# Vanto: decisions
 
 Where the PRD was ambiguous or the environment forced a choice, I took the simplest safe
 option and noted it here. "Final review" refers to the PRD section that overrides the rest.

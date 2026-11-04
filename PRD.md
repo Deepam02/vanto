@@ -1,4 +1,6 @@
-# Voice Command Tool — MVP PRD
+# Vanto — MVP PRD
+
+Vanto was called "Voice Command Tool" when this was written; the code still uses VoiceCommand.
 
 Nov 3, 2026 · @Deepam
 

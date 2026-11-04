@@ -1,4 +1,4 @@
-# Plan: from first test to daily driver
+# Vanto plan: from first test to daily driver
 
 Built for anyone; Deepam is the first test user. Setup and permissions are parked for now.
 Source: the first real session (3 Nov 2026, `~/Library/Logs/VoiceCommand/commands.jsonl`):
