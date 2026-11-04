@@ -44,3 +44,26 @@ means it can only be accepted with a person at the Mac (permissions, microphone,
 - **Stable signing.** Created the "VoiceCommand Local Signing" identity (scripts/make-signing-identity.sh,
   at Deepam's request). `dist/VoiceCommand.app` is now signed with it (hardened runtime), designated
   requirement = bundle ID + certificate, so permission grants survive rebuilds.
+
+## Phase 1 of PLAN.md (3 Nov, after the first two real sessions)
+
+Built; unit tests pass (36); not yet tried on the Mac or run through router-eval.
+- **Tab switching fixed.** Chrome's tab and window IDs are text; `switchTab` compared them to a
+  number, never matched, and activated the window's last tab (8 of 8 switches failed in the log).
+  `closeTab` had the same bug. Both now compare as text and log the real AppleScript error.
+- **Hold Fn to dictate.** Local only (no API key, no router): everything said while Fn is held
+  is typed into the focused field on release, with fillers dropped and mid-sentence pauses
+  mended (`Dictation`, Settings toggle). Password fields are refused; when no editable field
+  is detected the text is also left on the clipboard. A tap still starts a command session.
+- **Words are never dropped on a router error.** They stay in the buffer and the HUD says so;
+  "type it" types them. Failed routes log events seen, stop reason and any reply text.
+  Unconsumed speech now lasts 120 s (was 30), utterances over 20 words wait 0.9 s longer
+  before routing, more dangling words ("like", "the", "to"…) wait, and the router has 1024
+  output tokens (was 400) and 20 s once a tool call has started streaming (was 3 s total).
+- **Echo cancellation** (Settings › Microphone, on by default): Apple voice processing on the
+  input so a video playing on the Mac isn't transcribed. Falls back to the plain mic if the
+  device refuses it.
+- **Router prompt:** open/go to a site that's already open switches to it in any window; X and
+  Twitter are x.com; "the other Chrome window"; "draft a prompt…" types into the focused field.
+  "Xcode" removed from speech boosting (it turned "X.com" into "Xcode"). 6 golden cases from
+  the 3 Nov log added (51 total).

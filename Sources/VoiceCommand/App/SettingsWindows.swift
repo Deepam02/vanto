@@ -49,7 +49,8 @@ struct SettingsView: View {
                     .font(.system(.body, design: .monospaced))
             }
             Section("Hotkey") {
-                Toggle("Tap Fn/🌐 to start or stop a session", isOn: $settings.fnKeyEnabled)
+                Toggle("Tap Fn/🌐 to start or stop a session, hold it to dictate", isOn: $settings.fnKeyEnabled)
+                Toggle("Clean up dictation (drop “um”/“uh”, fix spacing and capitals)", isOn: $settings.cleanUpDictation)
                 HStack {
                     Text("Fallback chord (always on)")
                     Spacer()
@@ -67,6 +68,7 @@ struct SettingsView: View {
             }
             Section("Microphone") {
                 Toggle("Always use the built-in microphone (keeps AirPods in high-quality mode)", isOn: $settings.useBuiltInMic)
+                Toggle("Ignore audio playing on this Mac (echo cancellation)", isOn: $settings.cancelMacAudio)
             }
             Section("Files") {
                 HStack {

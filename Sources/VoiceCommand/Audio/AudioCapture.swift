@@ -24,6 +24,9 @@ final class AudioCapture {
     private var deviceChangeWork: DispatchWorkItem?
     private var listenerInstalled = false
     private var useBuiltIn = true
+    /// Apple's voice processing (echo cancellation): what the Mac itself plays, like a
+    /// video or music, is removed from the mic signal instead of being transcribed.
+    private var cancelEcho = true
     private var currentDevice: AudioDeviceID?
     private var followsDefault = false
     private var restarts = 0
@@ -40,12 +43,20 @@ final class AudioCapture {
         }
     }
 
-    func start(useBuiltIn: Bool) throws {
+    func start(useBuiltIn: Bool, cancelEcho: Bool) throws {
         try queue.sync {
             guard engine == nil else { return }
             self.useBuiltIn = useBuiltIn
+            self.cancelEcho = cancelEcho
             restarts = 0
-            try startEngine()
+            do {
+                try startEngine()
+            } catch where self.cancelEcho {
+                // Voice processing can fail on some devices: better to hear everything than nothing.
+                teardownEngine()
+                self.cancelEcho = false
+                try startEngine()
+            }
             installDeviceListener()
         }
     }
@@ -76,9 +87,16 @@ final class AudioCapture {
             followsDefault = true
             deviceName = currentDevice.flatMap(Self.name(of:)) ?? "Default input"
         }
+        if cancelEcho {
+            try input.setVoiceProcessingEnabled(true)
+            // Don't turn down the person's other audio while listening.
+            input.voiceProcessingOtherAudioDuckingConfiguration = .init(enableAdvancedDucking: false, duckingLevel: .min)
+        }
         let format = input.outputFormat(forBus: 0)
         guard format.sampleRate > 0, format.channelCount > 0 else { throw CaptureError.noInput }
         guard let conv = AVAudioConverter(from: format, to: target) else { throw CaptureError.formatUnsupported }
+        // Voice processing can report several channels; the first carries the processed voice.
+        if format.channelCount > 1 { conv.channelMap = [0] }
         converter = conv
 
         input.installTap(onBus: 0, bufferSize: 2048, format: format) { [weak self] buffer, _ in

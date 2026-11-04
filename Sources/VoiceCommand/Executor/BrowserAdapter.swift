@@ -29,20 +29,27 @@ enum BrowserAdapter {
 
     static func switchTab(_ tab: DesktopSnapshot.Tab) async -> ExecOutcome {
         let previous = await activeTab()
+        // Chrome's window and tab IDs are text (scripting.sdef), so they're compared as text.
+        // Compared with a number they never match, and the loop used to activate the last tab.
         let src = """
         \(chrome)
-            set w to window id \(tab.windowID)
+            set w to \(window(tab.windowID))
+            set ids to id of every tab of w
             set i to 0
-            repeat with t in tabs of w
-                set i to i + 1
-                if id of t is \(tab.tabID) then exit repeat
+            repeat with k from 1 to count of ids
+                if ((item k of ids) as text) is "\(tab.tabID)" then
+                    set i to k
+                    exit repeat
+                end if
             end repeat
+            if i is 0 then return "missing"
             set active tab index of w to i
             set index of w to 1
             return ((id of active tab of w) as text)
         end tell
         """
-        let r = await AppleScriptRunner.shared.runString(src, timeout: 1.5)
+        let r = await AppleScriptRunner.shared.runString(src, timeout: 3)
+        if case .success("missing") = r { return .fail("That tab is gone") }
         await activateChrome()
         guard case .success(let active) = r, active == String(tab.tabID) else {
             return .fail(errorText(r, fallback: "Couldn't switch to that tab"))
@@ -121,12 +128,19 @@ enum BrowserAdapter {
     static func closeTab(_ tab: DesktopSnapshot.Tab) async -> ExecOutcome {
         let src = """
         \(chrome)
-            set w to window id \(tab.windowID)
-            close (first tab of w whose id is \(tab.tabID))
-            return "ok"
+            set w to \(window(tab.windowID))
+            set ids to id of every tab of w
+            repeat with k from 1 to count of ids
+                if ((item k of ids) as text) is "\(tab.tabID)" then
+                    close tab k of w
+                    return "ok"
+                end if
+            end repeat
+            return "missing"
         end tell
         """
-        let r = await AppleScriptRunner.shared.runString(src, timeout: 1.5)
+        let r = await AppleScriptRunner.shared.runString(src, timeout: 3)
+        if case .success("missing") = r { return .fail("That tab is already closed") }
         guard case .success = r else { return .fail(errorText(r, fallback: "Couldn't close that tab")) }
         return .ok("Closed \(DesktopSnapshot.clipTitle(tab.title))", undo: .reopenURL(tab.url))
     }
@@ -159,7 +173,12 @@ enum BrowserAdapter {
         if case .failure(let e) = r {
             if e.isPermissionDenied { return "Allow VoiceCommand to control Chrome in System Settings › Privacy › Automation" }
             if e.number == AppleScriptRunner.ScriptError.timeout.number { return "Chrome didn't answer in time" }
+            // Keep the real error in the log; the HUD shows the start.
+            return "\(fallback) (\(e))"
         }
         return fallback
     }
+
+    /// A Chrome window by its ID. IDs are text in Chrome's dictionary.
+    static func window(_ id: Int) -> String { "(first window whose id is \"\(id)\")" }
 }

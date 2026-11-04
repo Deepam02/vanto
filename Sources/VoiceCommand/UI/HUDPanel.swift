@@ -5,7 +5,7 @@ import SwiftUI
 @MainActor
 final class HUDModel: ObservableObject {
     enum Mode: Equatable {
-        case hidden, warming, listening, speaking, thinking, executing, pending, muted, drafting
+        case hidden, warming, listening, speaking, thinking, executing, pending, muted, drafting, dictating
     }
     enum Flash: Equatable { case success(String), failure(String), info(String) }
 
@@ -129,6 +129,7 @@ struct HUDView: View {
         case .warming: return "Warming up…"
         case .muted: return "Paused — say “resume” or use the menu bar"
         case .listening where model.liveText.isEmpty: return "Listening…"
+        case .dictating where model.liveText.isEmpty: return "Dictating — release Fn to type it"
         default: return model.liveText.isEmpty ? "Listening…" : model.liveText
         }
     }
@@ -147,7 +148,7 @@ struct HUDView: View {
             case .pending: Image(systemName: "hand.raised.fill").foregroundStyle(.orange)
             case .muted: Image(systemName: "mic.slash.fill").foregroundStyle(.secondary)
             case .speaking: Image(systemName: "waveform").foregroundStyle(.red)
-            case .drafting: Image(systemName: "text.cursor").foregroundStyle(.blue)
+            case .drafting, .dictating: Image(systemName: "text.cursor").foregroundStyle(.blue)
             default: Image(systemName: "mic.fill").foregroundStyle(.red.opacity(0.8))
             }
         }

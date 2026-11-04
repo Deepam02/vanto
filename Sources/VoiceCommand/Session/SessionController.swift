@@ -5,6 +5,12 @@ import VoiceCommandCore
 /// Idle → Warming → Listening ⇄ Speaking → Routing → Executing / Pending, plus Muted and
 /// Drafting. One fixed commit delay (~450 ms) replaces speculation; newer speech bumps
 /// the generation ID, cancels in-flight routing, and stale results never run.
+/// Set once a router reply has started a tool call; read by that route's watchdog.
+@MainActor
+private final class RouteFlag {
+    var on = false
+}
+
 @MainActor
 final class SessionController {
     enum State: String {
@@ -41,6 +47,9 @@ final class SessionController {
     private var ticker: Timer?
     private var observers: [NSObjectProtocol] = []
     private var unloadTimer: Timer?
+    // Hold-Fn dictation: a session that only types what was said, no routing.
+    private var dictationOnly = false
+    private var dictated: [String] = []
 
     init(speech: SpeechEngine, snapshots: SnapshotBuilder, executor: Executor, client: ClaudeClient, hud: HUDPanel, log: CommandLog) {
         self.speech = speech; self.snapshots = snapshots; self.executor = executor
@@ -55,7 +64,102 @@ final class SessionController {
     // MARK: Start / stop
 
     func toggle() {
+        if dictationOnly { return }   // releasing Fn ends dictation
         if isActive { end(reason: "hotkey") } else { start() }
+    }
+
+    // MARK: Dictation (hold Fn)
+
+    /// Hold Fn: listen and, on release, type everything said into the focused field.
+    /// Local only (no API key, no router), so pauses and "um"s can't end or lose it.
+    func startDictation() {
+        guard state == .idle else { return }   // a command session already owns the mic
+        unloadTimer?.invalidate()
+        dictationOnly = true
+        dictated = []
+        sessionID = UUID().uuidString
+        startedAt = Date()
+        lastActivity = Date()
+        buffer.reset(); partial = ""
+        hud.model.liveText = ""; hud.model.pendingPrompt = nil; hud.model.draftPreview = nil; hud.model.flash = nil
+        hud.setVisible(true)
+        state = .warming
+        hud.model.mode = .warming
+        Task {
+            if !speech.modelsLoaded {
+                do {
+                    try await speech.loadModels { [weak self] p in
+                        MainActor.assumeIsolated { self?.hud.model.downloadProgress = p < 1 ? p : nil }
+                    }
+                    hud.model.downloadProgress = nil
+                } catch {
+                    hud.model.downloadProgress = nil
+                    end(reason: "model load failed", message: "Speech models failed to load: \(error.localizedDescription)")
+                    return
+                }
+            }
+            // Released while the models were loading.
+            guard dictationOnly, state == .warming else { return }
+            do {
+                try speech.startListening(useBuiltIn: settings.useBuiltInMic, cancelEcho: settings.cancelMacAudio)
+            } catch {
+                end(reason: "mic failed", message: "\(error)")
+                return
+            }
+            state = .listening
+            hud.model.mode = .dictating
+        }
+    }
+
+    /// Fn released: let the last words finish transcribing, then type it all.
+    func finishDictation() async {
+        guard dictationOnly else { return }
+        if state == .warming {
+            dictationOnly = false
+            state = .idle
+            hud.model.show(.info("Speech is still loading — hold Fn again in a moment"), for: 2)
+            hideHUDSoon(after: 2.1)
+            return
+        }
+        state = .executing
+        hud.model.mode = .thinking
+        await speech.finishListening()
+        let text = settings.cleanUpDictation ? Dictation.clean(dictated) : Dictation.join(dictated)
+        dictationOnly = false
+        dictated = []
+
+        var record = CommandRecord(sessionID: sessionID, generation: 0, transcript: text)
+        record.tools = ["dictation"]
+        let outcome: ExecOutcome = text.isEmpty ? .fail("Didn't hear anything") : await executor.dictate(text)
+        record.decisions = ["dictate → \(outcome.succeeded ? "ok" : "failed: \(outcome.message)")"]
+        record.results = [outcome.message]
+        record.outcome = text.isEmpty ? "ignored" : (outcome.succeeded ? "ok" : "failed")
+        record.actionDoneAt = Date().timeIntervalSince1970
+        log.append(record)
+        log.append(SessionRecord(sessionID: sessionID, startedAt: startedAt, endedAt: Date(), endReason: "dictation"))
+
+        state = .idle
+        hud.model.liveText = ""
+        hud.model.mode = .listening
+        hud.model.show(outcome.succeeded ? .success(outcome.message) : .failure(outcome.message), for: 1.6)
+        hideHUDSoon(after: 1.7)
+        scheduleUnload()
+    }
+
+    private func hideHUDSoon(after seconds: Double) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { [weak self] in
+            guard let self, self.state == .idle else { return }
+            self.hud.model.mode = .hidden
+            self.hud.setVisible(false)
+        }
+    }
+
+    /// Load on first use, unload after 10 idle minutes.
+    private func scheduleUnload() {
+        unloadTimer?.invalidate()
+        unloadTimer = Timer.scheduledTimer(withTimeInterval: 600, repeats: false) { [weak self] _ in
+            Task { await self?.speech.unloadModels() }
+        }
     }
 
     func start() {
@@ -108,7 +212,7 @@ final class SessionController {
         await speech.setVocabulary(extra: snap.apps.map(\.name))
         guard state == .warming || state == .idle else { return }
         do {
-            try speech.startListening(useBuiltIn: settings.useBuiltInMic)
+            try speech.startListening(useBuiltIn: settings.useBuiltInMic, cancelEcho: settings.cancelMacAudio)
         } catch {
             end(reason: "mic failed", message: "\(error)")
             return
@@ -131,7 +235,19 @@ final class SessionController {
         ticker?.invalidate(); ticker = nil
         observers.forEach { NSWorkspace.shared.notificationCenter.removeObserver($0); DistributedNotificationCenter.default().removeObserver($0) }
         observers.removeAll()
-        snapshots.endLive()
+        var message = message
+        if dictationOnly {
+            // Cut short (mic changed, models failed): never lose what was said.
+            dictationOnly = false
+            let text = Dictation.join(dictated)
+            dictated = []
+            if !text.isEmpty {
+                PasteService.copy(text)
+                message = (message ?? "Dictation stopped") + " — your words are on the clipboard"
+            }
+        } else {
+            snapshots.endLive()
+        }
 
         // Final review 8: an open draft stays typed but unsent; a pending action is cancelled.
         var notes: [String] = []
@@ -150,15 +266,8 @@ final class SessionController {
         hud.model.draftPreview = nil
         hud.model.mode = .listening
         hud.model.show(message == nil ? .info(text) : .failure(text), for: 1.6)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.7) { [weak self] in
-            guard let self, self.state == .idle else { return }
-            self.hud.model.mode = .hidden
-            self.hud.setVisible(false)
-        }
-        // Load on first use, unload after 10 idle minutes.
-        unloadTimer = Timer.scheduledTimer(withTimeInterval: 600, repeats: false) { [weak self] _ in
-            Task { await self?.speech.unloadModels() }
-        }
+        hideHUDSoon(after: 1.7)
+        scheduleUnload()
     }
 
     func setMuted(_ on: Bool) {
@@ -211,6 +320,7 @@ final class SessionController {
 
     private func handle(_ e: SpeechEngine.Event) {
         guard isActive, state != .warming else { return }
+        if dictationOnly { handleDictation(e); return }
         switch e {
         case .speechStarted:
             lastActivity = Date()
@@ -249,6 +359,25 @@ final class SessionController {
         }
     }
 
+    /// While Fn is held every segment is kept, whatever the pauses: nothing is routed.
+    private func handleDictation(_ e: SpeechEngine.Event) {
+        switch e {
+        case .speechStarted:
+            lastActivity = Date()
+        case .partial(let text):
+            partial = text
+        case .segment(let text, let live, _, _, _):
+            lastActivity = Date()
+            partial = ""
+            let words = text.isEmpty ? live : text
+            if !words.isEmpty { dictated.append(words) }
+        case .failure(let message):
+            hud.model.show(.failure(message))
+            return
+        }
+        hud.model.liveText = ([Dictation.join(dictated), partial].filter { !$0.isEmpty }).joined(separator: " ")
+    }
+
     private func refreshLiveText() {
         let pieces = [buffer.latest, partial].filter { !$0.isEmpty }
         hud.model.liveText = pieces.joined(separator: " ")
@@ -263,14 +392,24 @@ final class SessionController {
 
     // MARK: Routing
 
-    private static let trailingWaitWords: Set<String> = ["um", "uh", "er", "erm", "hmm", "and", "so", "then", "or", "but", "because"]
+    // A phrase ending on one of these is unfinished ("…we need to add Linear, uh and like").
+    // Not "on", "in", "that": "switch it on", "log in", "undo that" are whole commands.
+    private static let trailingWaitWords: Set<String> = [
+        "um", "uh", "er", "erm", "hmm", "and", "so", "then", "or", "but", "because",
+        "like", "the", "a", "an", "to", "of", "for", "with", "my", "your", "our",
+    ]
     private static let holdPhrases = ["hold on", "wait", "let me think", "one sec", "one second", "give me a sec"]
     private static let mutePhrases = ["pause listening", "stop listening for now", "mute yourself"]
+    /// Past this many words it's probably dictation, not a command: give pauses longer.
+    private static let longUtteranceWords = 20
+    private static let longUtteranceExtraMs = 900
 
     private func scheduleRoute(after speechEnd: Date) {
         scheduledRoute?.cancel()
         let gen = generation
-        let delay = max(0, Double(settings.commitDelayMs) / 1000 - Date().timeIntervalSince(speechEnd))
+        var commitMs = settings.commitDelayMs
+        if TextMatching.words(buffer.latest).count > Self.longUtteranceWords { commitMs += Self.longUtteranceExtraMs }
+        let delay = max(0, Double(commitMs) / 1000 - Date().timeIntervalSince(speechEnd))
         scheduledRoute = Task { [weak self] in
             if delay > 0 { try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000)) }
             guard let self, !Task.isCancelled, self.generation == gen else { return }
@@ -327,22 +466,30 @@ final class SessionController {
         var acted = false, waited = false, ignored = false, ended = false, anyFailed = false, anyHeld = false
         var stopExecuting = false
 
+        // What the stream did, for the log when no tool call comes back.
+        var events = 0, lastStop: String?, replyText = ""
+
         func runReply(_ attempt: Int) async throws -> Bool {
             var sawTool = false
+            let toolSeen = RouteFlag()
             record.requestSentAt = Date().timeIntervalSince1970
             let deadline = Date().addingTimeInterval(3)
             // Cancel this route only: a newer route may own `routeTask` by the time it fires.
+            // 3 s to the first tool call; a long typed payload then gets up to 20 s to stream.
             let thisRoute = routeTask
             let watchdog = Task {
                 try? await Task.sleep(nanoseconds: 3_000_000_000)
+                if toolSeen.on { try? await Task.sleep(nanoseconds: 17_000_000_000) }
                 if !Task.isCancelled { thisRoute?.cancel() }
             }
             defer { watchdog.cancel() }
             for try await event in client.route(input) {
                 guard generation == gen, !Task.isCancelled else { throw CancellationError() }
+                events += 1
                 switch event {
                 case .toolStarted(_, let name, let at):
                     sawTool = true
+                    toolSeen.on = true
                     if record.firstToolAt == nil { record.firstToolAt = at.timeIntervalSince1970 }
                     record.tools.append(name)
                 case .toolCompleted(_, let name, let result, let raw, _):
@@ -366,11 +513,14 @@ final class SessionController {
                     }
                 case .finished(let stop, let usage):
                     record.usage = usage
+                    lastStop = stop
                     if stop == "refusal" { throw RouterError.refusal }
                     if stop == "max_tokens" && !sawTool { throw RouterError.truncated }
                     if stop == "overloaded" { throw RouterError.overloaded }
                     if let s = stop, s.hasPrefix("error:") { throw RouterError.http(500, String(s.dropFirst(6))) }
-                case .text, .firstInputDelta:
+                case .text(let t):
+                    if replyText.count < 300 { replyText += t }
+                case .firstInputDelta:
                     break
                 }
                 if Date() > deadline && !sawTool { throw RouterError.timeout }
@@ -390,27 +540,29 @@ final class SessionController {
         } catch is CancellationError {
             // Turn resumed or the watchdog fired.
             if generation == gen && !stopExecuting && !acted {
-                record.outcome = "error"; record.error = RouterError.timeout.description
-                hud.model.show(.failure(RouterError.timeout.hudMessage))
-                buffer.consume(through: segmentIDs.last ?? -1)
+                record.outcome = "error"; record.error = RouterError.timeout.description + diagnostics()
+                keepWords(after: RouterError.timeout.hudMessage)
             } else {
                 record.outcome = "cancelled"
             }
             finish(record, previousState: previousState, gen: gen)
             return
         } catch let e as RouterError {
-            record.outcome = "error"; record.error = e.description
-            hud.model.show(.failure(e.hudMessage), for: 3)
-            // Never auto-retry an action: drop the utterance.
-            buffer.consume(through: segmentIDs.last ?? -1)
+            record.outcome = "error"; record.error = e.description + diagnostics()
+            // Never auto-retry an action, and never drop the words: they stay in the buffer
+            // and the next thing said is routed together with them.
+            keepWords(after: e.hudMessage)
             finish(record, previousState: previousState, gen: gen)
             return
         } catch {
-            record.outcome = "error"; record.error = "\(error)"
-            hud.model.show(.failure("Router error — nothing ran"))
-            buffer.consume(through: segmentIDs.last ?? -1)
+            record.outcome = "error"; record.error = "\(error)" + diagnostics()
+            keepWords(after: "Router error — nothing ran")
             finish(record, previousState: previousState, gen: gen)
             return
+        }
+
+        func diagnostics() -> String {
+            " (events: \(events), stop: \(lastStop ?? "none")\(replyText.isEmpty ? "" : ", text: \"\(replyText)\""))"
         }
 
         // Segmentation (Final review 3): actions or ignore move the cursor; wait_for_more doesn't.
@@ -441,6 +593,12 @@ final class SessionController {
 
     private func restore(_ previous: State) {
         if state == .routing { state = pending != nil ? .pending : (previous == .speaking ? .speaking : .listening) }
+    }
+
+    /// A route failed: say so, but keep the words for the next try (3 Nov: a long prompt
+    /// was thrown away on "Didn't catch that").
+    private func keepWords(after failure: String) {
+        hud.model.show(.failure("\(failure). Your words are kept: keep talking, or say “type it”"), for: 3)
     }
 
     private func finish(_ record: CommandRecord, previousState: State, gen: Int) {

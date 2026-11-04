@@ -87,10 +87,12 @@ import Testing
         #expect(b.latest == "open github")
         b.consume(through: a)
         #expect(!b.hasUnconsumed)
+        // A long thinking pause (35 s) keeps the words; only 2+ minutes drops them.
         b.append("ask claude code to", endedAt: now.addingTimeInterval(-35))
         b.append("um fix the tests", endedAt: now)
-        #expect(b.latest == "ask claude code to um fix the tests")
         b.dropStale(now: now)
+        #expect(b.latest == "ask claude code to um fix the tests")
+        b.dropStale(now: now.addingTimeInterval(100))
         #expect(b.latest == "um fix the tests")
     }
 }

@@ -15,8 +15,9 @@ public struct TranscriptBuffer: Sendable {
     /// Index of the first unconsumed segment.
     public private(set) var cursor: Int = 0
     private var nextID = 0
-    /// Unconsumed speech older than this is dropped.
-    public var maxUnconsumedAge: TimeInterval = 30
+    /// Unconsumed speech older than this is dropped. Long enough for a thinking pause in
+    /// the middle of a dictated prompt.
+    public var maxUnconsumedAge: TimeInterval = 120
 
     public init() {}
 

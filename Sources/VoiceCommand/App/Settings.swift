@@ -21,6 +21,10 @@ final class AppSettings: ObservableObject {
     /// Default input is the built-in mic even when AirPods are the output.
     @Published var useBuiltInMic: Bool { didSet { d.set(useBuiltInMic, forKey: "useBuiltInMic") } }
     @Published var thinkingPauses: Bool { didSet { d.set(thinkingPauses, forKey: "thinkingPauses") } }
+    /// Echo cancellation on the mic, so audio the Mac plays isn't heard as speech.
+    @Published var cancelMacAudio: Bool { didSet { d.set(cancelMacAudio, forKey: "cancelMacAudio") } }
+    /// Hold-Fn dictation: drop "um"/"uh" and tidy spacing and capitals before typing.
+    @Published var cleanUpDictation: Bool { didSet { d.set(cleanUpDictation, forKey: "cleanUpDictation") } }
     /// Only for API keys that aren't scoped to a workspace (sent as anthropic-workspace-id).
     @Published var workspaceID: String { didSet { d.set(workspaceID, forKey: "workspaceID") } }
 
@@ -29,13 +33,15 @@ final class AppSettings: ObservableObject {
     private init() {
         d.register(defaults: [
             "commitDelayMs": 450, "idleTimeoutSec": 20, "fnKeyEnabled": true,
-            "useBuiltInMic": true, "thinkingPauses": true,
+            "useBuiltInMic": true, "thinkingPauses": true, "cancelMacAudio": true, "cleanUpDictation": true,
         ])
         commitDelayMs = d.integer(forKey: "commitDelayMs")
         idleTimeoutSec = d.integer(forKey: "idleTimeoutSec")
         fnKeyEnabled = d.bool(forKey: "fnKeyEnabled")
         useBuiltInMic = d.bool(forKey: "useBuiltInMic")
         thinkingPauses = d.bool(forKey: "thinkingPauses")
+        cancelMacAudio = d.bool(forKey: "cancelMacAudio")
+        cleanUpDictation = d.bool(forKey: "cleanUpDictation")
         workspaceID = d.string(forKey: "workspaceID") ?? ""
     }
 }

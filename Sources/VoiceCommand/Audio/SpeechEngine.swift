@@ -34,7 +34,10 @@ final class SpeechEngine: @unchecked Sendable {
     static let sampleRate = 16_000
     static let baseVocabulary = [
         "Cursor", "Claude", "Claude Code", "Ghostty", "iTerm", "npm", "GitHub", "ChatGPT", "Codex",
-        "Slack", "pnpm", "Xcode", "localhost", "Vercel", "Linear", "Chrome", "PR", "README",
+        "Slack", "pnpm", "localhost", "Vercel", "Linear", "Chrome", "PR", "README",
+        // Sites people say by name. "Xcode" is left out: boosting it turned "X.com" into
+        // "Xcode" (3 Nov log); running apps are added per session anyway.
+        "x.com", "Twitter", "LinkedIn", "Netflix", "YouTube", "Gmail", "Notion", "Figma",
     ]
 
     // MARK: Models
@@ -85,7 +88,7 @@ final class SpeechEngine: @unchecked Sendable {
 
     // MARK: Listening
 
-    func startListening(useBuiltIn: Bool) throws {
+    func startListening(useBuiltIn: Bool, cancelEcho: Bool) throws {
         guard modelsLoaded, consumer == nil else { return }
         let (s, cont) = AsyncStream<[Float]>.makeStream(bufferingPolicy: .unbounded)
         stream = cont
@@ -101,10 +104,25 @@ final class SpeechEngine: @unchecked Sendable {
             await self.eou?.reset()
         }
         capture.onSamples = { [weak self] samples in self?.stream?.yield(samples) }
-        do { try capture.start(useBuiltIn: useBuiltIn) } catch {
+        do { try capture.start(useBuiltIn: useBuiltIn, cancelEcho: cancelEcho) } catch {
             stopListening()
             throw error
         }
+    }
+
+    /// Stop the mic but keep the speech in progress: a second of silence closes the last
+    /// segment, and its `.segment` event is delivered before this returns (dictation).
+    func finishListening() async {
+        capture.stop()
+        capture.onSamples = nil
+        stream?.yield([Float](repeating: 0, count: Self.sampleRate))
+        stream?.finish()
+        stream = nil
+        let running = consumer
+        consumer = nil
+        await running?.value
+        // Segment events are queued on main before the consumer ends; let them run first.
+        await Task.yield()
     }
 
     func stopListening() {

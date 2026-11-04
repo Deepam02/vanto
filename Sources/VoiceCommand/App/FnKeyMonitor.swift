@@ -5,8 +5,12 @@ import CoreGraphics
 ///
 /// A tap counts only if no keyDown happened between press and release, and the press was
 /// short; laptop arrow and F-keys also set the Fn flag (Final review point 19).
+/// Holding Fn alone past `holdThreshold` is a hold (dictation): `onHoldStart`, then
+/// `onHoldEnd` on release.
 final class FnKeyMonitor {
     var onTap: (() -> Void)?
+    var onHoldStart: (() -> Void)?
+    var onHoldEnd: (() -> Void)?
     /// Called with true when the tap is healthy, false when macOS disabled it and it couldn't be re-enabled.
     var onHealthChange: ((Bool) -> Void)?
 
@@ -15,10 +19,13 @@ final class FnKeyMonitor {
     private var watchdog: Timer?
     private var fnDownAt: CFAbsoluteTime?
     private var chordUsed = false
+    private var holding = false
+    private var holdWork: DispatchWorkItem?
     private var healthy = true
 
     private static let fnKeyCode: Int64 = 63          // kVK_Function
-    private static let maxTapDuration: CFAbsoluteTime = 0.6
+    /// Shorter than this is a tap; held this long with no other key, it's a hold.
+    private static let holdThreshold: TimeInterval = 0.4
 
     func start() -> Bool {
         guard tap == nil else { return true }
@@ -71,10 +78,22 @@ final class FnKeyMonitor {
             if fnDown {
                 fnDownAt = CFAbsoluteTimeGetCurrent()
                 chordUsed = !event.flags.intersection(others).isEmpty
+                holdWork?.cancel()
+                let work = DispatchWorkItem { [weak self] in
+                    guard let self, self.fnDownAt != nil, !self.chordUsed else { return }
+                    self.holding = true
+                    self.onHoldStart?()
+                }
+                holdWork = work
+                DispatchQueue.main.asyncAfter(deadline: .now() + Self.holdThreshold, execute: work)
             } else if let down = fnDownAt {
-                let quick = CFAbsoluteTimeGetCurrent() - down < Self.maxTapDuration
+                holdWork?.cancel()
+                holdWork = nil
                 fnDownAt = nil
-                if quick && !chordUsed {
+                if holding {
+                    holding = false
+                    DispatchQueue.main.async { self.onHoldEnd?() }
+                } else if CFAbsoluteTimeGetCurrent() - down < Self.holdThreshold && !chordUsed {
                     DispatchQueue.main.async { self.onTap?() }
                 }
             }

@@ -552,6 +552,246 @@
     "secure": false
    },
    "secureInputOn": false
+  },
+  "two_chrome_windows": {
+   "takenAt": 0,
+   "apps": [
+    {
+     "name": "Finder",
+     "bundleID": "com.apple.finder",
+     "pid": 401,
+     "frontmost": false
+    },
+    {
+     "name": "Google Chrome",
+     "bundleID": "com.google.Chrome",
+     "pid": 510,
+     "frontmost": true
+    },
+    {
+     "name": "Cursor",
+     "bundleID": "com.todesktop.230313mzl4w4u92",
+     "pid": 620,
+     "frontmost": false
+    },
+    {
+     "name": "Terminal",
+     "bundleID": "com.apple.Terminal",
+     "pid": 730,
+     "frontmost": false
+    },
+    {
+     "name": "Slack",
+     "bundleID": "com.tinyspeck.slackmacgap",
+     "pid": 840,
+     "frontmost": false
+    },
+    {
+     "name": "Claude",
+     "bundleID": "com.anthropic.claudefordesktop",
+     "pid": 950,
+     "frontmost": false
+    },
+    {
+     "name": "ChatGPT",
+     "bundleID": "com.openai.chat",
+     "pid": 960,
+     "frontmost": false
+    }
+   ],
+   "windows": [
+    {
+     "id": "w1",
+     "app": "Google Chrome",
+     "pid": 510,
+     "title": "Fix parser edge cases by deepam · Pull Request #482 · acme/app",
+     "index": 0,
+     "minimized": false,
+     "focused": true
+    },
+    {
+     "id": "w2",
+     "app": "Cursor",
+     "pid": 620,
+     "title": "parser.ts — app",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w3",
+     "app": "Cursor",
+     "pid": 620,
+     "title": "README.md — docs",
+     "index": 1,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w4",
+     "app": "Terminal",
+     "pid": 730,
+     "title": "app — claude — 120×40",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w5",
+     "app": "Slack",
+     "pid": 840,
+     "title": "eng-team (Channel) - Acme - Slack",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w6",
+     "app": "Claude",
+     "pid": 950,
+     "title": "Claude",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w7",
+     "app": "ChatGPT",
+     "pid": 960,
+     "title": "ChatGPT",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w8",
+     "app": "Google Chrome",
+     "pid": 510,
+     "title": "Feed | LinkedIn",
+     "index": 1,
+     "minimized": false,
+     "focused": false
+    }
+   ],
+   "tabs": [
+    {
+     "id": "chrome:1:101",
+     "windowID": 1,
+     "tabID": 101,
+     "index": 1,
+     "title": "Fix parser edge cases by deepam · Pull Request #482 · acme/app",
+     "url": "https://github.com/acme/app/pull/482",
+     "active": true,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:102",
+     "windowID": 1,
+     "tabID": 102,
+     "index": 2,
+     "title": "ENG-231 Parser crashes on empty input - Linear",
+     "url": "https://linear.app/acme/issue/ENG-231",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:103",
+     "windowID": 1,
+     "tabID": 103,
+     "index": 3,
+     "title": "Inbox (3) - deepam@acme.dev - Gmail",
+     "url": "https://mail.google.com/mail/u/0/#inbox",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:104",
+     "windowID": 1,
+     "tabID": 104,
+     "index": 4,
+     "title": "Acme App",
+     "url": "http://localhost:3000/",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:105",
+     "windowID": 1,
+     "tabID": 105,
+     "index": 5,
+     "title": "Swift Concurrency | Documentation",
+     "url": "https://developer.apple.com/documentation/swift/concurrency",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:2:301",
+     "windowID": 2,
+     "tabID": 301,
+     "index": 1,
+     "title": "Netflix",
+     "url": "https://www.netflix.com/browse",
+     "active": false,
+     "frontWindow": false
+    },
+    {
+     "id": "chrome:2:302",
+     "windowID": 2,
+     "tabID": 302,
+     "index": 2,
+     "title": "Home / X",
+     "url": "https://x.com/home",
+     "active": false,
+     "frontWindow": false
+    },
+    {
+     "id": "chrome:2:303",
+     "windowID": 2,
+     "tabID": 303,
+     "index": 3,
+     "title": "Overview | Context.dev",
+     "url": "https://www.context.dev/o/e268",
+     "active": false,
+     "frontWindow": false
+    },
+    {
+     "id": "chrome:2:304",
+     "windowID": 2,
+     "tabID": 304,
+     "index": 4,
+     "title": "Feed | LinkedIn",
+     "url": "https://www.linkedin.com/feed/",
+     "active": true,
+     "frontWindow": false
+    }
+   ],
+   "terminals": [
+    {
+     "id": "terminal:ttys001",
+     "app": "terminal",
+     "nativeID": "/dev/ttys001",
+     "title": "app — claude",
+     "cwd": "~/code/app",
+     "running": "claude",
+     "selected": true
+    },
+    {
+     "id": "terminal:ttys002",
+     "app": "terminal",
+     "nativeID": "/dev/ttys002",
+     "title": "app — zsh",
+     "cwd": "~/code/app",
+     "selected": false
+    }
+   ],
+   "focused": {
+    "app": "Google Chrome",
+    "role": "AXTextArea",
+    "placeholder": "Leave a comment",
+    "editable": true,
+    "secure": false
+   },
+   "secureInputOn": false
   }
  },
  "cases": [
@@ -1418,6 +1658,109 @@
       "args": {
        "window_id": {
         "eq": "w3"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "nov3-open-netflix-other-window",
+   "transcript": "Can you open Netflix?",
+   "fixture": "two_chrome_windows",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "browser_switch_tab",
+      "args": {
+       "tab_id": {
+        "eq": "chrome:2:301"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "nov3-go-to-x",
+   "transcript": "Can you go to X.",
+   "fixture": "two_chrome_windows",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "browser_switch_tab",
+      "args": {
+       "tab_id": {
+        "eq": "chrome:2:302"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "nov3-open-twitter",
+   "transcript": "Open Twitter.",
+   "fixture": "two_chrome_windows",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "browser_switch_tab",
+      "args": {
+       "tab_id": {
+        "eq": "chrome:2:302"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "nov3-go-to-x-not-open",
+   "transcript": "Go to X.",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "browser_open_url",
+      "args": {
+       "url": {
+        "urlHost": "x.com"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "nov3-other-chrome-window",
+   "transcript": "Like I have two different Chrome windows, can you switch to the other one?",
+   "fixture": "two_chrome_windows",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "focus_window",
+      "args": {
+       "window_id": {
+        "eq": "w8"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "nov3-lost-prompt",
+   "transcript": "Can you draft a prompt in for this? Like the prompt is I think we need to improve the redesigning of the screens. Um let me think. Like for example, we need to add some sort of Linear to it I guess. Uh and like, a cleaner onboarding.",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "type_text",
+      "args": {
+       "target": {
+        "eq": "focused"
+       },
+       "payload": {
+        "contains": "cleaner onboarding"
        }
       }
      }

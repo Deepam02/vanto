@@ -33,7 +33,7 @@ public enum RouterError: Error, Equatable, CustomStringConvertible {
         case .rateLimited: return "Rate limited (429) — nothing ran"
         case .overloaded: return "Claude is overloaded (529) — nothing ran"
         case .http(let code, _): return "API error \(code) — nothing ran"
-        case .timeout: return "No reply within 3 s — nothing ran"
+        case .timeout: return "No reply in time — nothing ran"
         case .refusal: return "Claude declined that request"
         case .noToolCall: return "Didn't catch that"
         case .truncated: return "Reply was cut off — nothing ran"

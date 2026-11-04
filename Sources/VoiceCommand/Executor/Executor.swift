@@ -122,6 +122,23 @@ final class Executor {
 
     // MARK: Typing
 
+    /// Hold-Fn dictation: paste into whatever has focus, like any dictation tool, but never
+    /// into a password field. Electron apps (Slack, Cursor's chat) often don't report an
+    /// editable field, so when none is detected it still pastes and also leaves the text on
+    /// the clipboard: if the paste went nowhere, nothing is lost.
+    func dictate(_ text: String) async -> ExecOutcome {
+        let focused = AX.focusedElement()
+        if let focused, AX.isSecure(focused) { return .fail("That's a password field — not typing") }
+        let front = NSWorkspace.shared.frontmostApplication
+        let name = front?.localizedName ?? "the front app"
+        let terminals = [TerminalSessions.terminalBundleID, TerminalSessions.itermBundleID, TerminalSessions.ghosttyBundleID]
+        let sure = terminals.contains(front?.bundleIdentifier ?? "") || focused.map { AX.isEditable($0) } == true
+        await PasteService.paste(text)
+        if sure { return .ok("Typed into \(name)", undo: nil) }
+        PasteService.copy(text)
+        return .ok("Typed into \(name), and copied in case it didn't land", undo: nil)
+    }
+
     private func preferredTerminalApp(_ snap: DesktopSnapshot) -> DesktopSnapshot.TerminalApp {
         let front = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
         if front == TerminalSessions.ghosttyBundleID { return .ghostty }

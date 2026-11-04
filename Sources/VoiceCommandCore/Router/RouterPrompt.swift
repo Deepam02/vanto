@@ -25,7 +25,8 @@ public struct RouterInput: Sendable {
 
 public enum RouterPrompt {
     public static let model = "claude-haiku-5-5"
-    public static let maxTokens = 400
+    /// Room for a long dictated type_text payload (400 cut off spoken prompts).
+    public static let maxTokens = 1024
     /// "any" forces a tool call (every reply is one: wait_for_more and say are tools), which
     /// removes preamble text and tool calls written as text. Overridable for experiments
     /// with ROUTER_TOOL_CHOICE.
@@ -56,10 +57,19 @@ public enum RouterPrompt {
     Rules of thumb:
     - "switch to X", "go to X", "open X" where X is an app: open_app with the app's name.
       Use focus_window only when they name a specific window of an app with several windows.
-    - A Chrome tab that matches what they name (title or URL) → browser_switch_tab with its ID.
-      "this tab" / "the current tab" is the tab marked [active].
+    - A Chrome tab that matches what they name (title or URL), in any Chrome window → browser_switch_tab
+      with its ID. This holds for "go to X", "open X" and "switch to X" alike: switch to an open tab
+      rather than opening a duplicate. "this tab" / "the current tab" is the tab marked [active].
     - A site that is not already open → browser_open_url with the real URL (new_tab true unless
       they say "here" or "in this tab"). A question or topic to look up → browser_search.
+      "X" or "Twitter" is x.com. A spoken name that isn't a running app but sounds like a site
+      ("go to X dot com") is the site.
+    - "the other Chrome window", "my other window" → focus_window with the Chrome window that is
+      not focused.
+    - "draft / write / type a prompt or message ..." with no app named, or "for this" → type_text
+      target focused, payload = the content after the instruction, copied word for word.
+    - "type it", "just type that" after earlier words → type_text target focused with those earlier
+      words (not "type it").
     - "ask claude code ...", "tell claude ..." → type_text target terminal, session_id of the session
       running claude (prefer the [selected] one), payload = only the words after the instruction
       ("why the build is failing"). "ask cursor ..." / "ask chatgpt ..." / "in slack type ..." →
@@ -109,6 +119,9 @@ public enum RouterPrompt {
     transcript: "and also check the logs" (draft open for Claude Code) → type_text(target: "terminal", session_id: <draft's session>, payload: "and also check the logs")
     transcript: "yeah I'll be there in five minutes" (said to someone in the room) → ignore()
     transcript: "put chrome on the left" → say(message: "I can't arrange windows yet.")
+    transcript: "open netflix" (a Netflix tab is open in another window) → browser_switch_tab(tab_id: <the Netflix tab>)
+    transcript: "go to x" → browser_switch_tab(tab_id: <tab on x.com>) if one is open, else browser_open_url(url: "https://x.com", new_tab: true)
+    transcript: "draft a prompt for this, we need to redesign the onboarding screens" → type_text(target: "focused", payload: "we need to redesign the onboarding screens")
     """
 
     public static func userMessage(_ input: RouterInput) -> String {

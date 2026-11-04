@@ -43,6 +43,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             guard let self, AppSettings.shared.fnKeyEnabled else { return }
             self.session.toggle()
         }
+        fnMonitor.onHoldStart = { [weak self] in
+            guard let self, AppSettings.shared.fnKeyEnabled else { return }
+            self.session.startDictation()
+        }
+        fnMonitor.onHoldEnd = { [weak self] in
+            Task { await self?.session.finishDictation() }
+        }
         fnMonitor.onHealthChange = { [weak self] ok in
             self?.hud.model.warning = ok ? nil : "Fn key stopped working — use ⌃⌥Space"
         }

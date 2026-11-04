@@ -104,6 +104,14 @@ enum PasteService {
         }
     }
 
+    /// Leave text on the clipboard for the person (a normal entry, not transient), so words
+    /// that couldn't be typed aren't lost.
+    static func copy(_ text: String) {
+        let pb = NSPasteboard.general
+        pb.clearContents()
+        pb.setString(text, forType: .string)
+    }
+
     /// Paste into whatever has keyboard focus. Trailing newlines are stripped
     /// (a trailing newline auto-submits in Claude Code).
     static func paste(_ text: String) async {
