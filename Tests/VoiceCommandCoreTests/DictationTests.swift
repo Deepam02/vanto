@@ -27,3 +27,19 @@ import Testing
         #expect(Dictation.clean(["um, hello there"]) == "Hello there")
     }
 }
+
+@Suite struct VoiceDictationEndTests {
+    @Test func endsOnSendOrDone() {
+        #expect(Dictation.endCommand(in: "Send it.") == ("", .send))
+        #expect(Dictation.endCommand(in: "When should we introduce the sidebar. Send it.") == ("When should we introduce the sidebar", .send))
+        #expect(Dictation.endCommand(in: "and that's the plan, okay send it") == ("and that's the plan", .send))
+        #expect(Dictation.endCommand(in: "Done.") == ("", .done))
+        #expect(Dictation.endCommand(in: "the rest is fine, stop dictating") == ("the rest is fine", .done))
+        #expect(Dictation.endCommand(in: "Cancel dictation") == ("", .cancel))
+    }
+
+    @Test func contentThatMentionsSendStaysContent() {
+        #expect(Dictation.endCommand(in: "Tell them I will send the files tomorrow") == ("Tell them I will send the files tomorrow", nil))
+        #expect(Dictation.endCommand(in: "We are almost done with it") == ("We are almost done with it", nil))
+    }
+}

@@ -18,6 +18,7 @@ public struct GoldenCase: Codable {
     public var history: [String]?
     public var draft: RouterInputDraft?
     public var pending: String?
+    public var lastQuestion: String?
     public var expect: Expectation
 
     public struct RouterInputDraft: Codable {
@@ -62,7 +63,8 @@ public struct GoldenCase: Codable {
             snapshot: snap,
             draft: draft.map { RouterInput.Draft(app: $0.app, target: $0.target, typedText: $0.typedText) },
             pending: pending,
-            transcript: transcript)
+            transcript: transcript,
+            lastQuestion: lastQuestion)
     }
 }
 

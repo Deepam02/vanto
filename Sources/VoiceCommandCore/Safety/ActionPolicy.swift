@@ -86,11 +86,22 @@ public enum ActionPolicy {
         case .focusWindow(let id):
             return snap.window(id) == nil ? .reject("That window isn't open any more") : .run(call, minPauseMs: 0, note: nil)
 
-        case .browserSwitchTab(let id), .browserCloseTab(let id):
+        case .browserSwitchTab(let id):
             return snap.tab(id) == nil ? .reject("That tab isn't open any more") : .run(call, minPauseMs: 0, note: nil)
 
+        case .browserCloseTab(let id):
+            guard let tab = snap.tab(id) else { return .reject("That tab isn't open any more") }
+            // Switching on a near match is fine; closing one needs a yes ("close Blue U", 4 Nov).
+            let said = Set(TextMatching.words(ctx.transcript).map(\.norm))
+            let named = Set(TextMatching.words(tab.title + " " + tab.url.replacingOccurrences(of: ".", with: " ")).map(\.norm))
+            let skip: Set<String> = ["close", "the", "tab", "this", "that", "a", "my", "please", "can", "you", "com", "www", "https"]
+            if tab.active || !said.subtracting(skip).isDisjoint(with: named) { return .run(call, minPauseMs: 0, note: nil) }
+            return .hold(call, prompt: "Close “\(DesktopSnapshot.clip(tab.title, 40))”? Say \"yes\".")
+
         case .terminalFocus(let id):
-            return snap.terminal(id) == nil ? .reject("That terminal session isn't open") : .run(call, minPauseMs: 0, note: nil)
+            if snap.terminal(id) != nil { return .run(call, minPauseMs: 0, note: nil) }
+            if let s = snap.terminal(inWindow: id) { return .run(.terminalFocus(sessionID: s.id), minPauseMs: 0, note: "window \(id) → \(s.id)") }
+            return .reject("That terminal session isn't open")
 
         case .browserOpenURL(let url, _):
             guard let u = URL(string: url), let scheme = u.scheme?.lowercased(), ["http", "https"].contains(scheme) else {
@@ -100,6 +111,7 @@ public enum ActionPolicy {
 
         case .typeText(let target, let app, var sessionID, let payload):
             if target == .terminal {
+                if let sid = sessionID, snap.terminal(sid) == nil { sessionID = snap.terminal(inWindow: sid)?.id }
                 if sessionID == nil { sessionID = defaultTerminal(snap)?.id }
                 guard let sid = sessionID, snap.terminal(sid) != nil else { return .reject("No terminal session to type into") }
             }
@@ -129,11 +141,16 @@ public enum ActionPolicy {
 
         case .terminalRun(var sid, let command, let source, let risk):
             if snap.terminal(sid) == nil {
-                guard let d = defaultShell(snap) else { return .reject("No terminal session open") }
+                // A window ID means the session showing in that window; anything else, the default shell.
+                guard let d = snap.terminal(inWindow: sid) ?? defaultShell(snap) else { return .reject("No terminal session open") }
                 sid = d.id
             }
             let fixed = command.trimmingCharacters(in: .whitespacesAndNewlines)
             if fixed.isEmpty || fixed.contains("\n") { return .reject("Can't run that command") }
+            // A placeholder means a detail is missing (4 Nov typed `<UNKNOWN>` into the terminal).
+            if fixed.range(of: "<[A-Za-z_-]+>|\\{\\{|\\bUNKNOWN\\b", options: .regularExpression) != nil {
+                return .reject("I need one more detail for that command — say it again with the name")
+            }
             if CommandRiskChecker.isForbidden(fixed) { return .reject("sudo is never run by voice") }
             let rewritten = ToolCall.terminalRun(sessionID: sid, command: fixed, source: source, risk: risk)
             let dictated = source == .verbatim && SpokenSymbols.isDictated(fixed, in: ctx.transcript)
@@ -169,10 +186,40 @@ public enum ActionPolicy {
             }
             return .run(call, minPauseMs: combo.isPlainReturn ? holdPauseMs : 0, note: nil)
 
+        case .clickElement(let name), .menuCommand(let name, _):
+            // Pressing "Delete", "Send", "Pay"… by name is irreversible: ask first.
+            if let word = riskyClickWords.first(where: { TextMatching.contains(name, anyOf: [$0]) }) {
+                return .hold(call, prompt: "\(word.capitalized): press “\(name)”? Say \"yes\".")
+            }
+            return .run(call, minPauseMs: 0, note: nil)
+
+        case .rewriteDraft:
+            // The one place composed text is typed: it only replaces this app's own unsent draft.
+            return ctx.draftOpen ? .run(call, minPauseMs: 0, note: nil) : .reject("No draft to edit")
+
+        case .startDictation(let target, let app, var sessionID, let text):
+            if target == .terminal {
+                if let sid = sessionID, snap.terminal(sid) == nil { sessionID = snap.terminal(inWindow: sid)?.id }
+                if sessionID == nil { sessionID = defaultTerminal(snap)?.id }
+                guard let sid = sessionID, snap.terminal(sid) != nil else { return .reject("No terminal session to type into") }
+            }
+            if target == .focused, let f = snap.focused, f.secure {
+                return .reject("That's a password field — not typing")
+            }
+            // Words already said are kept only if they really were said.
+            let said = text.flatMap { TextMatching.transcriptSpan(for: $0, in: ctx.transcript)?.text }
+            return .run(.startDictation(target: target, app: app, sessionID: sessionID, text: said), minPauseMs: 0, note: nil)
+
         default:
             return .run(call, minPauseMs: 0, note: nil)
         }
     }
+
+    /// Words that make a click or menu command irreversible enough to need a spoken yes.
+    public static let riskyClickWords = [
+        "delete", "remove", "send", "submit", "pay", "buy", "purchase", "checkout", "merge", "publish",
+        "deploy", "discard", "erase", "unsubscribe", "transfer", "sign out", "log out", "empty trash",
+    ]
 
     /// The terminal session a terminal action should use when none was named:
     /// the selected session running claude, then any session running claude, then any selected one.
@@ -185,7 +232,8 @@ public enum ActionPolicy {
 
     /// The session a shell command should run in: a selected plain shell, then any plain shell.
     public static func defaultShell(_ snap: DesktopSnapshot) -> DesktopSnapshot.TerminalSession? {
-        snap.terminals.first { $0.selected && $0.running == nil }
+        snap.preferredShellID.flatMap { id in snap.terminals.first { $0.id == id && $0.running == nil } }
+            ?? snap.terminals.first { $0.selected && $0.running == nil }
             ?? snap.terminals.first { $0.running == nil }
     }
 }
@@ -207,11 +255,29 @@ public struct KeyCombo: Equatable, Sendable {
 
     public var isPlainReturn: Bool { (key == "return" || key == "enter") && !command && !option && !control }
 
+    /// Spoken or written key names for punctuation keys ("cmd+minus" was rejected on 4 Nov).
+    static let keyAliases: [String: String] = [
+        "esc": "escape", "minus": "-", "hyphen": "-", "dash": "-", "equal": "=", "equals": "=",
+        "comma": ",", "period": ".", "dot": ".", "slash": "/", "backslash": "\\", "semicolon": ";",
+        "quote": "'", "apostrophe": "'", "backtick": "`", "grave": "`", "leftbracket": "[", "rightbracket": "]",
+    ]
+
     public static func parse(_ text: String) -> KeyCombo? {
-        let parts = text.lowercased().replacingOccurrences(of: " ", with: "")
-            .split(whereSeparator: { $0 == "+" || $0 == "-" }).map(String.init)
-        guard let last = parts.last else { return nil }
-        var combo = KeyCombo(key: last == "esc" ? "escape" : last)
+        let lowered = text.lowercased().replacingOccurrences(of: " ", with: "")
+        // "+" separates when present ("cmd+-"), otherwise "-" does ("cmd-k"). An empty last
+        // piece means the key is the separator itself ("-", "cmd--", "cmd++").
+        let sep: Character = lowered.contains("+") ? "+" : "-"
+        var parts = lowered.split(separator: sep, omittingEmptySubsequences: false).map(String.init)
+        if parts.last == "" {
+            parts.removeLast()
+            if parts.last == "" { parts.removeLast() }
+            parts.append(String(sep))
+        }
+        guard var last = parts.last, !last.isEmpty else { return nil }
+        var shiftForPlus = false
+        if last == "plus" || last == "+" { last = "="; shiftForPlus = true }
+        var combo = KeyCombo(key: keyAliases[last] ?? last)
+        combo.shift = shiftForPlus
         for mod in parts.dropLast() {
             switch mod {
             case "cmd", "command", "⌘": combo.command = true

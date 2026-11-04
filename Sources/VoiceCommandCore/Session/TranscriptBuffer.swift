@@ -91,10 +91,19 @@ public struct SessionHistory: Sendable {
 
     public mutating func reset() { entries.removeAll() }
 
+    /// Oldest first; the last line is marked, so "not this one" / "that was wrong" has a referent.
     public func render() -> String {
         guard !entries.isEmpty else { return "(no commands yet this session)" }
         return entries.enumerated().map { i, e in
-            "\(i + 1). \"\(e.transcript)\" → \(e.actions.joined(separator: "; ")) → \(e.outcome)"
+            let mark = i == entries.count - 1 ? " ← most recent" : ""
+            return "\(i + 1). \"\(e.transcript)\" → \(e.actions.joined(separator: "; ")) → \(e.outcome)\(mark)"
         }.joined(separator: "\n")
+    }
+
+    /// The question the last reply asked ("Do you want me to open Projects?"), so a bare
+    /// "yeah" can answer it.
+    public var lastQuestion: String? {
+        guard let last = entries.last, last.actions == ["say"], last.outcome.hasSuffix("?") else { return nil }
+        return last.outcome
     }
 }

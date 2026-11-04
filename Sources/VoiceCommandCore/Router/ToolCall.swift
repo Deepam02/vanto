@@ -4,8 +4,8 @@ public enum TypeTarget: String, Codable, Sendable { case focused, chat_box, term
 public enum CommandSource: String, Codable, Sendable { case verbatim, composed }
 public enum CommandRisk: String, Codable, Sendable { case read_only, changes_files, destructive, network_or_deploy }
 public enum NavigateAction: String, Codable, Sendable { case reload, back, forward }
-public enum ScrollDirection: String, Codable, Sendable { case up, down }
-public enum ScrollAmount: String, Codable, Sendable { case small, page }
+public enum ScrollDirection: String, Codable, Sendable { case up, down, left, right }
+public enum ScrollAmount: String, Codable, Sendable { case small, page, continuous }
 
 /// One validated tool call from the router. With `eager_input_streaming` the API does not
 /// validate inputs, so every field is checked here before anything can run.
@@ -34,6 +34,14 @@ public enum ToolCall: Equatable, Sendable {
     case submit(app: String?, sendPhrase: String)
     case pressKeys(keys: String)
     case scroll(direction: ScrollDirection, amount: ScrollAmount)
+    // Generic control of the front app (docs/generic-control.md): no per-app code.
+    case menuCommand(item: String, menu: String?)
+    case clickElement(name: String)
+    case focusTextBox(app: String?)
+    case describeScreen
+    // Drafts and dictation.
+    case rewriteDraft(text: String)
+    case startDictation(target: TypeTarget, app: String?, sessionID: String?, text: String?)
 
     public var name: String {
         switch self {
@@ -61,6 +69,12 @@ public enum ToolCall: Equatable, Sendable {
         case .submit: return "submit"
         case .pressKeys: return "press_keys"
         case .scroll: return "scroll"
+        case .menuCommand: return "menu_command"
+        case .clickElement: return "click_element"
+        case .focusTextBox: return "focus_text_box"
+        case .describeScreen: return "describe_screen"
+        case .rewriteDraft: return "rewrite_draft"
+        case .startDictation: return "start_dictation"
         }
     }
 
@@ -83,6 +97,12 @@ public enum ToolCall: Equatable, Sendable {
         case .submit(let a, let p): return "submit(\(a ?? "")\(a == nil ? "" : ", ")\"\(p)\")"
         case .pressKeys(let k): return "press_keys(\(k))"
         case .scroll(let d, let a): return "scroll(\(d.rawValue), \(a.rawValue))"
+        case .menuCommand(let i, let m): return "menu_command(\(m.map { "\($0) › " } ?? "")\(i))"
+        case .clickElement(let n): return "click_element(\(n))"
+        case .focusTextBox(let a): return "focus_text_box(\(a ?? "front app"))"
+        case .rewriteDraft(let t): return "rewrite_draft(\"\(t)\")"
+        case .startDictation(let t, let a, let s, let x):
+            return "start_dictation(\(t.rawValue)\(a.map { ", app: \($0)" } ?? "")\(s.map { ", session: \($0)" } ?? "")\(x.map { ", \"\($0)\"" } ?? ""))"
         default: return name
         }
     }
@@ -173,6 +193,17 @@ public enum ToolCall: Equatable, Sendable {
             return .scroll(
                 direction: try enumValue("direction", ScrollDirection.self),
                 amount: try enumValue("amount", ScrollAmount.self, default: .small))
+        case "menu_command": return .menuCommand(item: try str("item"), menu: optStr("menu"))
+        case "click_element": return .clickElement(name: try str("name"))
+        case "focus_text_box": return .focusTextBox(app: optStr("app"))
+        case "describe_screen": return .describeScreen
+        case "rewrite_draft": return .rewriteDraft(text: try str("text"))
+        case "start_dictation":
+            return .startDictation(
+                target: try enumValue("target", TypeTarget.self, default: .focused),
+                app: optStr("app"),
+                sessionID: optStr("session_id"),
+                text: optStr("text"))
         default:
             throw ParseError.unknownTool(name)
         }

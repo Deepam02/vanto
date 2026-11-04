@@ -416,7 +416,7 @@
      "title": "Fix parser edge cases by deepam · Pull Request #482 · acme/app",
      "index": 0,
      "minimized": false,
-     "focused": true
+     "focused": false
     },
     {
      "id": "w2",
@@ -452,7 +452,7 @@
      "title": "eng-team (Channel) - Acme - Slack",
      "index": 0,
      "minimized": false,
-     "focused": false
+     "focused": true
     },
     {
      "id": "w6",
@@ -545,13 +545,32 @@
     }
    ],
    "focused": {
-    "app": "Slack",
+    "app": "Google Chrome",
     "role": "AXTextArea",
-    "placeholder": "Message #eng-team",
+    "placeholder": "Leave a comment",
     "editable": true,
     "secure": false
    },
-   "secureInputOn": false
+   "secureInputOn": false,
+   "frontControls": [
+    "Home",
+    "DMs",
+    "Activity",
+    "Files",
+    "User: Deepam Goyal",
+    "Threads",
+    "Huddles",
+    "Drafts & sent",
+    "Channels",
+    "Direct Messages",
+    "Team questions",
+    "Arjun Arora (active)",
+    "Sophearak Tha (active)",
+    "Deepam Goyal (you, active)",
+    "Send now",
+    "Attach",
+    "Emoji"
+   ]
   },
   "two_chrome_windows": {
    "takenAt": 0,
@@ -782,6 +801,846 @@
      "title": "app — zsh",
      "cwd": "~/code/app",
      "selected": false
+    }
+   ],
+   "focused": {
+    "app": "Google Chrome",
+    "role": "AXTextArea",
+    "placeholder": "Leave a comment",
+    "editable": true,
+    "secure": false
+   },
+   "secureInputOn": false
+  },
+  "two_terminals": {
+   "takenAt": 0,
+   "apps": [
+    {
+     "name": "Finder",
+     "bundleID": "com.apple.finder",
+     "pid": 401,
+     "frontmost": false
+    },
+    {
+     "name": "Google Chrome",
+     "bundleID": "com.google.Chrome",
+     "pid": 510,
+     "frontmost": false
+    },
+    {
+     "name": "Cursor",
+     "bundleID": "com.todesktop.230313mzl4w4u92",
+     "pid": 620,
+     "frontmost": false
+    },
+    {
+     "name": "Terminal",
+     "bundleID": "com.apple.Terminal",
+     "pid": 730,
+     "frontmost": true
+    },
+    {
+     "name": "Slack",
+     "bundleID": "com.tinyspeck.slackmacgap",
+     "pid": 840,
+     "frontmost": false
+    },
+    {
+     "name": "Claude",
+     "bundleID": "com.anthropic.claudefordesktop",
+     "pid": 950,
+     "frontmost": false
+    },
+    {
+     "name": "ChatGPT",
+     "bundleID": "com.openai.chat",
+     "pid": 960,
+     "frontmost": false
+    }
+   ],
+   "windows": [
+    {
+     "id": "w1",
+     "app": "Google Chrome",
+     "pid": 510,
+     "title": "Fix parser edge cases by deepam · Pull Request #482 · acme/app",
+     "index": 0,
+     "minimized": false,
+     "focused": true
+    },
+    {
+     "id": "w2",
+     "app": "Cursor",
+     "pid": 620,
+     "title": "parser.ts — app",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w3",
+     "app": "Cursor",
+     "pid": 620,
+     "title": "README.md — docs",
+     "index": 1,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w5",
+     "app": "Slack",
+     "pid": 840,
+     "title": "eng-team (Channel) - Acme - Slack",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w6",
+     "app": "Claude",
+     "pid": 950,
+     "title": "Claude",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w7",
+     "app": "ChatGPT",
+     "pid": 960,
+     "title": "ChatGPT",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w8",
+     "app": "Terminal",
+     "pid": 730,
+     "title": "Ana-core — ✳ Shopify Connect baseline",
+     "index": 0,
+     "minimized": false,
+     "focused": true
+    },
+    {
+     "id": "w9",
+     "app": "Terminal",
+     "pid": 730,
+     "title": "deepamgoyal — -zsh — 136×30",
+     "index": 1,
+     "minimized": false,
+     "focused": false
+    }
+   ],
+   "tabs": [
+    {
+     "id": "chrome:1:101",
+     "windowID": 1,
+     "tabID": 101,
+     "index": 1,
+     "title": "Fix parser edge cases by deepam · Pull Request #482 · acme/app",
+     "url": "https://github.com/acme/app/pull/482",
+     "active": true,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:102",
+     "windowID": 1,
+     "tabID": 102,
+     "index": 2,
+     "title": "ENG-231 Parser crashes on empty input - Linear",
+     "url": "https://linear.app/acme/issue/ENG-231",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:103",
+     "windowID": 1,
+     "tabID": 103,
+     "index": 3,
+     "title": "Inbox (3) - deepam@acme.dev - Gmail",
+     "url": "https://mail.google.com/mail/u/0/#inbox",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:104",
+     "windowID": 1,
+     "tabID": 104,
+     "index": 4,
+     "title": "Acme App",
+     "url": "http://localhost:3000/",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:105",
+     "windowID": 1,
+     "tabID": 105,
+     "index": 5,
+     "title": "Swift Concurrency | Documentation",
+     "url": "https://developer.apple.com/documentation/swift/concurrency",
+     "active": false,
+     "frontWindow": true
+    }
+   ],
+   "terminals": [
+    {
+     "id": "terminal:ttys003",
+     "app": "terminal",
+     "nativeID": "/dev/ttys003",
+     "title": "✳ Shopify Connect baseline",
+     "running": "claude",
+     "selected": true,
+     "windowTitle": "Ana-core — ✳ Shopify Connect baseline",
+     "visibleInWindow": true
+    },
+    {
+     "id": "terminal:ttys001",
+     "app": "terminal",
+     "nativeID": "/dev/ttys001",
+     "title": "-zsh",
+     "selected": false,
+     "windowTitle": "deepamgoyal — -zsh — 136×30",
+     "visibleInWindow": true
+    }
+   ],
+   "focused": {
+    "app": "Google Chrome",
+    "role": "AXTextArea",
+    "placeholder": "Leave a comment",
+    "editable": true,
+    "secure": false
+   },
+   "secureInputOn": false
+  },
+  "figma_web": {
+   "takenAt": 0,
+   "apps": [
+    {
+     "name": "Finder",
+     "bundleID": "com.apple.finder",
+     "pid": 401,
+     "frontmost": false
+    },
+    {
+     "name": "Google Chrome",
+     "bundleID": "com.google.Chrome",
+     "pid": 510,
+     "frontmost": true
+    },
+    {
+     "name": "Cursor",
+     "bundleID": "com.todesktop.230313mzl4w4u92",
+     "pid": 620,
+     "frontmost": false
+    },
+    {
+     "name": "Terminal",
+     "bundleID": "com.apple.Terminal",
+     "pid": 730,
+     "frontmost": false
+    },
+    {
+     "name": "Slack",
+     "bundleID": "com.tinyspeck.slackmacgap",
+     "pid": 840,
+     "frontmost": false
+    },
+    {
+     "name": "Claude",
+     "bundleID": "com.anthropic.claudefordesktop",
+     "pid": 950,
+     "frontmost": false
+    },
+    {
+     "name": "ChatGPT",
+     "bundleID": "com.openai.chat",
+     "pid": 960,
+     "frontmost": false
+    }
+   ],
+   "windows": [
+    {
+     "id": "w1",
+     "app": "Google Chrome",
+     "pid": 510,
+     "title": "Onboarding – Figma",
+     "index": 0,
+     "minimized": false,
+     "focused": true
+    },
+    {
+     "id": "w2",
+     "app": "Cursor",
+     "pid": 620,
+     "title": "parser.ts — app",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w3",
+     "app": "Cursor",
+     "pid": 620,
+     "title": "README.md — docs",
+     "index": 1,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w4",
+     "app": "Terminal",
+     "pid": 730,
+     "title": "app — claude — 120×40",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w5",
+     "app": "Slack",
+     "pid": 840,
+     "title": "eng-team (Channel) - Acme - Slack",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w6",
+     "app": "Claude",
+     "pid": 950,
+     "title": "Claude",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w7",
+     "app": "ChatGPT",
+     "pid": 960,
+     "title": "ChatGPT",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    }
+   ],
+   "tabs": [
+    {
+     "id": "chrome:1:101",
+     "windowID": 1,
+     "tabID": 101,
+     "index": 1,
+     "title": "Onboarding – Figma",
+     "url": "https://www.figma.com/design/abc/Onboarding",
+     "active": true,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:102",
+     "windowID": 1,
+     "tabID": 102,
+     "index": 2,
+     "title": "ENG-231 Parser crashes on empty input - Linear",
+     "url": "https://linear.app/acme/issue/ENG-231",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:103",
+     "windowID": 1,
+     "tabID": 103,
+     "index": 3,
+     "title": "Inbox (3) - deepam@acme.dev - Gmail",
+     "url": "https://mail.google.com/mail/u/0/#inbox",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:104",
+     "windowID": 1,
+     "tabID": 104,
+     "index": 4,
+     "title": "Acme App",
+     "url": "http://localhost:3000/",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:105",
+     "windowID": 1,
+     "tabID": 105,
+     "index": 5,
+     "title": "Swift Concurrency | Documentation",
+     "url": "https://developer.apple.com/documentation/swift/concurrency",
+     "active": false,
+     "frontWindow": true
+    }
+   ],
+   "terminals": [
+    {
+     "id": "terminal:ttys001",
+     "app": "terminal",
+     "nativeID": "/dev/ttys001",
+     "title": "app — claude",
+     "cwd": "~/code/app",
+     "running": "claude",
+     "selected": true
+    },
+    {
+     "id": "terminal:ttys002",
+     "app": "terminal",
+     "nativeID": "/dev/ttys002",
+     "title": "app — zsh",
+     "cwd": "~/code/app",
+     "selected": false
+    }
+   ],
+   "focused": {
+    "app": "Google Chrome",
+    "role": "AXTextArea",
+    "placeholder": "Leave a comment",
+    "editable": true,
+    "secure": false
+   },
+   "secureInputOn": false
+  },
+  "claude_front": {
+   "takenAt": 0,
+   "apps": [
+    {
+     "name": "Finder",
+     "bundleID": "com.apple.finder",
+     "pid": 401,
+     "frontmost": false
+    },
+    {
+     "name": "Google Chrome",
+     "bundleID": "com.google.Chrome",
+     "pid": 510,
+     "frontmost": false
+    },
+    {
+     "name": "Cursor",
+     "bundleID": "com.todesktop.230313mzl4w4u92",
+     "pid": 620,
+     "frontmost": false
+    },
+    {
+     "name": "Terminal",
+     "bundleID": "com.apple.Terminal",
+     "pid": 730,
+     "frontmost": false
+    },
+    {
+     "name": "Slack",
+     "bundleID": "com.tinyspeck.slackmacgap",
+     "pid": 840,
+     "frontmost": false
+    },
+    {
+     "name": "Claude",
+     "bundleID": "com.anthropic.claudefordesktop",
+     "pid": 950,
+     "frontmost": true
+    },
+    {
+     "name": "ChatGPT",
+     "bundleID": "com.openai.chat",
+     "pid": 960,
+     "frontmost": false
+    },
+    {
+     "name": "Messages",
+     "bundleID": "com.apple.MobileSMS",
+     "pid": 970,
+     "frontmost": false
+    }
+   ],
+   "windows": [
+    {
+     "id": "w1",
+     "app": "Google Chrome",
+     "pid": 510,
+     "title": "Fix parser edge cases by deepam · Pull Request #482 · acme/app",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w2",
+     "app": "Cursor",
+     "pid": 620,
+     "title": "parser.ts — app",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w3",
+     "app": "Cursor",
+     "pid": 620,
+     "title": "README.md — docs",
+     "index": 1,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w4",
+     "app": "Terminal",
+     "pid": 730,
+     "title": "app — claude — 120×40",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w5",
+     "app": "Slack",
+     "pid": 840,
+     "title": "eng-team (Channel) - Acme - Slack",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w6",
+     "app": "Claude",
+     "pid": 950,
+     "title": "Claude",
+     "index": 0,
+     "minimized": false,
+     "focused": true
+    },
+    {
+     "id": "w7",
+     "app": "ChatGPT",
+     "pid": 960,
+     "title": "ChatGPT",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    }
+   ],
+   "tabs": [
+    {
+     "id": "chrome:1:101",
+     "windowID": 1,
+     "tabID": 101,
+     "index": 1,
+     "title": "Fix parser edge cases by deepam · Pull Request #482 · acme/app",
+     "url": "https://github.com/acme/app/pull/482",
+     "active": true,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:102",
+     "windowID": 1,
+     "tabID": 102,
+     "index": 2,
+     "title": "ENG-231 Parser crashes on empty input - Linear",
+     "url": "https://linear.app/acme/issue/ENG-231",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:103",
+     "windowID": 1,
+     "tabID": 103,
+     "index": 3,
+     "title": "Inbox (3) - deepam@acme.dev - Gmail",
+     "url": "https://mail.google.com/mail/u/0/#inbox",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:104",
+     "windowID": 1,
+     "tabID": 104,
+     "index": 4,
+     "title": "Acme App",
+     "url": "http://localhost:3000/",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:105",
+     "windowID": 1,
+     "tabID": 105,
+     "index": 5,
+     "title": "Swift Concurrency | Documentation",
+     "url": "https://developer.apple.com/documentation/swift/concurrency",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:110",
+     "windowID": 1,
+     "tabID": 110,
+     "index": 6,
+     "title": "Claude Code",
+     "url": "https://claude.ai/code",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:111",
+     "windowID": 1,
+     "tabID": 111,
+     "index": 7,
+     "title": "Blooio",
+     "url": "https://app.blooio.com/dashboard",
+     "active": false,
+     "frontWindow": true
+    }
+   ],
+   "terminals": [
+    {
+     "id": "terminal:ttys001",
+     "app": "terminal",
+     "nativeID": "/dev/ttys001",
+     "title": "app — claude",
+     "cwd": "~/code/app",
+     "running": "claude",
+     "selected": true
+    },
+    {
+     "id": "terminal:ttys002",
+     "app": "terminal",
+     "nativeID": "/dev/ttys002",
+     "title": "app — zsh",
+     "cwd": "~/code/app",
+     "selected": false
+    }
+   ],
+   "focused": {
+    "app": "Google Chrome",
+    "role": "AXTextArea",
+    "placeholder": "Leave a comment",
+    "editable": true,
+    "secure": false
+   },
+   "secureInputOn": false,
+   "frontControls": [
+    "Hide sidebar",
+    "Back",
+    "Forward",
+    "Chat and Cowork",
+    "Code",
+    "New",
+    "Customize",
+    "Projects",
+    "Artifacts",
+    "Scheduled",
+    "Recents",
+    "Search",
+    "Onboarding sidebar integration",
+    "Competitor website screenshots for redesign",
+    "More options for Competitor website screenshots for redesign",
+    "Context.dev credit balance"
+   ]
+  },
+  "three_terminals": {
+   "takenAt": 0,
+   "apps": [
+    {
+     "name": "Finder",
+     "bundleID": "com.apple.finder",
+     "pid": 401,
+     "frontmost": false
+    },
+    {
+     "name": "Google Chrome",
+     "bundleID": "com.google.Chrome",
+     "pid": 510,
+     "frontmost": false
+    },
+    {
+     "name": "Cursor",
+     "bundleID": "com.todesktop.230313mzl4w4u92",
+     "pid": 620,
+     "frontmost": false
+    },
+    {
+     "name": "Terminal",
+     "bundleID": "com.apple.Terminal",
+     "pid": 730,
+     "frontmost": true
+    },
+    {
+     "name": "Slack",
+     "bundleID": "com.tinyspeck.slackmacgap",
+     "pid": 840,
+     "frontmost": false
+    },
+    {
+     "name": "Claude",
+     "bundleID": "com.anthropic.claudefordesktop",
+     "pid": 950,
+     "frontmost": false
+    },
+    {
+     "name": "ChatGPT",
+     "bundleID": "com.openai.chat",
+     "pid": 960,
+     "frontmost": false
+    }
+   ],
+   "windows": [
+    {
+     "id": "w1",
+     "app": "Google Chrome",
+     "pid": 510,
+     "title": "Fix parser edge cases by deepam · Pull Request #482 · acme/app",
+     "index": 0,
+     "minimized": false,
+     "focused": true
+    },
+    {
+     "id": "w2",
+     "app": "Cursor",
+     "pid": 620,
+     "title": "parser.ts — app",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w3",
+     "app": "Cursor",
+     "pid": 620,
+     "title": "README.md — docs",
+     "index": 1,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w5",
+     "app": "Slack",
+     "pid": 840,
+     "title": "eng-team (Channel) - Acme - Slack",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w6",
+     "app": "Claude",
+     "pid": 950,
+     "title": "Claude",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w7",
+     "app": "ChatGPT",
+     "pid": 960,
+     "title": "ChatGPT",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w8",
+     "app": "Terminal",
+     "pid": 730,
+     "title": "Ana-core — ✳ Shopify Connect baseline",
+     "index": 0,
+     "minimized": false,
+     "focused": true
+    },
+    {
+     "id": "w9",
+     "app": "Terminal",
+     "pid": 730,
+     "title": "deepamgoyal — -zsh — 136×30",
+     "index": 1,
+     "minimized": false,
+     "focused": false
+    }
+   ],
+   "tabs": [
+    {
+     "id": "chrome:1:101",
+     "windowID": 1,
+     "tabID": 101,
+     "index": 1,
+     "title": "Fix parser edge cases by deepam · Pull Request #482 · acme/app",
+     "url": "https://github.com/acme/app/pull/482",
+     "active": true,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:102",
+     "windowID": 1,
+     "tabID": 102,
+     "index": 2,
+     "title": "ENG-231 Parser crashes on empty input - Linear",
+     "url": "https://linear.app/acme/issue/ENG-231",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:103",
+     "windowID": 1,
+     "tabID": 103,
+     "index": 3,
+     "title": "Inbox (3) - deepam@acme.dev - Gmail",
+     "url": "https://mail.google.com/mail/u/0/#inbox",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:104",
+     "windowID": 1,
+     "tabID": 104,
+     "index": 4,
+     "title": "Acme App",
+     "url": "http://localhost:3000/",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:105",
+     "windowID": 1,
+     "tabID": 105,
+     "index": 5,
+     "title": "Swift Concurrency | Documentation",
+     "url": "https://developer.apple.com/documentation/swift/concurrency",
+     "active": false,
+     "frontWindow": true
+    }
+   ],
+   "terminals": [
+    {
+     "id": "terminal:ttys003",
+     "app": "terminal",
+     "nativeID": "/dev/ttys003",
+     "title": "✳ Voice-first macOS menu-bar app",
+     "running": "claude",
+     "selected": true,
+     "windowTitle": "Ana-core — ✳ Shopify Connect baseline",
+     "visibleInWindow": true
+    },
+    {
+     "id": "terminal:ttys001",
+     "app": "terminal",
+     "nativeID": "/dev/ttys001",
+     "title": "-zsh",
+     "selected": false,
+     "windowTitle": "deepamgoyal — -zsh — 136×30",
+     "visibleInWindow": true
+    },
+    {
+     "id": "terminal:ttys000",
+     "app": "terminal",
+     "nativeID": "/dev/ttys000",
+     "title": "✳ Shopify Connect baseline",
+     "running": "claude",
+     "selected": false,
+     "windowTitle": "Ana-core — ✳ Shopify Connect baseline",
+     "visibleInWindow": false
     }
    ],
    "focused": {
@@ -1763,6 +2622,415 @@
         "contains": "cleaner onboarding"
        }
       }
+     }
+    ]
+   }
+  },
+  {
+   "id": "nov4-run-ls-misheard",
+   "transcript": "Run Ellis command",
+   "fixture": "two_terminals",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "terminal_run",
+      "args": {
+       "command": {
+        "eq": "ls"
+       },
+       "session_id": {
+        "eq": "terminal:ttys001"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "nov4-run-pwd-misheard",
+   "transcript": "Run TWD command.",
+   "fixture": "two_terminals",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "terminal_run",
+      "args": {
+       "command": {
+        "eq": "pwd"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "nov4-show-directories",
+   "transcript": "Run the command which shows me all the directories inside it.",
+   "fixture": "two_terminals",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "terminal_run",
+      "args": {
+       "source": {
+        "eq": "composed"
+       },
+       "risk": {
+        "eq": "read_only"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "nov4-mkdir",
+   "transcript": "Create a directory called demo",
+   "fixture": "two_terminals",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "terminal_run",
+      "args": {
+       "command": {
+        "contains": "mkdir"
+       },
+       "source": {
+        "eq": "composed"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "nov4-zoom-out-figma-web",
+   "transcript": "I'm on Figma, can you zoom out a bit?",
+   "fixture": "figma_web",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "press_keys",
+      "args": {
+       "keys": {
+        "oneOf": [
+         "-",
+         "minus",
+         "cmd+-",
+         "cmd+minus"
+        ]
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "nov4-pan-figma",
+   "transcript": "Move the Figma canvas to the left",
+   "fixture": "figma_web",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "scroll",
+      "args": {
+       "direction": {
+        "eq": "left"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "nov4-click-in-page",
+   "transcript": "Can you go to Conversations on this tab",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "click_element",
+      "args": {
+       "name": {
+        "contains": "conversations"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "nov4-focus-text-box",
+   "transcript": "Can you focus on the text box?",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "focus_text_box"
+     }
+    ]
+   }
+  },
+  {
+   "id": "nov4-what-can-you-do",
+   "transcript": "Hi, what are the things you can do on this tab",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "describe_screen"
+     }
+    ]
+   }
+  },
+  {
+   "id": "nov4-improve-english",
+   "transcript": "Can you edit this message and improve its English",
+   "draft": {
+    "app": "Google Chrome",
+    "target": "chat_box",
+    "typedText": "yeah, please connect with a human agent. I think it will be better if it is reviewed by a human Yeah"
+   },
+   "expect": {
+    "sequence": [
+     {
+      "tool": "rewrite_draft"
+     }
+    ]
+   }
+  },
+  {
+   "id": "nov4-dictate-wait",
+   "transcript": "Can you write a message? It will take me some while to write this message, wait for me.",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "start_dictation"
+     }
+    ]
+   }
+  },
+  {
+   "id": "nov4b-open-products-is-projects",
+   "transcript": "Open Products.",
+   "fixture": "claude_front",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "click_element",
+      "args": {
+       "name": {
+        "eq": "Projects"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "nov4b-blue-io-tab",
+   "transcript": "Can you go to a tab called Blue IO?",
+   "fixture": "claude_front",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "browser_switch_tab",
+      "args": {
+       "tab_id": {
+        "eq": "chrome:1:111"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "nov4b-clawed-window",
+   "transcript": "Can you switch to the clawed window, not the tab?",
+   "fixture": "two_chrome_windows",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "open_app",
+      "args": {
+       "app": {
+        "oneOf": [
+         "Claude",
+         "com.anthropic.claudefordesktop"
+        ]
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "nov4b-dir-without-name",
+   "transcript": "Create a new directory.",
+   "fixture": "two_terminals",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "say"
+     }
+    ]
+   }
+  },
+  {
+   "id": "nov4b-chat-by-name",
+   "transcript": "Can you go to one of my chat which is called Competitor Website Screenshot?",
+   "fixture": "claude_front",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "click_element",
+      "args": {
+       "name": {
+        "contains": "competitor"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "nov4b-message-bar",
+   "transcript": "Can you focus on the Messages bar?",
+   "fixture": "claude_front",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "focus_text_box"
+     }
+    ]
+   }
+  },
+  {
+   "id": "nov4b-clear-terminal-line",
+   "transcript": "Can you remove all the commands you typed in the terminal?",
+   "fixture": "two_terminals",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "press_keys",
+      "args": {
+       "keys": {
+        "oneOf": [
+         "ctrl+u",
+         "control+u"
+        ]
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "nov4c-slack-dm-row",
+   "transcript": "In the direct messages, go to Deepam Goyal",
+   "fixture": "slack_front",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "click_element",
+      "args": {
+       "name": {
+        "contains": "you, active"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "nov4c-different-terminal",
+   "transcript": "Different one, not this one",
+   "fixture": "three_terminals",
+   "history": [
+    "\"Go to Claude Code Terminal.\" → terminal_focus(terminal:ttys003) → ok → Terminal: ✳ Voice-first macOS menu-bar app"
+   ],
+   "expect": {
+    "sequence": [
+     {
+      "tool": "terminal_focus",
+      "args": {
+       "session_id": {
+        "eq": "terminal:ttys000"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "nov4c-yes-to-question",
+   "transcript": "Yeah.",
+   "fixture": "claude_front",
+   "history": [
+    "\"Can you open a new Products?\" → say → Projects is in the Claude app sidebar. Do you want me to open Projects?"
+   ],
+   "lastQuestion": "Projects is in the Claude app sidebar. Do you want me to open Projects?",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "click_element",
+      "args": {
+       "name": {
+        "eq": "Projects"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "nov4c-wrong-tab",
+   "transcript": "No, that's the wrong tab, I said Blooio",
+   "fixture": "claude_front",
+   "history": [
+    "\"Go to blue YouTube.\" → browser_switch_tab(chrome:1:104) → ok → Tab: Coke Studio"
+   ],
+   "expect": {
+    "sequence": [
+     {
+      "tool": "undo_last"
+     },
+     {
+      "tool": "browser_switch_tab",
+      "args": {
+       "tab_id": {
+        "eq": "chrome:1:111"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "nov4c-keep-scrolling",
+   "transcript": "Continue scrolling up till I tell you to stop",
+   "fixture": "claude_front",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "scroll",
+      "args": {
+       "direction": {
+        "eq": "up"
+       },
+       "amount": {
+        "eq": "continuous"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "nov4c-what-can-you-do",
+   "transcript": "What can you do in this clawed window?",
+   "fixture": "claude_front",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "describe_screen"
      }
     ]
    }

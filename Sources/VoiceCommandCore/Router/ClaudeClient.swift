@@ -10,6 +10,7 @@ public enum RouterError: Error, Equatable, CustomStringConvertible {
     case refusal
     case noToolCall
     case truncated            // stop_reason max_tokens with an open tool call
+    case incomplete(String)   // the stream ended before message_stop (details for the log)
 
     public var description: String {
         switch self {
@@ -22,6 +23,7 @@ public enum RouterError: Error, Equatable, CustomStringConvertible {
         case .refusal: return "Claude declined this request"
         case .noToolCall: return "Didn't catch that"
         case .truncated: return "Router reply was cut off"
+        case .incomplete(let m): return "Router reply ended early (\(m))"
         }
     }
 
@@ -37,6 +39,7 @@ public enum RouterError: Error, Equatable, CustomStringConvertible {
         case .refusal: return "Claude declined that request"
         case .noToolCall: return "Didn't catch that"
         case .truncated: return "Reply was cut off — nothing ran"
+        case .incomplete: return "Reply ended early — nothing ran"
         }
     }
 }
@@ -63,7 +66,10 @@ public final class ClaudeClient: @unchecked Sendable {
     public static let endpoint = URL(string: "https://api.anthropic.com/v1/messages")!
     public static let apiVersion = "2026-10-21"
 
-    private let session: URLSession
+    private var _session: URLSession
+    private let sessionLock = NSLock()
+    private var session: URLSession { sessionLock.withLock { _session } }
+    private let config: URLSessionConfiguration
     public var apiKey: String?
     /// Sent as `anthropic-workspace-id`; needed only for keys not scoped to a workspace.
     public var workspaceID: String?
@@ -75,8 +81,21 @@ public final class ClaudeClient: @unchecked Sendable {
         config.httpMaximumConnectionsPerHost = 2
         config.timeoutIntervalForRequest = 10
         config.waitsForConnectivity = false
+        self.config = config
         // One session for the app's lifetime keeps the HTTP/2 connection warm.
-        self.session = URLSession(configuration: config)
+        self._session = URLSession(configuration: config)
+    }
+
+    /// Drop the warm connection and start a new one: used before retrying a reply that
+    /// ended early, in case the reused HTTP/2 connection was the problem (4 Nov log).
+    public func resetConnection() {
+        let fresh = URLSession(configuration: config)
+        let old = sessionLock.withLock { () -> URLSession in
+            let o = _session
+            _session = fresh
+            return o
+        }
+        old.finishTasksAndInvalidate()
     }
 
     private func request(body: [String: Any]) throws -> URLRequest {
@@ -126,10 +145,19 @@ public final class ClaudeClient: @unchecked Sendable {
                         }
                     }
                     var parser = SSEToolParser()
+                    var lines = 0, head = ""
                     for try await line in bytes.lines {
                         try Task.checkCancellation()
+                        lines += 1
+                        if head.count < 300 { head += line.prefix(300 - head.count) + "⏎" }
                         for event in parser.consume(line: line) { continuation.yield(event) }
                         if parser.finished { break }
+                    }
+                    // No message_stop: say what did arrive, so the log shows the cause.
+                    if !parser.finished {
+                        let type = http.value(forHTTPHeaderField: "content-type") ?? "?"
+                        let rid = http.value(forHTTPHeaderField: "request-id") ?? "?"
+                        throw RouterError.incomplete("HTTP \(http.statusCode), \(type), \(lines) lines, request-id \(rid), starts: \(head.isEmpty ? "(empty)" : head)")
                     }
                     continuation.finish()
                 } catch let e as RouterError {

@@ -36,7 +36,9 @@ import Testing
             "browser_search": #"{"query":"q"}"#, "terminal_focus": #"{"session_id":"terminal:ttys001"}"#,
             "terminal_run": #"{"session_id":"s","command":"ls","source":"verbatim","risk":"read_only"}"#,
             "type_text": #"{"target":"focused","payload":"hi"}"#, "submit": #"{"send_phrase":"send"}"#,
-            "press_keys": #"{"keys":"cmd+k"}"#, "scroll": #"{"direction":"down"}"#,
+            "press_keys": #"{"keys":"cmd+k"}"#, "scroll": #"{"direction":"left"}"#,
+            "menu_command": #"{"item":"Zoom Out","menu":"View"}"#, "click_element": #"{"name":"Conversations"}"#,
+            "rewrite_draft": #"{"text":"Hello."}"#, "start_dictation": #"{"target":"focused"}"#,
         ]
         for name in ToolSchemas.names {
             let call = try ToolCall.parse(name: name, inputJSON: samples[name] ?? "{}")

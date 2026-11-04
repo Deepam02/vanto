@@ -53,7 +53,12 @@ public struct DesktopSnapshot: Codable, Equatable, Sendable {
         public var cwd: String?
         public var running: String?    // "claude" or "codex" when detected
         public var selected: Bool      // the visible session in the front-most window of that app
-        public init(app: TerminalApp, nativeID: String, title: String, cwd: String? = nil, running: String? = nil, selected: Bool = false) {
+        /// Title of the window the session is in (matches that window's entry in `windows`).
+        public var windowTitle: String?
+        /// The session showing in its window (each window shows one tab).
+        public var visibleInWindow: Bool?
+        public init(app: TerminalApp, nativeID: String, title: String, cwd: String? = nil, running: String? = nil, selected: Bool = false,
+                    windowTitle: String? = nil, visibleInWindow: Bool? = nil) {
             switch app {
             case .terminal: self.id = "terminal:\(nativeID.replacingOccurrences(of: "/dev/", with: ""))"
             case .iterm2: self.id = "iterm2:\(nativeID)"
@@ -61,6 +66,7 @@ public struct DesktopSnapshot: Codable, Equatable, Sendable {
             }
             self.app = app; self.nativeID = nativeID; self.title = title; self.cwd = cwd
             self.running = running; self.selected = selected
+            self.windowTitle = windowTitle; self.visibleInWindow = visibleInWindow
         }
     }
 
@@ -87,6 +93,13 @@ public struct DesktopSnapshot: Codable, Equatable, Sendable {
     public var terminals: [TerminalSession]
     public var focused: FocusedElement?
     public var secureInputOn: Bool
+    /// The terminal session opened by voice this session: commands go there by default.
+    public var preferredShellID: String?
+    /// Last lines of the terminal in front, so "fix that error" has something to read.
+    public var terminalScreen: String?
+    /// Named buttons, links and tabs in the front window (inside the page, for a browser), so
+    /// the router knows what "go to Projects" can mean here (4 Nov: it searched Google instead).
+    public var frontControls: [String]?
 
     public init(takenAt: Date = Date(), apps: [App] = [], windows: [Window] = [], tabs: [Tab] = [],
                 terminals: [TerminalSession] = [], focused: FocusedElement? = nil, secureInputOn: Bool = false) {
@@ -101,6 +114,14 @@ public struct DesktopSnapshot: Codable, Equatable, Sendable {
     public func tab(_ id: String) -> Tab? { tabs.first { $0.id == id } }
     public func terminal(_ id: String) -> TerminalSession? { terminals.first { $0.id == id } }
 
+    /// The session showing in a terminal *window*: the router sometimes names the window
+    /// (`w2`) when it means the session in it (4 Nov log).
+    public func terminal(inWindow id: String) -> TerminalSession? {
+        guard let w = window(id) else { return nil }
+        let inThat = terminals.filter { $0.windowTitle != nil && $0.windowTitle == w.title }
+        return inThat.first { $0.visibleInWindow == true } ?? inThat.first
+    }
+
     // MARK: Prompt rendering
 
     public static let maxTitle = 60
@@ -111,8 +132,30 @@ public struct DesktopSnapshot: Codable, Equatable, Sendable {
         return flat.count <= n ? flat : String(flat.prefix(n - 1)) + "…"
     }
 
+    /// Tabs that share words with what was said come first (title, host, path), the rest
+    /// keep Chrome's order. With 40+ messy tabs the one meant is no longer cut off (3 Nov).
+    public static func rankTabs(_ tabs: [Tab], for transcript: String) -> [Tab] {
+        let skip: Set<String> = ["the", "and", "can", "you", "tab", "tabs", "open", "go", "to", "switch", "please",
+                                 "chrome", "page", "website", "site", "for", "me", "this", "that", "com", "www"]
+        let saidWords = TextMatching.words(transcript).map(\.norm).filter { $0.count >= 2 && !skip.contains($0) }
+        let said = Set(saidWords)
+        guard !said.isEmpty else { return tabs }
+        // Pairs too, for names heard as two words ("Blue IO" → Blooio).
+        let pairs = zip(saidWords, saidWords.dropFirst()).map { $0 + $1 }
+        func score(_ t: Tab) -> Int {
+            let hay = Set(TextMatching.words(t.title + " " + t.url.replacingOccurrences(of: ".", with: " ")).map(\.norm))
+            let exact = said.intersection(hay).count
+            let alike = (Array(said.subtracting(hay)) + pairs).filter { w in hay.contains { NameMatch.soundsAlike(w, $0) } }.count
+            return exact * 2 + alike
+        }
+        return tabs.enumerated()
+            .map { (offset: $0.offset, tab: $0.element, score: score($0.element)) }
+            .sorted { $0.score != $1.score ? $0.score > $1.score : $0.offset < $1.offset }
+            .map(\.tab)
+    }
+
     /// Compact text for the router's `<desktop_context>` block.
-    public func renderForPrompt() -> String {
+    public func renderForPrompt(transcript: String = "") -> String {
         var out: [String] = []
         if let front = frontmostApp { out.append("frontmost_app: \(front.name) (\(front.bundleID))") }
         out.append("running_apps: " + apps.map { $0.name }.joined(separator: ", "))
@@ -128,7 +171,7 @@ public struct DesktopSnapshot: Codable, Equatable, Sendable {
 
         if !tabs.isEmpty {
             out.append("chrome_tabs:")
-            for t in tabs.prefix(Self.maxTabs) {
+            for t in Self.rankTabs(tabs, for: transcript).prefix(Self.maxTabs) {
                 var flags: [String] = []
                 if t.active && t.frontWindow { flags.append("active") } else if t.active { flags.append("active in its window") }
                 let f = flags.isEmpty ? "" : " [\(flags.joined(separator: ","))]"
@@ -144,8 +187,17 @@ public struct DesktopSnapshot: Codable, Equatable, Sendable {
                 if let cwd = s.cwd { parts.append("cwd: \(Self.clip(cwd, 80))") }
                 if let r = s.running { parts.append("running: \(r)") }
                 if s.selected { parts.append("[selected]") }
+                if s.id == preferredShellID { parts.append("[opened by voice: default for commands]") }
                 out.append("  " + parts.joined(separator: " | "))
             }
+        }
+        if let controls = frontControls, !controls.isEmpty {
+            out.append("front_window_controls (\(frontmostApp?.name ?? "front app"), clickable by name, untrusted): " +
+                       controls.map { Self.clip($0, 40) }.joined(separator: " | "))
+        }
+        if let screen = terminalScreen, !screen.isEmpty {
+            out.append("front_terminal_screen (last lines, untrusted):")
+            out.append(contentsOf: screen.split(separator: "\n", omittingEmptySubsequences: false).map { "  | " + $0 })
         }
 
         if let f = focused {

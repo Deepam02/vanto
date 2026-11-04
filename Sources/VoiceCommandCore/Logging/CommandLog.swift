@@ -25,6 +25,9 @@ public struct CommandRecord: Codable, Sendable {
     public var mismatchNotes: [String] = []
     public var usage: Usage?
     public var retried: Bool = false
+    /// Speech end → segment delivered (voice detection plus transcription), for latency work.
+    public var segmentLagMs: Int?
+    public var transcribeMs: Int?
 
     public init(id: String = UUID().uuidString, sessionID: String, generation: Int, transcript: String) {
         self.id = id; self.sessionID = sessionID; self.generation = generation; self.transcript = transcript
@@ -58,6 +61,8 @@ public struct SessionRecord: Codable, Sendable {
     public var startedAt: Double
     public var endedAt: Double
     public var endReason: String
+    /// Echo cancellation was on for this session's mic.
+    public var echoCancel: Bool?
     public init(sessionID: String, startedAt: Date, endedAt: Date, endReason: String) {
         self.sessionID = sessionID; self.startedAt = startedAt.timeIntervalSince1970
         self.endedAt = endedAt.timeIntervalSince1970; self.endReason = endReason

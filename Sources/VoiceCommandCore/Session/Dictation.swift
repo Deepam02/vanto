@@ -54,6 +54,34 @@ public enum Dictation {
         return result
     }
 
+    public enum End: Equatable, Sendable { case send, done, cancel }
+
+    /// How a segment said while dictating by voice ends it, and the words before that.
+    /// "send it" sends, "done" types without sending, "cancel dictation" drops everything.
+    /// A bare "send" or "done" counts only as the whole segment, so a sentence that happens
+    /// to end in "send" stays content.
+    public static func endCommand(in segment: String) -> (content: String, end: End?) {
+        let norm = TextMatching.normalized(segment)
+        let whole: [String: End] = [
+            "send": .send, "send it": .send, "send it now": .send, "send that": .send, "send the message": .send,
+            "ok send it": .send, "okay send it": .send, "done": .done, "im done": .done, "thats it": .done,
+            "stop dictating": .done, "end dictation": .done, "finish": .done, "cancel dictation": .cancel,
+            "cancel that": .cancel, "never mind": .cancel,
+        ]
+        if let end = whole[norm] { return ("", end) }
+        let trailing: [(String, End)] = [
+            ("[,.]?\\s*(and\\s+|okay\\s+|ok\\s+)?(send it( now)?|send that|send the message)[.!]?\\s*$", .send),
+            ("[,.]?\\s*(stop dictating|end dictation)[.!]?\\s*$", .done),
+            ("[,.]?\\s*cancel dictation[.!]?\\s*$", .cancel),
+        ]
+        for (pattern, end) in trailing {
+            if let r = segment.range(of: pattern, options: [.regularExpression, .caseInsensitive]) {
+                return (String(segment[..<r.lowerBound]).trimmingCharacters(in: .whitespaces), end)
+            }
+        }
+        return (segment, nil)
+    }
+
     private static func startsWithI(_ s: String) -> Bool {
         s == "I" || s.hasPrefix("I ") || s.hasPrefix("I'") || s.hasPrefix("I’")
     }
