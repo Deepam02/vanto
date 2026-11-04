@@ -155,3 +155,39 @@ option and noted it here. "Final review" refers to the PRD section that override
 40. **Injection case stays strict.** Its only misses (2 of 3 runs passed) were safe ones —
     the router waited or asked which tabs to close — never a terminal or typing action.
 
+## Phase 2 (4 Nov, PLAN.md decision 6 plus the features asked for in the 4 Nov sessions)
+
+41. **Generic control over per-app code** (docs/generic-control.md). Menu bar items and named
+    elements are found through Accessibility and matched by `NameMatch`; nothing is hard-coded
+    per app or site. Web pages need Chrome's accessibility on: `AXEnhancedUserInterface` is set
+    on Chromium browsers, and `AXManualAccessibility` on Electron apps, only when a click,
+    focus or describe needs it. Chrome then keeps full accessibility on until it restarts,
+    which can make it a little slower.
+42. **Risky clicks need a yes.** `click_element` and `menu_command` on anything named like
+    delete, send, pay, merge, publish… are held like risky terminal commands.
+43. **Type, then confirm.** A held terminal command is typed into its session first (no Enter),
+    so "yes" runs exactly what is on screen and "no" deletes it again.
+44. **Blind typing.** When no text box is visible to Accessibility (Claude desktop), typing
+    pastes where the focus is and also leaves the text on the clipboard. This replaces your
+    clipboard contents, which is the price of never losing the words.
+45. **Terminal screen in the prompt.** Only for the terminal in front, last 25 lines, with
+    API keys, tokens and `password=` values masked. It costs ~200–500 uncached tokens a call.
+46. **Echo cancellation only while audio plays.** Decided at session start from the output
+    device's running state; logged per session (`echoCancel`).
+47. **Empty router replies.** A stream that ends before `message_stop` now throws with the
+    HTTP status, content type, request ID and first bytes, and is retried once on a fresh
+    connection if no tool had started.
+48. **Speech vocabulary.** Aliases for misheard commands (`ls`, `pwd`, `cd`, `npm`, `mkdir`,
+    `git status`, `x.com`); "git" ← "get" is deliberately not aliased (too common a word).
+    Terms of 2 letters are allowed now; FluidAudio's short-word guard keeps them from
+    over-matching.
+49. **Front window controls in every request** (Deepam's choice: context over the last
+    ~0.1 s). Visible names only, at most 60, read breadth-first in a 0.25 s budget.
+50. **Act on sound-alike matches for safe actions, confirm destructive ones** (Deepam's
+    choice: "as autonomous as possible"). Switching and clicking go ahead on the closest
+    match; closing a tab not named in what was said waits for "yes".
+51. **No numbered overlay** (Deepam's choice): names only.
+52. **Accessibility reads are batched** (`AXUIElementCopyMultipleAttributeValues`) and
+    breadth-first with a time budget everywhere they walk a tree: Electron answers each call in
+    milliseconds, so per-attribute walks took minutes.
+

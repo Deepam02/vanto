@@ -1,8 +1,9 @@
 # Vanto plan: from first test to daily driver
 
 Built for anyone; Deepam is the first test user. Setup and permissions are parked for now.
-Source: the first real session (3 Nov 2026, `~/Library/Logs/VoiceCommand/commands.jsonl`):
-31 commands, 19 worked, 9 failed or weren't supported, 3 were filler.
+Source: every real session so far, from `~/Library/Logs/VoiceCommand/commands.jsonl`:
+- 3 Nov (two sessions): 42 commands.
+- 4 Nov (seven sessions): 51 commands. 29 came back "ok", but 9 of those were "I can't do that" or "I'm not sure".
 
 ## What went wrong, and why
 
@@ -22,6 +23,27 @@ Source: the first real session (3 Nov 2026, `~/Library/Logs/VoiceCommand/command
 - **Netflix audio was picked up as speech.** The mic hears whatever the Mac is playing. Fix: turn on Apple's voice processing (echo cancellation) on the input, so the Mac's own playback is cancelled.
 - **"What are the options on Netflix? Click this."** Reading and clicking things on a web page isn't built. It goes on the later list.
 - "What tabs are open?" worked: it named 10 and said "18 more".
+
+### Seven sessions on 4 Nov, after phase 1: 51 commands
+**What phase 1 fixed.** Tab switching works now (context.dev and Blooio, 2 out of 2), and so does switching to the other Chrome window. Hold-Fn dictation was never used: there are no dictation entries in the log.
+
+**What's still broken:**
+- **The router sometimes returns nothing at all**: "Didn't catch that (events: 0, stop: none)", 5 times. Each time, both the first try and the retry returned zero events. It happened on "Okay.", on "Yeah." and on three long prompts. Two cases on 3 Nov have the same signature, so phase 1 didn't cause it. The log still can't say why: the HTTP status and raw response aren't recorded.
+- **Commands got about 0.9 s slower.** The median time from the end of speech to the router starting went from 0.80 s (3 Nov, 42 commands) to 1.67 s (4 Nov, 51 commands). Speech end to done went from 2.6 s to 3.4 s. No setting was changed. The main suspect is the new echo cancellation (voice processing buffers audio and can hold the voice detector in "speech" for longer).
+- **A long prompt into Claude desktop was lost again.** It failed with events: 0 three times. Then `type_text` failed with "No text field is focused" (Claude is an Electron app and doesn't report its text box), and the words were consumed on that failure. You had asked it to "wait for me" while you wrote.
+- **Terminal commands, 9 rejected.** The router passes a *window* ID (`w1`) as the terminal session, and the policy then finds no free shell. It worked as soon as you focused a window yourself ("in this window, run ls" → `terminal:ttys001`). Opening a terminal by voice then running a command still fails.
+- **Shell commands are misheard.** "ls" became "Ellis" and "L S", and "pwd" became "TWD". The router then asked what "Ellis command" means.
+- **"Zoom out" in Figma.** `press_keys` rejected `cmd+minus` and `-` as unknown keys: the key parser has no minus, plus or equals.
+
+**New things you wanted that don't exist:**
+- **Edit what was typed:** "improve its English", then "edit the previous message". The draft was cleared, and the rewrite was refused because typed text must match your words exactly. The message was gone.
+- **Focus a text box:** "Can you focus on the text box?" in Claude desktop.
+- **Control more of each app** (your words: "I want you to control even more functions on each app"):
+  - pan the Figma canvas left or right;
+  - zoom;
+  - "go to Conversations / Limits on this tab" (links inside a web page).
+- **"Write a message… it will take me a while, wait for me… send it."** That is dictation started by voice. Hold-Fn exists, but you reached for voice.
+- **"What can you do on this tab?"** It gave the same generic answer as on 3 Nov.
 
 ## Decisions
 
@@ -89,14 +111,61 @@ Turn on voice processing on the mic input (`AVAudioInputNode.setVoiceProcessingE
 - **"What can you do here?"** answers for the app in front, with 3–4 examples using real names from the snapshot.
 - **Slack and other Electron apps:** set `AXManualAccessibility` before looking for the text box. If there's still none, focus the window and paste.
 
+### 6. Reliability first (from 4 Nov)
+- **Empty router replies.**
+  - Record the HTTP status, the number of SSE lines and the first 300 bytes of the body for every route that ends without a tool call.
+  - Retry on a fresh connection (new `URLSession` task, no reused HTTP/2 stream) before giving up.
+  - Fix the cause once it shows up in the log.
+- **Latency.**
+  - Test echo cancellation on and off with the same phrases.
+  - If it's the cause, turn voice processing on only while the Mac is actually playing audio (the output device reports when it's running), so commands are fast the rest of the time.
+  - Target: back to ≤ 0.8 s from speech end to routing.
+- **Typing never loses words.** When `type_text` can't find a text field, paste anyway and leave the text on the clipboard, as hold-Fn does. Never consume the words of a failed type.
+- **Terminals.**
+  - Resolve a window ID to that window's visible tab.
+  - A tab opened by voice becomes the default shell.
+  - Make the Terminal listing reliable: longer timeout, and keep the last good list if a refresh times out.
+- **Spoken shell commands.** Boost `ls`, `pwd`, `cd`, `git`, `npm` in speech. Add a router rule for common mishearings ("Ellis", "L S" → `ls`; "TWD", "P W D" → `pwd`).
+- **Keys.** The key parser learns `minus`, `plus`, `equals` and `-`/`=`, so "zoom out" → ⌘−.
+
+### 7. Dictation started by voice
+- "Write a message…", "type this…", "take a note…", "wait for me" enter the same dictation mode as holding Fn. From then on, every word is collected locally with no router call per pause, and the overlay shows "Dictating: say 'send it' or 'done'".
+- **Ends on:**
+  - "send it" (types, then sends);
+  - "done" or "stop" (types, doesn't send);
+  - 8 s of silence (types, doesn't send).
+- **Target:** the app named, else the focused field.
+
+### 8. Edit a draft by voice
+- Allowed while a draft is open:
+  - "improve the English";
+  - "make it shorter";
+  - "make it more polite";
+  - "fix the typos".
+- The model rewrites the text this app typed (and only that), and the rewrite replaces it in the field. It is never sent.
+- Undo puts the original back. Only the draft can be rewritten, never other text on screen, so this is the one place composed text may be typed.
+
+### 9. Act inside apps and pages
+- **"Focus the text box / chat box"** focuses the main text input of the front app (reusing the chat-box finder, plus `AXManualAccessibility` for Electron).
+- **"Click / go to X"** inside the front app or web page. Find a button, link or tab named X in the accessibility tree and press it. Chrome exposes web pages to accessibility, so "go to Conversations" on the Blooio dashboard works the same way.
+- **"What can I do here?"** lists the 5–8 most useful named controls on screen, plus app-specific tips.
+- **Per-app actions** come from an app-hints file:
+  - Figma: zoom in, zoom out, zoom to fit, pan left/right/up/down (horizontal scroll);
+  - Chrome page: back, forward, find on page.
+  - New apps are added as data, not code.
+
 ## Order of work
 Each phase ends with a build to try for a day, plus `swift run log-report`.
 
 | Phase | What | Done when |
 |---|---|---|
-| 1 ✅ built 3 Nov, to try | Decisions 0, 0b, 1, 2: tab ID fix, ignore Mac audio, never lose words, dictation mode, site aliases (X = Twitter) | A 60 s rambling prompt with pauses lands intact in Claude Code and in the focused field |
-| 2 | Decisions 3–4: places, profiles, terminals, tab rules | Every navigation line from the 3 Nov log works; tab, window and profile switches succeed ≥ 95% in the log |
-| 3 | Decision 5: close, quit, help, Slack | The 3 Nov "not supported" lines work |
-| 4 | Setup (parked): fewer permissions, Developer ID signing | Later |
+| 1 ✅ built 3 Nov, used 4 Nov | Decisions 0, 0b, 1, 2: tab ID fix, ignore Mac audio, never lose words, hold-Fn dictation, site aliases | Tab switching verified 4 Nov. Hold-Fn not tried yet. |
+| 2 ✅ built 4 Nov, to try | Decision 6: empty replies, latency, typing fallback, terminals, spoken commands, keys. Also built early: phase 3's menus and elements, phase 4's voice dictation and draft editing, phase 5's type-then-confirm and terminal context | No "events: 0" errors in a day; speech end → routing ≤ 0.8 s; every 4 Nov terminal line works |
+| 3 | Decision 9, built generically (`docs/generic-control.md`): the front app's menus plus numbered accessibility elements, with Electron and Chrome page accessibility switched on; focus, press, set text, scroll in any direction | "focus the text box", "go to Conversations on this tab", "zoom out" and panning in Figma all work with no app-specific code |
+| 4 | Decisions 7–8: voice-started dictation, edit the draft | The 4 Nov Claude message lands intact and can be "improved" before sending |
+| 5 | Terminal assistant: type the command first then confirm, multi-step tasks, the terminal's last lines as context | "make a folder called demo" types `mkdir demo`, waits for yes; "fix that error" sees the error |
+| 6 | Decisions 3–5: one places list, Chrome profiles by name, all tabs, close and quit | Every navigation line from 3–4 Nov works; switches succeed ≥ 95% in the log |
+| 7 | Screen agent (Claude computer use) for what layers 1–2 can't reach, on request | Decided after phase 3 shows what's left |
+| 8 | Setup (parked): fewer permissions, Developer ID signing | Later |
 
-Every failure from the 3 Nov log gets added to the router's test set (`router-eval`) so it can't come back.
+Every failure from the logs gets added to the router's test set (`router-eval`) so it can't come back.

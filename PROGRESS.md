@@ -67,3 +67,70 @@ Built; unit tests pass (36); not yet tried on the Mac or run through router-eval
   Twitter are x.com; "the other Chrome window"; "draft a prompt…" types into the focused field.
   "Xcode" removed from speech boosting (it turned "X.com" into "Xcode"). 6 golden cases from
   the 3 Nov log added (51 total).
+
+## Phase 2 of PLAN.md, plus features from the 4 Nov sessions (4 Nov)
+
+Built; 48 unit tests pass; router-eval **100% (124/124 over 2 runs)** on 62 cases, 17 of
+them new from the 3–4 Nov logs; p50 first tool call 731 ms. Not yet tried on the Mac.
+- **Reliability:** empty replies logged and retried on a fresh connection; echo cancellation
+  only while the Mac plays audio; typing pastes and copies when no text box is visible;
+  terminal and tab lists use a longer timeout and fall back to the last good list; a
+  terminal *window* ID resolves to the session in it; a terminal opened by voice is the
+  default for commands; misheard shell commands fixed in speech (aliases) and in the router;
+  `cmd+minus`, `-`, `=`, `plus` parse; scrolling goes left and right.
+- **New:** `menu_command`, `click_element`, `focus_text_box`, `describe_screen` (any app or
+  web page, no per-app code); `rewrite_draft` ("improve the English"); `start_dictation`
+  (dictation by voice until "send it" / "done" / 8 s of silence); type-then-confirm for
+  terminal commands; the front terminal's last lines as context; tabs ranked by what was said
+  so tabs past #40 are reachable; a personal dictionary in Settings plus names from the screen.
+- **Latency logging:** each command records `segmentLagMs` and `transcribeMs`; each session
+  records `echoCancel`.
+
+## After the 4 Nov midday session (73 commands)
+
+Built; 51 unit tests; router-eval **100% (138/138 over 2 runs)** on 69 cases (7 new from
+this session). Checked against the real apps with `--dump-ax`: Claude's text box found in
+45 ms ("Write your prompt to Claude"), Slack's in 55 ms; their sidebars read in < 0.1 s.
+- **"Didn't catch that (events: 0)" was never the API.** You kept talking, newer speech
+  cancelled the request, and a cancelled stream ends silently; it was reported as an empty
+  reply. Now it's logged as cancelled with no error shown.
+- **Latency** was 2.6 s median: 0.77 s speech end → transcript, 0.52 s reading the screen,
+  0.86 s model, 0.36 s action. The screen is now read while you speak (prefetch at speech
+  start) and reused when routing. Echo cancellation off when nothing plays confirmed the
+  earlier 0.9 s: the wait before routing is back to 0.75 s.
+- **Context:** the front window's clickable names (inside the page, for a browser) go to the
+  router with every command, so "open Products" in Claude clicks Projects instead of searching
+  Google. The router compares names by sound and spelling with what's on screen first.
+- **Sound-alike matching** (`NameMatch.phonetic`): "Blue IO" → Blooio, "clawed" → Claude, for
+  clicks and tab ranking. Closing a tab matched only by sound asks first.
+- **Speech:** "Claude Code" removed from boosting (it turned "Claude" into "Claude Code");
+  spelled-letter aliases removed ("p w d" produced "B Pwd O").
+- **Text box:** Electron wraps whole windows in "editable" groups and the old walk stopped at
+  the outermost one; it took minutes on Claude. Rewritten breadth-first with batched calls.
+- **Terminal:** placeholder commands (`<UNKNOWN>`) refused, the router asks for the missing
+  name; "no" clears the typed line with ⌃U (only when that terminal is in front); "remove the
+  commands you typed" → ⌃U instead of typing the request.
+- **Debug:** `open -n dist/VoiceCommand.app --args --dump-ax "<App>" <file> [--fast-only]`.
+
+## After the 4 Nov afternoon session (61 commands)
+
+Median speech end → done **2.07 s** (was 2.6 s); reading the screen now costs 0 ms because
+it's prefetched while speaking. Built since; 51 unit tests; router-eval **100% (150/150)**
+on 75 cases.
+- **Follow-ups know the last command.** Session history now includes failed and refused
+  commands, marks the most recent, and a question the app asked ("Do you want me to open
+  Projects?") is passed on, so "yeah", "not this one", "the other one", "that was wrong" and
+  "do it again" act on it. 6 new golden cases.
+- **"What can you do here?"** shows a larger card under the bar for ~12 s (speaking hides it):
+  on-screen names grouped by area (sidebar, top bar, main, near the text box), menus, and
+  examples. Controls sent to the router are spread across those areas (80 max) so the ones
+  by the text box aren't crowded out.
+- **Slack:** typing finds the message box when focus isn't in one (was a blind paste); list
+  rows are clickable (DMs and channels: "Deepam Goyal (you, active)"); 1-px virtualised items
+  no longer count as visible.
+- **Clicks** look deeper (1.5 s budget) and look again after 0.5 s if a page is still loading.
+- **Continuous scrolling:** "keep scrolling up" scrolls until anything is said (a misheard
+  "stop" still stops it), 30 s at most.
+- **Timeouts** retry once on a fresh connection before giving up.
+- `--dump-ax` now reads with batched calls (Slack and Chrome dump in seconds).
+

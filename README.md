@@ -89,15 +89,26 @@ disables the Fn key. Change it in Settings.
 | "scratch that" / "new line" | Removes only what it typed / inserts a line break |
 | "ask chatgpt how do I center a div" | Finds ChatGPT's message box and types it |
 | "run npm test" | Runs it in your plain shell session (dictated, read-only → runs) |
-| "clean up the build folder" | Proposes `rm -rf build` and **waits for "yes, run it"** |
+| "clean up the build folder" | Types `rm -rf build` into the terminal **without pressing Enter**, and waits for "yes" ("no" takes it back out) |
+| "run the command that shows all the folders" | Writes the command for you (`ls -d */`); runs once you say yes |
+| "open a terminal" → "run ls" | The terminal it opened is where commands go |
+| "fix that error" (terminal in front) | It can read the terminal's last lines (secrets masked) |
 | "open slack, no wait, discord" | Opens Discord only |
+| "zoom out" / "new window" / "export" | Runs that command from the front app's menu bar, in any app |
+| "go to Conversations on this tab" | Clicks a button, link or tab by its name, in any app or web page |
+| "focus the text box" | Puts the cursor in the app's message box |
+| "what can you do here?" | Lists the menus and buttons it can see |
+| "move the canvas left" | Scrolls sideways (pans Figma) |
+| "improve the English" / "make it shorter" | Rewrites the draft it typed; never sends; "undo" brings back the original |
+| "write a message, wait for me" | Dictation by voice: everything you say is collected until "send it" or "done" |
 
 **Safety rules that always hold:** silence never sends; a send needs your spoken word after
 the text; a terminal command runs straight away only if you dictated it word for word, it's
 read-only, and it's not on the deny-list (rm, git push, deploys, …) — everything else waits for
 "yes"; `sudo` never runs; nothing is ever typed into a password field; text it types is copied
 from your own words, never paraphrased; screen text (tab titles, window titles) is treated as
-untrusted data.
+untrusted data; clicking or choosing a menu item named "Delete", "Send", "Pay" and similar
+waits for "yes".
 
 ### Settings
 
