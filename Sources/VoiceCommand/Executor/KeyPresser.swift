@@ -50,10 +50,14 @@ enum KeyPresser {
         }
     }
 
-    /// Scroll the window at `point` (screen coordinates, top-left origin).
-    static func scroll(down: Bool, page: Bool, at point: CGPoint?) {
+    /// Scroll the window at `point` (screen coordinates, top-left origin). Left and right use
+    /// the horizontal wheel, which pans canvases such as Figma's.
+    static func scroll(_ direction: ScrollDirection, page: Bool, at point: CGPoint?) {
         let lines: Int32 = page ? 15 : 4
-        guard let ev = CGEvent(scrollWheelEvent2Source: nil, units: .line, wheelCount: 1, wheel1: down ? -lines : lines, wheel2: 0, wheel3: 0) else { return }
+        let vertical: Int32 = direction == .down ? -lines : (direction == .up ? lines : 0)
+        let horizontal: Int32 = direction == .right ? -lines : (direction == .left ? lines : 0)
+        guard let ev = CGEvent(scrollWheelEvent2Source: nil, units: .line, wheelCount: 2,
+                               wheel1: vertical, wheel2: horizontal, wheel3: 0) else { return }
         if let point { ev.location = point }
         ev.post(tap: .cghidEventTap)
     }

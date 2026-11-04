@@ -25,6 +25,8 @@ final class AppSettings: ObservableObject {
     @Published var cancelMacAudio: Bool { didSet { d.set(cancelMacAudio, forKey: "cancelMacAudio") } }
     /// Hold-Fn dictation: drop "um"/"uh" and tidy spacing and capitals before typing.
     @Published var cleanUpDictation: Bool { didSet { d.set(cleanUpDictation, forKey: "cleanUpDictation") } }
+    /// Words the speech model should know, one per line: `Word` or `Word: how I say it, …`.
+    @Published var personalDictionary: String { didSet { d.set(personalDictionary, forKey: "personalDictionary") } }
     /// Only for API keys that aren't scoped to a workspace (sent as anthropic-workspace-id).
     @Published var workspaceID: String { didSet { d.set(workspaceID, forKey: "workspaceID") } }
 
@@ -42,6 +44,7 @@ final class AppSettings: ObservableObject {
         thinkingPauses = d.bool(forKey: "thinkingPauses")
         cancelMacAudio = d.bool(forKey: "cancelMacAudio")
         cleanUpDictation = d.bool(forKey: "cleanUpDictation")
+        personalDictionary = d.string(forKey: "personalDictionary") ?? ""
         workspaceID = d.string(forKey: "workspaceID") ?? ""
     }
 }

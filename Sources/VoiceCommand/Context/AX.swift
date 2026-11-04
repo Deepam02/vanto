@@ -49,6 +49,19 @@ enum AX {
         AXUIElementPerformAction(el, action as CFString) == .success
     }
 
+    /// Several attributes in one cross-process call (much faster on Electron apps, where each
+    /// call costs milliseconds). Missing values come back as nil.
+    static func values(_ el: AXUIElement, _ names: [String]) -> [CFTypeRef?] {
+        var out: CFArray?
+        guard AXUIElementCopyMultipleAttributeValues(el, names as CFArray, [], &out) == .success,
+              let arr = out as? [AnyObject], arr.count == names.count else { return names.map { _ in nil } }
+        return arr.map { v in
+            // Errors come back as AXValue of type .axError.
+            if CFGetTypeID(v) == AXValueGetTypeID(), AXValueGetType(v as! AXValue) == .axError { return nil }
+            return v as CFTypeRef
+        }
+    }
+
     static func pid(_ el: AXUIElement) -> pid_t? {
         var pid: pid_t = 0
         return AXUIElementGetPid(el, &pid) == .success ? pid : nil
@@ -74,8 +87,11 @@ enum AX {
     static func isEditable(_ el: AXUIElement) -> Bool {
         let role = string(el, kAXRoleAttribute) ?? ""
         if textRoles.contains(role) { return true }
-        if bool(el, "AXEditable") == true { return true }      // contenteditable in web views
-        if role == "AXWebArea" || role == kAXGroupRole { return isSettable(el, kAXSelectedTextRangeAttribute) && isSettable(el, kAXValueAttribute) }
+        // contenteditable in web views reports AXEditable. Electron also wraps whole windows in
+        // editable-looking groups (Claude, 4 Nov dump), so a group counts only if input-sized.
+        if bool(el, "AXEditable") == true {
+            return role != kAXGroupRole || (frame(el).map { $0.height < 400 } ?? false)
+        }
         return false
     }
 

@@ -68,7 +68,14 @@ struct SettingsView: View {
             }
             Section("Microphone") {
                 Toggle("Always use the built-in microphone (keeps AirPods in high-quality mode)", isOn: $settings.useBuiltInMic)
-                Toggle("Ignore audio playing on this Mac (echo cancellation)", isOn: $settings.cancelMacAudio)
+                Toggle("Ignore audio playing on this Mac (echo cancellation, only while something is playing)", isOn: $settings.cancelMacAudio)
+            }
+            Section("Dictionary") {
+                TextEditor(text: $settings.personalDictionary)
+                    .font(.system(.body, design: .monospaced))
+                    .frame(minHeight: 80)
+                Text("Names and words to listen for, one per line. Add how you say it after a colon if it's unusual: “Blooio: blue yo”. Names on screen (tabs, windows, folders) are added each session by themselves.")
+                    .font(.caption).foregroundStyle(.secondary)
             }
             Section("Files") {
                 HStack {

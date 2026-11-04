@@ -32,10 +32,21 @@ enum BrowserTabs {
     end tell
     """
 
+    /// Last good list, used when a refresh times out (with no tabs the router opens duplicates).
+    private final class Cache: @unchecked Sendable {
+        private let lock = NSLock()
+        private var last: (at: Date, tabs: [DesktopSnapshot.Tab])?
+        func put(_ t: [DesktopSnapshot.Tab]) { lock.withLock { last = (Date(), t) } }
+        func get() -> [DesktopSnapshot.Tab] { lock.withLock { last.flatMap { Date().timeIntervalSince($0.at) < 60 ? $0.tabs : nil } ?? [] } }
+    }
+    private static let cache = Cache()
+
     static func chromeTabs(denied: Set<String>) async -> [DesktopSnapshot.Tab] {
         guard chromeRunning, !denied.contains(chromeBundleID) else { return [] }
-        guard case .success(let text) = await AppleScriptRunner.shared.runString(listScript, timeout: 0.5) else { return [] }
-        return parse(text)
+        guard case .success(let text) = await AppleScriptRunner.shared.runString(listScript, timeout: 1.5) else { return cache.get() }
+        let tabs = parse(text)
+        cache.put(tabs)
+        return tabs
     }
 
     static func parse(_ text: String) -> [DesktopSnapshot.Tab] {

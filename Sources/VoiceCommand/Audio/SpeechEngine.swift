@@ -33,7 +33,8 @@ final class SpeechEngine: @unchecked Sendable {
 
     static let sampleRate = 16_000
     static let baseVocabulary = [
-        "Cursor", "Claude", "Claude Code", "Ghostty", "iTerm", "npm", "GitHub", "ChatGPT", "Codex",
+        // Not "Claude Code": boosting it turned a plain "Claude" into "Claude Code" (4 Nov).
+        "Cursor", "Claude", "Ghostty", "iTerm", "npm", "GitHub", "ChatGPT", "Codex",
         "Slack", "pnpm", "localhost", "Vercel", "Linear", "Chrome", "PR", "README",
         // Sites people say by name. "Xcode" is left out: boosting it turned "X.com" into
         // "Xcode" (3 Nov log); running apps are added per session anyway.
@@ -65,14 +66,28 @@ final class SpeechEngine: @unchecked Sendable {
         }
     }
 
-    /// Rebuild the vocabulary with app names from the snapshot. Safe to call per session.
-    func setVocabulary(extra: [String]) async {
+    /// Shell commands and sites with the ways they get misheard (3–4 Nov log): the alias
+    /// is what the audio sounds like, the term is what gets written.
+    static let spokenAliases: [(String, [String])] = [
+        // No spelled-out letters ("p w d"): they matched letters inside names ("B Pwd O" for Blooio).
+        ("ls", ["el es", "ellis"]), ("pwd", ["twd", "pee double you dee"]), ("cd", ["see dee"]),
+        ("git status", ["get status"]), ("npm", ["en pee em"]), ("mkdir", ["make dir", "em kay dir"]),
+        ("x.com", ["x dot com", "ex dot com"]),
+    ]
+
+    /// Rebuild the vocabulary for this session: built-in words and aliases, the person's own
+    /// dictionary, and names from the screen (apps, tab and window titles, folders).
+    func setVocabulary(extra: [String], personal: [(String, [String])] = []) async {
         guard let ctc = ctcModels else { return }
         var seen = Set<String>()
-        let terms = (Self.baseVocabulary + extra)
-            .map { $0.trimmingCharacters(in: .whitespaces) }
-            .filter { $0.count >= 3 && seen.insert($0.lowercased()).inserted }
-            .map { CustomVocabularyTerm(text: $0) }
+        var terms: [CustomVocabularyTerm] = []
+        for (text, aliases) in personal + Self.spokenAliases where seen.insert(text.lowercased()).inserted {
+            terms.append(CustomVocabularyTerm(text: text, aliases: aliases.isEmpty ? nil : aliases))
+        }
+        for word in Self.baseVocabulary + extra {
+            let w = word.trimmingCharacters(in: .whitespaces)
+            if w.count >= 2, seen.insert(w.lowercased()).inserted { terms.append(CustomVocabularyTerm(text: w)) }
+        }
         vocab = try? await VocabularyBoostingSession(vocabulary: CustomVocabularyContext(terms: terms), ctcModels: ctc)
     }
 

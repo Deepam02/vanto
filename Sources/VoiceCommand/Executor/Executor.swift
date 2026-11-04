@@ -7,6 +7,7 @@ enum UndoAction {
     case closeChromeTab(windowID: Int, tabID: Int, thenShow: (Int, Int)?)
     case reopenURL(String)
     case deleteTyped(chars: Int)
+    case restoreDraft(original: String)
 }
 
 enum ExecOutcome {
@@ -25,6 +26,9 @@ final class Executor {
         enum Target {
             case element(TextInputResolver.Target)
             case terminal(DesktopSnapshot.TerminalSession)
+            /// Pasted into an app whose text box Accessibility can't see (Claude, some Electron
+            /// apps): tracked by app only.
+            case blind(pid: pid_t)
         }
         var target: Target
         var appName: String
@@ -37,12 +41,37 @@ final class Executor {
             switch target {
             case .element: return "chat_box"
             case .terminal(let s): return "terminal \(s.id)\(s.running.map { " (running \($0))" } ?? "")"
+            case .blind: return "focused"
             }
         }
     }
 
     private(set) var draft: Draft?
     private var undoStack: [UndoAction] = []
+    private var scroller: Task<Void, Never>?
+
+    /// Scroll a little every 120 ms until `stopScrolling` (any speech) or 30 s.
+    private func startScrolling(_ direction: ScrollDirection) {
+        scroller?.cancel()
+        let point = AppWindowAdapter.frontWindowCenter()
+        scroller = Task { @MainActor in
+            let until = Date().addingTimeInterval(30)
+            while !Task.isCancelled, Date() < until {
+                KeyPresser.scroll(direction, page: false, at: point)
+                try? await Task.sleep(nanoseconds: 120_000_000)
+            }
+        }
+    }
+
+    func stopScrolling() {
+        scroller?.cancel()
+        scroller = nil
+    }
+
+    /// The card the last describe_screen produced, for the HUD.
+    var lastCard: HelpCard?
+    /// A held terminal command typed into its session but not run yet (type, then confirm).
+    private(set) var pretyped: (session: DesktopSnapshot.TerminalSession, command: String)?
     var hints: AppHints
     private let snapshots: SnapshotBuilder
 
@@ -52,7 +81,9 @@ final class Executor {
     }
 
     func endSession() {
+        stopScrolling()
         draft = nil
+        pretyped = nil
         undoStack.removeAll()
     }
 
@@ -64,6 +95,7 @@ final class Executor {
     /// are handled by the session controller.
     func execute(_ call: ToolCall) async -> ExecOutcome {
         let snap = snapshots.snapshot
+        snapshots.markDirty()
         let outcome: ExecOutcome
         switch call {
         case .openApp(let app):
@@ -103,11 +135,26 @@ final class Executor {
             outcome = await submit()
         case .pressKeys(let keys):
             outcome = KeyPresser.press(keys) ? .ok("Pressed \(keys)", undo: nil) : .fail("Couldn't press \(keys)")
+        case .scroll(let direction, .continuous):
+            startScrolling(direction)
+            outcome = .ok("Scrolling \(direction.rawValue) — say anything to stop", undo: nil)
         case .scroll(let direction, let amount):
-            KeyPresser.scroll(down: direction == .down, page: amount == .page, at: AppWindowAdapter.frontWindowCenter())
+            KeyPresser.scroll(direction, page: amount == .page, at: AppWindowAdapter.frontWindowCenter())
             outcome = .ok("Scrolled \(direction.rawValue)", undo: nil)
         case .undoLast:
             outcome = await undoLast()
+        case .menuCommand(let item, let menu):
+            outcome = await UIAdapter.menuCommand(item: item, menu: menu)
+        case .clickElement(let name):
+            outcome = await UIAdapter.click(name: name)
+        case .focusTextBox(let app):
+            outcome = await UIAdapter.focusTextBox(app: app, hints: hints, snapshot: snap)
+        case .describeScreen:
+            let (summary, card) = await UIAdapter.describe()
+            lastCard = card
+            outcome = card == nil ? .fail(summary) : .ok(summary, undo: nil)
+        case .rewriteDraft(let text):
+            outcome = await rewriteDraft(text)
         default:
             outcome = .fail("\(call.name) is not an action")
         }
@@ -164,11 +211,21 @@ final class Executor {
                 return await typeIntoTerminal(s, payload)
             }
             do {
-                guard let pid = AppWindowAdapter.frontmostPID(), let el = try TextInputResolver.focusedEditable(in: pid) else {
-                    return .fail("No text field is focused")
+                guard let front = NSWorkspace.shared.frontmostApplication else { return .fail("No app in front") }
+                let pid = front.processIdentifier
+                var el = try TextInputResolver.focusedEditable(in: pid)
+                if el == nil {
+                    // Electron apps hide their text boxes until asked (4 Nov, Claude desktop).
+                    await UIAdapter.exposeTree(front)
+                    el = try TextInputResolver.focusedEditable(in: pid)
                 }
-                let app = NSRunningApplication(processIdentifier: pid)
-                let t = TextInputResolver.Target(pid: pid, element: el, appName: app?.localizedName ?? "?", bundleID: app?.bundleIdentifier)
+                if el == nil, let box = TextInputResolver.bestCandidate(pid: pid, label: nil),
+                   (try? await TextInputResolver.focus(box, pid: pid)) == true {
+                    // Focus wasn't in a box: use the app's message box (4 Nov, Slack pasted blind).
+                    el = try TextInputResolver.focusedEditable(in: pid)
+                }
+                guard let el else { return await typeBlind(into: front, payload) }
+                let t = TextInputResolver.Target(pid: pid, element: el, appName: front.localizedName ?? "?", bundleID: front.bundleIdentifier)
                 return await typeIntoElement(t, payload)
             } catch {
                 return .fail("\(error)")
@@ -189,10 +246,37 @@ final class Executor {
             do {
                 let t = try await TextInputResolver.resolveChatBox(appQuery: app, hints: hints, snapshot: snap)
                 return await typeIntoElement(t, payload)
+            } catch TextInputResolver.Failure.noInput {
+                // The app is in front but its box is hidden from Accessibility: paste anyway.
+                guard let front = NSWorkspace.shared.frontmostApplication else { return .fail("Couldn't find a text box") }
+                return await typeBlind(into: front, payload)
             } catch {
                 return .fail("\(error)")
             }
         }
+    }
+
+    /// Paste where the keyboard focus is when no text box can be seen, and keep a copy on
+    /// the clipboard: a failed type never loses the words (4 Nov). Never into a password field.
+    private func typeBlind(into app: NSRunningApplication, _ payload: String) async -> ExecOutcome {
+        if let f = AX.focusedElement(), AX.isSecure(f) { return .fail("That's a password field — not typing") }
+        let pid = app.processIdentifier
+        var text = payload
+        var continuing = false
+        if let d = draft, case .blind(let dp) = d.target, dp == pid, d.typedChars > 0 {
+            text = " " + payload
+            continuing = true
+        }
+        await PasteService.paste(text)
+        PasteService.copy((continuing ? draft!.typedText : "") + text)
+        let name = app.localizedName ?? "the front app"
+        if !continuing {
+            draft = Draft(target: .blind(pid: pid), appName: name, hint: hints.hint(bundleID: app.bundleIdentifier) ?? hints.hint(named: name))
+        }
+        draft!.typedText += text
+        draft!.typedChars += text.count
+        draft!.lastInsertAt = Date()
+        return .ok("Typed into \(name) (also copied, in case it didn't land) — say “send” to send", undo: .deleteTyped(chars: text.count))
     }
 
     private func typeIntoTerminal(_ s: DesktopSnapshot.TerminalSession, _ payload: String) async -> ExecOutcome {
@@ -257,6 +341,9 @@ final class Executor {
         guard let d = draft else { return false }
         switch d.target {
         case .element(let t): return await refocus(t)
+        case .blind(let pid):
+            if AppWindowAdapter.frontmostPID() == pid { return true }
+            return await AppWindowAdapter.refocus(pid: pid)
         case .terminal(let s):
             guard case .ok = await TerminalAdapter.focus(s) else { return false }
             return await TerminalAdapter.isFront(s)
@@ -275,7 +362,7 @@ final class Executor {
         let ok: Bool
         switch d.target {
         case .terminal(let s): ok = await TerminalAdapter.pressEnter(s)
-        case .element: ok = KeyPresser.press(d.hint?.submitKey ?? "return")
+        case .element, .blind: ok = KeyPresser.press(d.hint?.submitKey ?? "return")
         }
         guard ok else { return .fail("Couldn't press send") }
         draft = nil
@@ -291,6 +378,72 @@ final class Executor {
         draft!.typedChars += 1
         draft!.lastInsertAt = Date()
         return .ok("New line", undo: .deleteTyped(chars: 1))
+    }
+
+    /// Replace this app's own unsent draft with an edited version ("improve the English").
+    /// Undo puts the original back. Never sends.
+    private func rewriteDraft(_ text: String) async -> ExecOutcome {
+        guard let d = draft, d.typedChars > 0 else { return .fail("No draft to edit") }
+        guard await refocusDraft() else { return .fail("The draft's text box is gone") }
+        let original = d.typedText
+        let fresh = text.replacingOccurrences(of: "[\\r\\n]+$", with: "", options: .regularExpression)
+        KeyPresser.backspace(d.typedChars)
+        switch d.target {
+        case .terminal(let s):
+            let r = await TerminalAdapter.type(s, fresh)
+            guard r.succeeded else { return r }
+        case .element, .blind:
+            await PasteService.paste(fresh)
+        }
+        draft!.typedText = fresh
+        draft!.typedChars = fresh.count
+        draft!.lastInsertAt = Date()
+        undoStack.removeAll { if case .deleteTyped = $0 { return true }; return false }
+        return .ok("Edited the draft — say “send” to send, or “undo” for the original", undo: .restoreDraft(original: original))
+    }
+
+    // MARK: Type, then confirm (terminal commands that need a yes)
+
+    /// Type a held command into its session without running it, so the person sees exactly
+    /// what "yes" will run.
+    func pretype(_ call: ToolCall) async -> Bool {
+        guard case .terminalRun(let id, let command, _, _) = call, let s = snapshots.snapshot.terminal(id) else { return false }
+        guard case .ok = await TerminalAdapter.type(s, command) else { return false }
+        pretyped = (s, command)
+        return true
+    }
+
+    /// "Yes": press Enter on the typed command.
+    func runPretyped() async -> ExecOutcome {
+        guard let p = pretyped else { return .fail("Nothing typed to run") }
+        pretyped = nil
+        guard case .ok = await TerminalAdapter.focus(p.session) else { return .fail("That terminal is gone — not run") }
+        guard await TerminalAdapter.pressEnter(p.session) else { return .fail("Couldn't press Enter") }
+        return .ok("Ran: \(p.command)", undo: nil)
+    }
+
+    /// The session is ending with a command still typed: take it back out in the background.
+    func abandonPretyped() {
+        guard let p = pretyped else { return }
+        pretyped = nil
+        Task { await Self.clearLine(p.session) }
+    }
+
+    /// "No" (or a new command): take the typed command back out. ⌃U clears the whole line
+    /// (backspacing by count left commands piling up on 4 Nov).
+    func clearPretyped() async {
+        guard let p = pretyped else { return }
+        pretyped = nil
+        snapshots.markDirty()
+        await Self.clearLine(p.session)
+    }
+
+    /// ⌃U in the terminal, only if that terminal really is in front: in other apps ⌃U
+    /// deletes text the person wrote.
+    static func clearLine(_ s: DesktopSnapshot.TerminalSession) async {
+        guard case .ok = await TerminalAdapter.focus(s),
+              NSWorkspace.shared.frontmostApplication?.bundleIdentifier == TerminalAdapter.bundleID(s.app) else { return }
+        _ = KeyPresser.press("ctrl+u")
     }
 
     private func clearTyped() async -> ExecOutcome {
@@ -325,6 +478,14 @@ final class Executor {
             draft!.typedChars = max(0, draft!.typedChars - chars)
             draft!.typedText = String(draft!.typedText.dropLast(chars))
             return .ok("Removed that text", undo: nil)
+        case .restoreDraft(let original):
+            guard let d = draft else { return .fail("The draft is gone") }
+            guard await refocusDraft() else { return .fail("The draft's text box is gone") }
+            KeyPresser.backspace(d.typedChars)
+            if case .terminal(let s) = d.target { _ = await TerminalAdapter.type(s, original) } else { await PasteService.paste(original) }
+            draft!.typedText = original
+            draft!.typedChars = original.count
+            return .ok("Back to the original draft", undo: nil)
         }
     }
 }

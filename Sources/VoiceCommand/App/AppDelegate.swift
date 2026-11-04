@@ -32,6 +32,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             runActionScript(args[i + 1])
             return
         }
+        // Debug: write an app's accessibility tree to a file, to see why a text box or button
+        // isn't found. Usage: open -n VoiceCommand.app --args --dump-ax "Claude" /tmp/claude-ax.txt
+        if let i = args.firstIndex(of: "--dump-ax"), i + 2 < args.count {
+            Task { await AXDump.write(app: args[i + 1], to: args[i + 2]); NSApp.terminate(nil) }
+            return
+        }
         // Debug: transcribe audio files through the speech pipeline and print the segments.
         if let i = args.firstIndex(of: "--transcribe-file"), i + 1 < args.count {
             transcribeFiles(Array(args[(i + 1)...]))

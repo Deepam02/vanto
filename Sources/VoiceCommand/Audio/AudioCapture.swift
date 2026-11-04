@@ -218,6 +218,21 @@ final class AudioCapture {
         allDevices().first { transportType($0) == kAudioDeviceTransportTypeBuiltIn && hasInput($0) }
     }
 
+    /// Is the Mac playing sound right now (a video, music, a call)? Echo cancellation adds
+    /// latency, so it's only worth turning on when there is something to cancel.
+    static func outputIsPlaying() -> Bool {
+        var addr = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyDefaultOutputDevice, mScope: kAudioObjectPropertyScopeGlobal,
+                                              mElement: kAudioObjectPropertyElementMain)
+        var out: AudioDeviceID = 0
+        var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+        guard AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &addr, 0, nil, &size, &out) == noErr else { return false }
+        var running: UInt32 = 0
+        var rsize = UInt32(MemoryLayout<UInt32>.size)
+        var raddr = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyDeviceIsRunningSomewhere, mScope: kAudioObjectPropertyScopeGlobal,
+                                               mElement: kAudioObjectPropertyElementMain)
+        return AudioObjectGetPropertyData(out, &raddr, 0, nil, &rsize, &running) == noErr && running != 0
+    }
+
     static func defaultInputDevice() -> AudioDeviceID? {
         var addr = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyDefaultInputDevice, mScope: kAudioObjectPropertyScopeGlobal,
                                               mElement: kAudioObjectPropertyElementMain)

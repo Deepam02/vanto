@@ -1,16 +1,16 @@
 import AppKit
 import VoiceCommandCore
 
-/// The session state machine (build spec) as amended by "Final review":
-/// Idle → Warming → Listening ⇄ Speaking → Routing → Executing / Pending, plus Muted and
-/// Drafting. One fixed commit delay (~450 ms) replaces speculation; newer speech bumps
-/// the generation ID, cancels in-flight routing, and stale results never run.
 /// Set once a router reply has started a tool call; read by that route's watchdog.
 @MainActor
 private final class RouteFlag {
     var on = false
 }
 
+/// The session state machine (build spec) as amended by "Final review":
+/// Idle → Warming → Listening ⇄ Speaking → Routing → Executing / Pending, plus Muted and
+/// Drafting. One fixed commit delay (~450 ms) replaces speculation; newer speech bumps
+/// the generation ID, cancels in-flight routing, and stale results never run.
 @MainActor
 final class SessionController {
     enum State: String {
@@ -38,6 +38,8 @@ final class SessionController {
     private var generation = 0
     private var lastActivity = Date()
     private var lastSpeechEnd: Date?
+    /// When the latest stretch of speech began: a snapshot read after it is current enough.
+    private var lastSpeechStart = Date.distantPast
     private var holdActive = false
     private var muted = false
     private var pending: (call: ToolCall, prompt: String, recordID: String)?
@@ -50,6 +52,17 @@ final class SessionController {
     // Hold-Fn dictation: a session that only types what was said, no routing.
     private var dictationOnly = false
     private var dictated: [String] = []
+    /// Dictation started by voice inside a command session ("write a message, wait for me"):
+    /// speech is collected, not routed, until "send it", "done" or a long silence.
+    private var voiceDictation: (target: TypeTarget, app: String?, sessionID: String?, chunks: [String], lastSpeech: Date)?
+    private static let voiceDictationSilence: TimeInterval = 8
+    /// Echo cancellation was on for this session's mic (logged; it adds latency).
+    private var echoCancel = false
+    // Latency of the last speech segment, copied into the next command record.
+    /// Generations already retried after a timeout (one automatic retry each).
+    private var timeoutRetried = Set<Int>()
+    private var lastSegmentLagMs: Int?
+    private var lastTranscribeMs: Int?
 
     init(speech: SpeechEngine, snapshots: SnapshotBuilder, executor: Executor, client: ClaudeClient, hud: HUDPanel, log: CommandLog) {
         self.speech = speech; self.snapshots = snapshots; self.executor = executor
@@ -100,8 +113,11 @@ final class SessionController {
             }
             // Released while the models were loading.
             guard dictationOnly, state == .warming else { return }
+            await loadVocabulary(snapshots.snapshot)
+            guard dictationOnly, state == .warming else { return }
+            echoCancel = wantEchoCancel()
             do {
-                try speech.startListening(useBuiltIn: settings.useBuiltInMic, cancelEcho: settings.cancelMacAudio)
+                try speech.startListening(useBuiltIn: settings.useBuiltInMic, cancelEcho: echoCancel)
             } catch {
                 end(reason: "mic failed", message: "\(error)")
                 return
@@ -136,7 +152,9 @@ final class SessionController {
         record.outcome = text.isEmpty ? "ignored" : (outcome.succeeded ? "ok" : "failed")
         record.actionDoneAt = Date().timeIntervalSince1970
         log.append(record)
-        log.append(SessionRecord(sessionID: sessionID, startedAt: startedAt, endedAt: Date(), endReason: "dictation"))
+        var session = SessionRecord(sessionID: sessionID, startedAt: startedAt, endedAt: Date(), endReason: "dictation")
+        session.echoCancel = echoCancel
+        log.append(session)
 
         state = .idle
         hud.model.liveText = ""
@@ -181,6 +199,9 @@ final class SessionController {
         startedAt = Date()
         lastActivity = Date()
         buffer.reset(); history.reset(); partial = ""; pending = nil; holdActive = false; muted = false
+        voiceDictation = nil
+        timeoutRetried.removeAll()
+        snapshots.preferredShellID = nil
         hud.model.liveText = ""; hud.model.pendingPrompt = nil; hud.model.draftPreview = nil; hud.model.flash = nil
         hud.setVisible(true)
         snapshots.beginLive()
@@ -207,12 +228,23 @@ final class SessionController {
         }
     }
 
+    /// Words to listen for this session: the person's dictionary, then names on screen.
+    private func loadVocabulary(_ snap: DesktopSnapshot) async {
+        await speech.setVocabulary(extra: snap.apps.map(\.name) + ScreenVocabulary.terms(from: snap),
+                                   personal: ScreenVocabulary.parseDictionary(settings.personalDictionary))
+    }
+
+    /// Echo cancellation adds latency (4 Nov: ~0.9 s more before routing), so it's on only
+    /// when the Mac is playing something it could hear.
+    private func wantEchoCancel() -> Bool { settings.cancelMacAudio && AudioCapture.outputIsPlaying() }
+
     private func beginListening() async {
         let snap = await snapshots.refresh()
-        await speech.setVocabulary(extra: snap.apps.map(\.name))
+        await loadVocabulary(snap)
         guard state == .warming || state == .idle else { return }
+        echoCancel = wantEchoCancel()
         do {
-            try speech.startListening(useBuiltIn: settings.useBuiltInMic, cancelEcho: settings.cancelMacAudio)
+            try speech.startListening(useBuiltIn: settings.useBuiltInMic, cancelEcho: echoCancel)
         } catch {
             end(reason: "mic failed", message: "\(error)")
             return
@@ -257,8 +289,17 @@ final class SessionController {
             log.append(CorrectionRecord(commandID: p.recordID, sessionID: sessionID, how: "cancel_pending"))
         }
         pending = nil
+        if voiceDictation != nil {
+            // Ended mid-dictation: keep the words on the clipboard.
+            let text = Dictation.join(voiceDictation!.chunks)
+            voiceDictation = nil
+            if !text.isEmpty { PasteService.copy(text); notes.append("dictation copied to the clipboard") }
+        }
+        executor.abandonPretyped()
         executor.endSession()
-        log.append(SessionRecord(sessionID: sessionID, startedAt: startedAt, endedAt: Date(), endReason: reason))
+        var session = SessionRecord(sessionID: sessionID, startedAt: startedAt, endedAt: Date(), endReason: reason)
+        session.echoCancel = echoCancel
+        log.append(session)
 
         state = .idle
         let text = message ?? (notes.isEmpty ? "Session ended" : "Session ended — " + notes.joined(separator: ", "))
@@ -309,8 +350,12 @@ final class SessionController {
             return
         }
         if buffer.dropStale(now: now) { refreshLiveText() }
+        if let v = voiceDictation, state != .speaking, now.timeIntervalSince(v.lastSpeech) > Self.voiceDictationSilence {
+            Task { await finishVoiceDictation(send: false, reason: "silence") }
+        }
         // Idle time only; suspended while a draft is open, an action is pending, or after "hold on".
-        let suspended = executor.draft != nil || pending != nil || holdActive || state == .routing || state == .executing || state == .speaking
+        let suspended = executor.draft != nil || pending != nil || holdActive || voiceDictation != nil ||
+            state == .routing || state == .executing || state == .speaking
         if !suspended && !muted && now.timeIntervalSince(lastActivity) > Double(settings.idleTimeoutSec) {
             end(reason: "idle")
         }
@@ -324,22 +369,34 @@ final class SessionController {
         switch e {
         case .speechStarted:
             lastActivity = Date()
+            lastSpeechStart = Date()
+            snapshots.prefetch()
+            hud.model.hideCard()
+            executor.stopScrolling()
             holdActive = false
             // New speech: anything in flight is stale (generation ID), and nothing scheduled fires.
             generation += 1
             scheduledRoute?.cancel()
             if state == .routing { routeTask?.cancel() }
             if !muted && state != .executing && state != .pending { state = .speaking }
-            if !muted { hud.model.mode = .speaking }
+            if !muted { hud.model.mode = voiceDictation != nil ? .dictating : .speaking }
+            voiceDictation?.lastSpeech = Date()
 
         case .partial(let text):
             partial = text
             refreshLiveText()
 
-        case .segment(let text, let live, _, let endedAt, _):
+        case .segment(let text, let live, _, let endedAt, let transcribeMs):
             lastActivity = Date()
             partial = ""
             lastSpeechEnd = endedAt
+            lastSegmentLagMs = Int(Date().timeIntervalSince(endedAt) * 1000)
+            lastTranscribeMs = transcribeMs
+            if voiceDictation != nil && !muted {
+                if state == .speaking { state = pending != nil ? .pending : .listening }
+                voiceDictationSegment(text.isEmpty ? live : text)
+                return
+            }
             if muted {
                 if TextMatching.contains(text, anyOf: ["resume", "resume listening", "start listening", "unpause"]) {
                     setMuted(false)
@@ -385,6 +442,7 @@ final class SessionController {
 
     private func modeForIdle() -> HUDModel.Mode {
         if muted { return .muted }
+        if voiceDictation != nil { return .dictating }
         if pending != nil { return .pending }
         if executor.draft != nil { return .drafting }
         return .listening
@@ -452,12 +510,15 @@ final class SessionController {
         record.speechEndAt = lastSpeechEnd?.timeIntervalSince1970
         record.transcriptFinalAt = Date().timeIntervalSince1970
         if let end = lastSpeechEnd { record.pauseMs = Int(Date().timeIntervalSince(end) * 1000) }
+        record.segmentLagMs = lastSegmentLagMs
+        record.transcribeMs = lastTranscribeMs
 
-        let snap = await snapshots.refresh()
+        let snap = await snapshots.current(since: lastSpeechStart)
         guard generation == gen, !Task.isCancelled else { restore(previousState); return }
 
         let input = RouterInput(history: history.render(), snapshot: snap, draft: executor.draftForRouter,
-                                pending: pending.map { "\($0.call.summary) — waiting for a spoken yes" }, transcript: transcript)
+                                pending: pending.map { "\($0.call.summary) — waiting for a spoken yes" }, transcript: transcript,
+                                lastQuestion: history.lastQuestion)
         var policy = ActionPolicy.ReplyEvaluator(context: PolicyContext(
             transcript: transcript, snapshot: snap, draftOpen: executor.draft != nil,
             draftText: executor.draft?.typedText ?? "", hasPending: pending != nil, pendingSummary: pending?.call.summary))
@@ -525,21 +586,40 @@ final class SessionController {
                 }
                 if Date() > deadline && !sawTool { throw RouterError.timeout }
             }
+            // A cancelled task ends the stream quietly, with no events: that's newer speech (or
+            // the watchdog), not an empty reply. 4 Nov's "Didn't catch that (events: 0)" were all this.
+            if Task.isCancelled || generation != gen { throw CancellationError() }
             _ = attempt
             return sawTool
         }
 
         do {
-            var got = try await runReply(0)
-            if !got {
-                // No tool call: retry once (build spec), then give up.
+            // No tool call, or a reply that ended early before any tool started: retry once on a
+            // fresh connection (4 Nov: five "events: 0" failures, retries on the same one too).
+            var got = false
+            for attempt in 0..<2 {
+                do {
+                    got = try await runReply(attempt)
+                } catch RouterError.incomplete(let detail) where attempt == 0 && record.tools.isEmpty {
+                    record.mismatchNotes.append("first reply ended early: \(detail)")
+                }
+                if got || !record.tools.isEmpty { break }
                 record.retried = true
-                got = try await runReply(1)
+                client.resetConnection()
             }
             if !got { throw RouterError.noToolCall }
         } catch is CancellationError {
             // Turn resumed or the watchdog fired.
-            if generation == gen && !stopExecuting && !acted {
+            if generation == gen && !stopExecuting && !acted && record.tools.isEmpty && !timeoutRetried.contains(gen) {
+                // No reply in 3 s and nothing ran: retry once on a fresh connection instead of
+                // making them repeat it (4 Nov: "open the terminal" timed out twice).
+                timeoutRetried.insert(gen)
+                record.outcome = "cancelled"; record.error = "timed out, retrying" + diagnostics()
+                finish(record, previousState: previousState, gen: gen)
+                client.resetConnection()
+                routeNow(generation: gen)
+                return
+            } else if generation == gen && !stopExecuting && !acted {
                 record.outcome = "error"; record.error = RouterError.timeout.description + diagnostics()
                 keepWords(after: RouterError.timeout.hudMessage)
             } else {
@@ -569,7 +649,9 @@ final class SessionController {
         if acted || ignored || anyHeld || ended || anyFailed || !waited {
             buffer.consume(through: segmentIDs.last ?? -1)
         }
-        if acted || anyHeld {
+        // Everything that did something, failed or was refused goes in the history, so "not this
+        // one" and "that was wrong" have something to refer to.
+        if acted || anyHeld || (anyFailed && !waited) {
             history.add(.init(transcript: transcript, actions: record.decisions, outcome: outcomeLines.joined(separator: "; ")))
             lastActedRecordID = record.id
         }
@@ -584,7 +666,8 @@ final class SessionController {
             } else if anyFailed {
                 hud.model.show(.failure(last), for: 3)
             } else if acted {
-                hud.model.show(.success(last), for: 1.8)
+                // Longer answers ("what can I do here") stay up long enough to read.
+                hud.model.show(.success(last), for: max(1.8, Double(last.count) / 16))
             }
         }
         finish(record, previousState: previousState, gen: gen)
@@ -644,8 +727,14 @@ final class SessionController {
             record.decisions.append("\(call.summary) → rejected: \(msg)")
             return .rejected(msg)
 
-        case .hold(let held, let prompt):
+        case .hold(let held, var prompt):
             record.decisions.append("\(held.summary) → pending")
+            // Type, then confirm: a held terminal command is typed into its session first, so
+            // "yes" runs exactly what's on screen.
+            if case .terminalRun(_, let command, _, _) = held, await executor.pretype(held) {
+                prompt = "Typed `\(command)` in the terminal. Run it? Say \"yes\" or \"no\"."
+                record.decisions.append("pretyped")
+            }
             pending = (held, prompt, record.id)
             state = .pending
             hud.model.pendingPrompt = prompt
@@ -666,6 +755,7 @@ final class SessionController {
                 if let p = pending { log.append(CorrectionRecord(commandID: p.recordID, sessionID: sessionID, how: "cancel_pending")) }
                 pending = nil
                 hud.model.pendingPrompt = nil
+                await executor.clearPretyped()
                 record.decisions.append("cancel_pending")
                 return .acted(ok: true, "Cancelled")
             case .confirmPending:
@@ -674,10 +764,16 @@ final class SessionController {
                 hud.model.pendingPrompt = nil
                 state = .executing
                 hud.model.mode = .executing
-                let out = await executor.execute(p.call)
+                let out = executor.pretyped != nil ? await executor.runPretyped() : await executor.execute(p.call)
                 record.decisions.append("confirm_pending → \(p.call.summary)")
                 record.irreversible = out.succeeded
                 return .acted(ok: out.succeeded, out.message)
+            case .startDictation(let target, let app, let sid, let text):
+                voiceDictation = (target, app, sid, text.map { [$0] } ?? [], Date())
+                record.decisions.append(toRun.summary)
+                hud.model.mode = .dictating
+                hud.model.liveText = text ?? ""
+                return .acted(ok: true, "Dictating — say “send it” or “done” when you're finished")
             default:
                 break
             }
@@ -687,18 +783,86 @@ final class SessionController {
                 if let p = pending { log.append(CorrectionRecord(commandID: p.recordID, sessionID: sessionID, how: "cancel_pending")) }
                 pending = nil
                 hud.model.pendingPrompt = nil
+                await executor.clearPretyped()
             }
             if case .undoLast = toRun, let last = lastActedRecordID {
                 log.append(CorrectionRecord(commandID: last, sessionID: sessionID, how: "undo"))
             }
             state = .executing
             hud.model.mode = .executing
+            let terminalsBefore = Set(snapshots.snapshot.terminals.map(\.id))
             let out = await executor.execute(toRun)
             record.decisions.append("\(toRun.summary) → \(out.succeeded ? "ok" : "failed: \(out.message)")")
+            if out.succeeded, case .terminalNew = toRun { await rememberNewTerminal(notIn: terminalsBefore) }
+            if out.succeeded, case .describeScreen = toRun, let card = executor.lastCard { hud.model.showCard(card) }
             if out.succeeded, case .submit = toRun { record.irreversible = true }
             if out.succeeded, case .terminalRun = toRun { record.irreversible = true }
             return .acted(ok: out.succeeded, out.message)
         }
+    }
+
+    /// A terminal opened by voice is where the next commands go (4 Nov: "open a terminal,
+    /// run ls" kept failing). The new tab shows up in a refresh within about a second.
+    private func rememberNewTerminal(notIn before: Set<String>) async {
+        for _ in 0..<4 {
+            let snap = await snapshots.refresh()
+            if let fresh = snap.terminals.first(where: { !before.contains($0.id) }) {
+                snapshots.preferredShellID = fresh.id
+                return
+            }
+            try? await Task.sleep(nanoseconds: 300_000_000)
+        }
+    }
+
+    // MARK: Dictation started by voice
+
+    /// One segment while dictating by voice: kept as content unless it ends the dictation.
+    private func voiceDictationSegment(_ text: String) {
+        guard voiceDictation != nil else { return }
+        voiceDictation!.lastSpeech = Date()
+        let (content, end) = Dictation.endCommand(in: text)
+        if !content.isEmpty { voiceDictation!.chunks.append(content) }
+        hud.model.liveText = Dictation.join(voiceDictation!.chunks)
+        hud.model.mode = .dictating
+        if let end {
+            Task { await finishVoiceDictation(send: end == .send, cancel: end == .cancel, reason: "\(end)") }
+        }
+    }
+
+    /// Type everything dictated (locally collected words, so no router limits), and send it
+    /// if they said "send it".
+    private func finishVoiceDictation(send: Bool, cancel: Bool = false, reason: String) async {
+        guard let v = voiceDictation else { return }
+        voiceDictation = nil
+        let text = settings.cleanUpDictation ? Dictation.clean(v.chunks) : Dictation.join(v.chunks)
+        var record = CommandRecord(sessionID: sessionID, generation: generation, transcript: text)
+        record.tools = ["dictation"]
+        hud.model.liveText = ""
+        if cancel || text.isEmpty {
+            record.outcome = "ignored"
+            record.decisions = ["dictation ended (\(reason)), nothing typed"]
+            log.append(record)
+            hud.model.mode = modeForIdle()
+            hud.model.show(.info(cancel ? "Dictation cancelled" : "Nothing dictated"), for: 1.6)
+            return
+        }
+        state = .executing
+        hud.model.mode = .executing
+        var out = await executor.execute(.typeText(target: v.target, app: v.app, sessionID: v.sessionID, payload: text))
+        record.decisions = ["dictation (\(reason)) → type_text: \(out.succeeded ? "ok" : "failed: \(out.message)")"]
+        if out.succeeded && send {
+            out = await executor.execute(.submit(app: v.app, sendPhrase: "send it"))
+            record.decisions.append("submit → \(out.succeeded ? "ok" : "failed: \(out.message)")")
+            record.irreversible = out.succeeded
+        }
+        record.outcome = out.succeeded ? "ok" : "failed"
+        record.results = [out.message]
+        record.actionDoneAt = Date().timeIntervalSince1970
+        log.append(record)
+        if state == .executing { state = pending != nil ? .pending : .listening }
+        hud.model.mode = modeForIdle()
+        hud.model.draftPreview = executor.draft.map { $0.typedText }
+        hud.model.show(out.succeeded ? .success(out.message) : .failure(out.message), for: 2.5)
     }
 
     private func isDraftAction(_ call: ToolCall) -> Bool {

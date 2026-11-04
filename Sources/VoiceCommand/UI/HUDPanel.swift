@@ -16,8 +16,27 @@ final class HUDModel: ObservableObject {
     @Published var draftPreview: String?
     @Published var downloadProgress: Double?   // 0…1 while models download
     @Published var warning: String?           // persistent one-liner (Secure Input, Fn tap off)
+    /// A larger card under the bar ("what can you do here?"), easy to scan.
+    @Published var card: HelpCard?
 
     private var flashTask: Task<Void, Never>?
+    private var cardTask: Task<Void, Never>?
+
+    /// Show a card for a while; the next thing said hides it sooner.
+    func showCard(_ c: HelpCard, for seconds: Double = 12) {
+        card = c
+        cardTask?.cancel()
+        cardTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+            self?.card = nil
+        }
+    }
+
+    func hideCard() {
+        cardTask?.cancel()
+        card = nil
+    }
 
     func show(_ f: Flash, for seconds: Double = 2.5) {
         flash = f
@@ -28,6 +47,18 @@ final class HUDModel: ObservableObject {
             self?.flash = nil
         }
     }
+}
+
+/// What "what can you do here?" shows: things on screen grouped by where they are, then menus
+/// and examples. Names are the ones to say.
+struct HelpCard: Equatable {
+    struct Section: Equatable {
+        var title: String
+        var items: [String]
+    }
+    var title: String
+    var subtitle: String?
+    var sections: [Section]
 }
 
 /// Panel that never becomes key or main, so the app you're in keeps keyboard focus.
@@ -42,7 +73,7 @@ final class HUDPanel {
     private let panel: HUDWindow
 
     init() {
-        panel = HUDWindow(contentRect: NSRect(x: 0, y: 0, width: 560, height: 120),
+        panel = HUDWindow(contentRect: NSRect(x: 0, y: 0, width: HUDView.width, height: HUDView.height),
                           styleMask: [.nonactivatingPanel, .borderless], backing: .buffered, defer: true)
         panel.isFloatingPanel = true
         panel.level = .statusBar
@@ -78,9 +109,12 @@ final class HUDPanel {
 
 struct HUDView: View {
     @ObservedObject var model: HUDModel
+    /// The panel is transparent and click-through; it's sized for the card, the bar sits on top.
+    static let width: CGFloat = 680
+    static let height: CGFloat = 720
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: 8) {
             if model.mode != .hidden || model.flash != nil {
                 content
                     .padding(.horizontal, 14).padding(.vertical, 10)
@@ -89,10 +123,15 @@ struct HUDView: View {
                     .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(.white.opacity(0.08)))
                     .shadow(radius: 8, y: 2)
             }
+            if let card = model.card, model.mode != .hidden {
+                HelpCardView(card: card)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
             Spacer(minLength: 0)
         }
-        .frame(width: 560, height: 120, alignment: .top)
+        .frame(width: Self.width, height: Self.height, alignment: .top)
         .animation(.easeOut(duration: 0.12), value: model.mode)
+        .animation(.easeOut(duration: 0.18), value: model.card)
     }
 
     @ViewBuilder var content: some View {
@@ -129,7 +168,7 @@ struct HUDView: View {
         case .warming: return "Warming up…"
         case .muted: return "Paused — say “resume” or use the menu bar"
         case .listening where model.liveText.isEmpty: return "Listening…"
-        case .dictating where model.liveText.isEmpty: return "Dictating — release Fn to type it"
+        case .dictating where model.liveText.isEmpty: return "Dictating — release Fn, or say “send it” / “done”"
         default: return model.liveText.isEmpty ? "Listening…" : model.liveText
         }
     }
@@ -154,3 +193,78 @@ struct HUDView: View {
         }
     }
 }
+
+/// The scannable card: a title, then each section's names as chips.
+struct HelpCardView: View {
+    let card: HelpCard
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(card.title).font(.system(size: 16, weight: .semibold))
+                if let s = card.subtitle {
+                    Text(s).font(.system(size: 12)).foregroundStyle(.secondary)
+                }
+            }
+            ForEach(card.sections, id: \.title) { section in
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(section.title.uppercased())
+                        .font(.system(size: 10, weight: .semibold)).tracking(0.6).foregroundStyle(.secondary)
+                    ChipFlow(spacing: 6) {
+                        ForEach(Array(section.items.enumerated()), id: \.offset) { _, item in
+                            Text(item)
+                                .font(.system(size: 12.5))
+                                .lineLimit(1)
+                                .padding(.horizontal, 9).padding(.vertical, 4)
+                                .background(Capsule().fill(Color.primary.opacity(0.07)))
+                        }
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .frame(width: 640, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 16).fill(.ultraThickMaterial))
+        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(.white.opacity(0.08)))
+        .shadow(radius: 12, y: 3)
+    }
+}
+
+/// Lays chips out left to right, wrapping to new lines.
+struct ChipFlow: Layout {
+    var spacing: CGFloat = 6
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let rows = arrange(width: proposal.width ?? 600, subviews: subviews)
+        let height = rows.map(\.height).reduce(0, +) + spacing * CGFloat(max(0, rows.count - 1))
+        return CGSize(width: proposal.width ?? 600, height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var y = bounds.minY
+        for row in arrange(width: bounds.width, subviews: subviews) {
+            var x = bounds.minX
+            for i in row.indices {
+                let size = subviews[i].sizeThatFits(.unspecified)
+                subviews[i].place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
+                x += size.width + spacing
+            }
+            y += row.height + spacing
+        }
+    }
+
+    private func arrange(width: CGFloat, subviews: Subviews) -> [(indices: [Int], height: CGFloat)] {
+        var rows: [(indices: [Int], height: CGFloat)] = []
+        var current: [Int] = [], x: CGFloat = 0, h: CGFloat = 0
+        for i in subviews.indices {
+            let size = subviews[i].sizeThatFits(.unspecified)
+            if x + size.width > width, !current.isEmpty {
+                rows.append((current, h)); current = []; x = 0; h = 0
+            }
+            current.append(i); x += size.width + spacing; h = max(h, size.height)
+        }
+        if !current.isEmpty { rows.append((current, h)) }
+        return rows
+    }
+}
+

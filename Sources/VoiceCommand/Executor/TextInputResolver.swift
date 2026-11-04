@@ -100,50 +100,64 @@ enum TextInputResolver {
         return false
     }
 
+    static let boxAttributes = [kAXRoleAttribute, kAXSubroleAttribute, kAXTitleAttribute, kAXDescriptionAttribute,
+                                kAXPlaceholderValueAttribute, kAXHelpAttribute, "AXEditable", kAXChildrenAttribute,
+                                kAXPositionAttribute, kAXSizeAttribute]
+
     /// Score editable elements in the focused window: near the bottom, chat-like
-    /// placeholder words, wide, near a Send button.
-    static func bestCandidate(pid: pid_t, label: String?) -> AXUIElement? {
+    /// placeholder words, wide, near a Send button. Breadth first with one batched call per
+    /// element and a time budget: the old walk took minutes on Claude (4 Nov), and stopped
+    /// at a window-sized "editable" wrapper before reaching the real box.
+    static func bestCandidate(pid: pid_t, label: String?, budget: TimeInterval = 1.2) -> AXUIElement? {
         let axApp = AX.app(pid)
         guard let window = AX.element(axApp, kAXFocusedWindowAttribute) ?? AX.element(axApp, kAXMainWindowAttribute),
               let wf = AX.frame(window), wf.height > 0 else { return nil }
-        var candidates: [(AXUIElement, Double)] = []
+        var candidates: [(el: AXUIElement, score: Double, frame: CGRect)] = []
         var sendButtons: [CGRect] = []
-        var visited = 0
-        func walk(_ el: AXUIElement, depth: Int) {
-            guard depth < 45, visited < 4000 else { return }
-            visited += 1
-            let role = AX.string(el, kAXRoleAttribute) ?? ""
-            if role == kAXButtonRole {
-                let t = ((AX.string(el, kAXTitleAttribute) ?? "") + " " + (AX.string(el, kAXDescriptionAttribute) ?? "")).lowercased()
-                if t.contains("send") || t.contains("submit"), let f = AX.frame(el) { sendButtons.append(f) }
+        let deadline = Date().addingTimeInterval(budget)
+        var queue: [(AXUIElement, Int)] = [(window, 0)]
+        var head = 0
+        while head < queue.count, head < 6000, Date() < deadline {
+            let (el, depth) = queue[head]
+            head += 1
+            let v = AX.values(el, boxAttributes)
+            let role = v[0] as? String ?? ""
+            let subrole = v[1] as? String
+            let text = [v[2], v[3], v[4], v[5]].compactMap { ($0 as? String)?.lowercased() }.joined(separator: " ")
+            var f: CGRect?
+            if let pos = v[8], let size = v[9], CFGetTypeID(pos) == AXValueGetTypeID(), CFGetTypeID(size) == AXValueGetTypeID() {
+                var p = CGPoint.zero, sz = CGSize.zero
+                if AXValueGetValue(pos as! AXValue, .cgPoint, &p), AXValueGetValue(size as! AXValue, .cgSize, &sz) { f = CGRect(origin: p, size: sz) }
             }
-            if AX.isEditable(el), !AX.isSecure(el), let f = AX.frame(el), f.width > 40, f.height > 8 {
+            if role == kAXButtonRole, text.contains("send") || text.contains("submit"), let f { sendButtons.append(f) }
+            let flaggedEditable = (v[6] as? NSNumber)?.boolValue == true
+            // Text roles always count; a contenteditable group only if input-sized (Electron
+            // wraps whole windows in "editable" groups).
+            let editable = AX.textRoles.contains(role) || (flaggedEditable && (role != kAXGroupRole || (f?.height ?? .infinity) < 400))
+            let secure = subrole == "AXSecureTextField" || role == "AXSecureTextField"
+            if editable, !secure, let f, f.width > 40, f.height > 8 {
                 var score = 0.0
-                let rel = (f.midY - wf.minY) / wf.height                  // 0 top … 1 bottom
-                score += rel * 4
+                score += (f.midY - wf.minY) / wf.height * 4         // 0 top … 1 bottom
                 score += min(f.width / wf.width, 1) * 2
-                let words = [AX.string(el, kAXPlaceholderValueAttribute), AX.string(el, kAXDescriptionAttribute),
-                             AX.string(el, kAXTitleAttribute), AX.string(el, kAXHelpAttribute)]
-                    .compactMap { $0?.lowercased() }.joined(separator: " ")
-                for w in ["message", "ask", "reply", "prompt", "chat", "send", "write", "plan, search, build", "type"] where words.contains(w) { score += 3; break }
-                if let label, words.contains(label.lowercased()) { score += 6 }
-                if role == kAXTextAreaRole || AX.bool(el, "AXEditable") == true { score += 1 }
-                if words.contains("search") && !words.contains("message") { score -= 3 }
-                candidates.append((el, score))
-                return     // don't descend into an editable element's children
+                for w in ["message", "ask", "reply", "prompt", "chat", "send", "write", "plan, search, build", "type"] where text.contains(w) { score += 3; break }
+                if let label, text.contains(label.lowercased()) { score += 6 }
+                if role == kAXTextAreaRole || flaggedEditable { score += 1 }
+                if text.contains("search") && !text.contains("message") { score -= 3 }
+                candidates.append((el, score, f))
+                continue     // an editable element's children are its own text
             }
-            for child in AX.elements(el, kAXChildrenAttribute) { walk(child, depth: depth + 1) }
+            if depth < 60, let children = v[7] as? [AXUIElement] { queue.append(contentsOf: children.map { ($0, depth + 1) }) }
         }
-        walk(window, depth: 0)
         guard !candidates.isEmpty else { return nil }
         // Bonus for a Send button just to the right of / below an input.
-        let scored = candidates.map { (el, s) -> (AXUIElement, Double) in
-            guard let f = AX.frame(el) else { return (el, s) }
-            let near = sendButtons.contains { abs($0.midY - f.midY) < 80 || ($0.minY >= f.minY && $0.minY - f.maxY < 60) }
-            return (el, s + (near ? 2 : 0))
-        }.sorted { $0.1 > $1.1 }
-        // "Clearly wins": the best must beat the runner-up, unless it's alone.
-        if scored.count > 1, scored[0].1 - scored[1].1 < 0.5 { return nil }
-        return scored[0].0
+        let scored = candidates.map { c -> (el: AXUIElement, score: Double, frame: CGRect) in
+            let near = sendButtons.contains { abs($0.midY - c.frame.midY) < 80 || ($0.minY >= c.frame.minY && $0.minY - c.frame.maxY < 60) }
+            return (c.el, c.score + (near ? 2 : 0), c.frame)
+        }.sorted { $0.score > $1.score }
+        // Near-tie: the lower one on screen is the composer far more often than not.
+        if scored.count > 1, scored[0].score - scored[1].score < 0.5 {
+            return scored[0].frame.maxY >= scored[1].frame.maxY ? scored[0].el : scored[1].el
+        }
+        return scored[0].el
     }
 }
