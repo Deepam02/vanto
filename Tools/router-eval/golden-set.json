@@ -2510,9 +2510,6 @@
    "expect": {
     "sequence": [
      {
-      "tool": "undo_last"
-     },
-     {
       "tool": "focus_window",
       "args": {
        "window_id": {
@@ -3033,6 +3030,91 @@
       "tool": "describe_screen"
      }
     ]
+   }
+  },
+  {
+   "id": "nov4d-store-then-command",
+   "transcript": "Store. Scroll up till I tell you to stop",
+   "fixture": "claude_front",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "scroll",
+      "args": {
+       "direction": {
+        "eq": "up"
+       },
+       "amount": {
+        "eq": "continuous"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "nov4d-bare-stop",
+   "transcript": "Store, stop, stop, Store.",
+   "fixture": "claude_front",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "ignore"
+     }
+    ]
+   }
+  },
+  {
+   "id": "nov4d-close-session",
+   "transcript": "Coke the session.",
+   "fixture": "claude_front",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "end_session"
+     }
+    ]
+   }
+  },
+  {
+   "id": "nov4d-wrong-go-back",
+   "transcript": "No, that's the wrong one. Can you go back?",
+   "fixture": "claude_front",
+   "history": [
+    "\"Can you go to Figma?\" → browser_switch_tab(chrome:1:104) → ok → Tab: lastseen onboarding – Figma"
+   ],
+   "expect": {
+    "sequence": [
+     {
+      "tool": "undo_last"
+     }
+    ]
+   }
+  },
+  {
+   "id": "nov4d-volume-down",
+   "transcript": "Can you turn down the volume?",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "system_volume",
+      "args": {
+       "action": {
+        "eq": "down"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "nov4d-volume-fifty",
+   "transcript": "Unmute and then reduce it to fifty percent.",
+   "expect": {
+    "each": {
+     "tool": "system_volume"
+    },
+    "minCount": 1
    }
   }
  ]

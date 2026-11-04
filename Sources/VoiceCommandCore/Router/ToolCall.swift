@@ -6,6 +6,7 @@ public enum CommandRisk: String, Codable, Sendable { case read_only, changes_fil
 public enum NavigateAction: String, Codable, Sendable { case reload, back, forward }
 public enum ScrollDirection: String, Codable, Sendable { case up, down, left, right }
 public enum ScrollAmount: String, Codable, Sendable { case small, page, continuous }
+public enum VolumeAction: String, Codable, Sendable { case up, down, set, mute, unmute }
 
 /// One validated tool call from the router. With `eager_input_streaming` the API does not
 /// validate inputs, so every field is checked here before anything can run.
@@ -42,6 +43,7 @@ public enum ToolCall: Equatable, Sendable {
     // Drafts and dictation.
     case rewriteDraft(text: String)
     case startDictation(target: TypeTarget, app: String?, sessionID: String?, text: String?)
+    case systemVolume(action: VolumeAction, level: Int?)
 
     public var name: String {
         switch self {
@@ -75,6 +77,7 @@ public enum ToolCall: Equatable, Sendable {
         case .describeScreen: return "describe_screen"
         case .rewriteDraft: return "rewrite_draft"
         case .startDictation: return "start_dictation"
+        case .systemVolume: return "system_volume"
         }
     }
 
@@ -101,6 +104,7 @@ public enum ToolCall: Equatable, Sendable {
         case .clickElement(let n): return "click_element(\(n))"
         case .focusTextBox(let a): return "focus_text_box(\(a ?? "front app"))"
         case .rewriteDraft(let t): return "rewrite_draft(\"\(t)\")"
+        case .systemVolume(let a, let l): return "system_volume(\(a.rawValue)\(l.map { ", \($0)" } ?? ""))"
         case .startDictation(let t, let a, let s, let x):
             return "start_dictation(\(t.rawValue)\(a.map { ", app: \($0)" } ?? "")\(s.map { ", session: \($0)" } ?? "")\(x.map { ", \"\($0)\"" } ?? ""))"
         default: return name
@@ -204,6 +208,9 @@ public enum ToolCall: Equatable, Sendable {
                 app: optStr("app"),
                 sessionID: optStr("session_id"),
                 text: optStr("text"))
+        case "system_volume":
+            let level = (input["level"] as? NSNumber)?.intValue
+            return .systemVolume(action: try enumValue("action", VolumeAction.self), level: level.map { min(100, max(0, $0)) })
         default:
             throw ParseError.unknownTool(name)
         }

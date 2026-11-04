@@ -134,3 +134,21 @@ on 75 cases.
 - **Timeouts** retry once on a fresh connection before giving up.
 - `--dump-ax` now reads with batched calls (Slack and Chrome dump in seconds).
 
+## After the 4 Nov evening sessions (59 commands)
+
+Median speech end → done 1.93 s. Router-eval 99.4% (161/162) on 81 cases; the one miss is
+the injection case answering with a question (a safe miss, DECISIONS 40).
+- **Stopping a continuous scroll**: the words that stop it ("stop", heard as "Store") are
+  used up as the stop and not routed; before, they piled up in the buffer and the router
+  waited five times in a row, and "Store, stop, stop" ended the session. A bare "stop" is
+  never end_session now; the router acts on the latest complete command after fragments.
+- **Clicking text that isn't a button** (Figma's page list): when no control matches, the
+  visible text with that name is clicked.
+- **Zoom** uses shortcuts or menus, never the "14%, zoom and view options" dropdown.
+- **Corrections**: "no, that's the wrong one, go back" is undo only (it also pressed the
+  browser's Back); "the other one" switches directly; a plain "go back" is still Back.
+- **System volume** (`system_volume`): up, down, mute, unmute, set to a level.
+- "Coke the session" → end_session.
+- A macOS keychain prompt (SecurityAgent) appeared once after a rebuild and was described
+  as the front app; click "Always Allow" so the API key read doesn't ask again.
+

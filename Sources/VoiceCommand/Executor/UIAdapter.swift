@@ -185,8 +185,13 @@ enum UIAdapter {
         // order (top to bottom) is kept within each group.
         let items = all.filter(\.visible) + all.filter { !$0.visible }
         let appName = app.localizedName ?? "this app"
-        guard !items.isEmpty else { return .fail("I can't see any buttons in \(appName)") }
         guard let i = NameMatch.best(name, in: items.map(\.name)) else {
+            // Lists that aren't exposed as buttons (Figma's pages, 4 Nov): click the visible text.
+            let texts = visibleTexts(pid, inWebArea: browser)
+            if let t = NameMatch.best(name, in: texts.map(\.name)), let f = AX.frame(texts[t].element) {
+                KeyPresser.click(at: CGPoint(x: f.midX, y: f.midY))
+                return .ok("Clicked “\(texts[t].name)”", undo: nil)
+            }
             return .fail("No “\(name)” on screen in \(appName)")
         }
         let item = items[i]
@@ -197,6 +202,37 @@ enum UIAdapter {
             return .ok("Clicked “\(item.name)”", undo: nil)
         }
         return .fail("Couldn't click “\(item.name)”")
+    }
+
+    /// Visible text labels in the front window (or its page), for clicking things that are only
+    /// text to Accessibility. Breadth-first and time-boxed like `elements`.
+    static func visibleTexts(_ pid: pid_t, inWebArea: Bool, budget: TimeInterval = 1.0) -> [Item] {
+        let axApp = AX.app(pid)
+        guard let window = AX.element(axApp, kAXFocusedWindowAttribute) ?? AX.element(axApp, kAXMainWindowAttribute) else { return [] }
+        let bounds = AX.frame(window) ?? .null
+        let deadline = Date().addingTimeInterval(budget)
+        var out: [Item] = []
+        var queue: [(el: AXUIElement, web: Bool)] = [(window, false)]
+        var head = 0
+        while head < queue.count, head < 6000, out.count < 800, Date() < deadline {
+            let (el, web) = queue[head]
+            head += 1
+            let v = AX.values(el, walkAttributes)
+            let role = v[0] as? String ?? ""
+            let inWeb = web || role == "AXWebArea"
+            if role == kAXStaticTextRole, !inWebArea || inWeb,
+               let text = ((v[6] as? String) ?? (v[1] as? String))?.trimmingCharacters(in: .whitespacesAndNewlines),
+               !text.isEmpty, text.count <= 60,
+               let pos = v[4], let size = v[5], CFGetTypeID(pos) == AXValueGetTypeID(), CFGetTypeID(size) == AXValueGetTypeID() {
+                var p = CGPoint.zero, sz = CGSize.zero
+                if AXValueGetValue(pos as! AXValue, .cgPoint, &p), AXValueGetValue(size as! AXValue, .cgSize, &sz),
+                   sz.width > 2, sz.height >= 4, bounds.isNull || bounds.intersects(CGRect(origin: p, size: sz)) {
+                    out.append(Item(element: el, name: text, path: text, role: role, visible: true))
+                }
+            }
+            if let children = v[3] as? [AXUIElement] { queue.append(contentsOf: children.map { ($0, inWeb) }) }
+        }
+        return out
     }
 
     // MARK: Text box, and what's here

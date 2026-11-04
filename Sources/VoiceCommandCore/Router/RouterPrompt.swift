@@ -111,8 +111,9 @@ public enum RouterPrompt {
       "not this one", "the other one", "a different one", "wrong one", "next one" → the same kind
       of action as the most recent one (terminal_focus, focus_window, browser_switch_tab,
       click_element…) on a different target than it used; "that was wrong", "no, I meant X" →
-      undo_last if it was reversible, then the right action; "do it again", "once more" → repeat it;
-      "go back" after switching apps or tabs → undo_last.
+      undo_last if it was reversible, then the right action; "do it again", "once more" → repeat it.
+      A plain "go back" is the browser's Back (browser_navigate back); only a correction ("no, go
+      back", "wrong one, go back") right after a switch is undo_last.
     - If you_just_asked is set, a short "yes", "yeah", "sure" accepts what the question offered:
       do that action now. "no" or another request moves on.
     - "that's all", "stop listening", "I'm done" → end_session. Chatter that is not addressed to
@@ -144,7 +145,18 @@ public enum RouterPrompt {
     - "clear what you typed in the terminal", "remove those commands" (a terminal in front) →
       press_keys "ctrl+u". Never type their request into the terminal as text.
     - "keep scrolling", "scroll until I say stop", "scroll up continuously" → scroll with amount
-      continuous. Anything they say next stops it (so a misheard "stop" still works).
+      continuous. Anything they say next stops it (so a misheard "stop" still works). "…till I
+      tell you to stop" is a complete command: start now, don't wait for the stop.
+    - A bare "stop", "store", "okay stop", "enough" is never end_session: ignore it. end_session
+      only for "stop listening", "that's all", "I'm done", "shut down", "close/end the session"
+      (often heard as "coke the session").
+    - The transcript can start with leftover fragments ("Store.", half sentences) before a
+      complete command. Act on the latest complete command; never wait_for_more because of
+      earlier fragments.
+    - Zoom in or out: the app's shortcut (web) or menu_command (native). Never click a zoom
+      dropdown such as "14%, zoom and view options".
+    - "turn the volume down / up", "mute", "set the volume to 50%" → system_volume (the Mac's
+      volume), unless they say the video player's own volume.
     - "improve the English", "make it shorter", "fix the typos", "make it more polite" with a draft
       open → rewrite_draft with the full edited draft. It never sends.
     - "write a message, wait for me", "I'll dictate", "take a note", "let me write this out" →
@@ -167,7 +179,7 @@ public enum RouterPrompt {
     transcript: "ask cursor to um add tests for the parser" → type_text(target: "chat_box", app: "Cursor", payload: "add tests for the parser")
     transcript: "open slack, no wait, discord" → open_app(app: "Discord")
     transcript: "undo that" → undo_last()
-    transcript: "no, the other one" (history: focus_window(w2) just ran) → undo_last(), then focus_window(window_id: <the other window>)
+    transcript: "no, the other one" (history: focus_window(w2) just ran) → focus_window(window_id: <the other window>)
     transcript: "that's all" → end_session()
     transcript: "in slack tell the team the deploy is done" → type_text(target: "chat_box", app: "Slack", payload: "the deploy is done")
     transcript: "send it" (draft open in Slack) → submit(app: "Slack", send_phrase: "send it")
@@ -194,6 +206,10 @@ public enum RouterPrompt {
     transcript: "different one, not this one" (most recent: terminal_focus(terminal:ttys003)) → terminal_focus(session_id: <another session running claude, not ttys003>)
     transcript: "that's the wrong tab" (most recent: browser_switch_tab to YouTube; they had said "blue") → undo_last(), then browser_switch_tab(tab_id: <the tab that sounds like what they said, e.g. Blooio>)
     transcript: "yeah" (you_just_asked: "Do you want me to open Projects?") → click_element(name: "Projects")
+    transcript: "no, that's the wrong one, can you go back?" (most recent: browser_switch_tab) → undo_last() only
+    transcript: "Store. Scroll down till the bottom." → scroll(direction: "down", amount: "continuous")
+    transcript: "stop" → ignore()
+    transcript: "reduce the volume" → system_volume(action: "down")
     """
 
     public static func userMessage(_ input: RouterInput) -> String {

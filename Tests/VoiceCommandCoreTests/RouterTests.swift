@@ -39,6 +39,7 @@ import Testing
             "press_keys": #"{"keys":"cmd+k"}"#, "scroll": #"{"direction":"left"}"#,
             "menu_command": #"{"item":"Zoom Out","menu":"View"}"#, "click_element": #"{"name":"Conversations"}"#,
             "rewrite_draft": #"{"text":"Hello."}"#, "start_dictation": #"{"target":"focused"}"#,
+            "system_volume": #"{"action":"set","level":50}"#,
         ]
         for name in ToolSchemas.names {
             let call = try ToolCall.parse(name: name, inputJSON: samples[name] ?? "{}")

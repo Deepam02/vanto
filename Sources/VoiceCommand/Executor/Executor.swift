@@ -63,6 +63,8 @@ final class Executor {
         }
     }
 
+    var isScrolling: Bool { scroller != nil }
+
     func stopScrolling() {
         scroller?.cancel()
         scroller = nil
@@ -155,6 +157,8 @@ final class Executor {
             outcome = card == nil ? .fail(summary) : .ok(summary, undo: nil)
         case .rewriteDraft(let text):
             outcome = await rewriteDraft(text)
+        case .systemVolume(let action, let level):
+            outcome = await Self.volume(action, level: level)
         default:
             outcome = .fail("\(call.name) is not an action")
         }
@@ -184,6 +188,22 @@ final class Executor {
         if sure { return .ok("Typed into \(name)", undo: nil) }
         PasteService.copy(text)
         return .ok("Typed into \(name), and copied in case it didn't land", undo: nil)
+    }
+
+    /// The Mac's output volume (Standard Additions, no permission needed).
+    static func volume(_ action: VolumeAction, level: Int?) async -> ExecOutcome {
+        let src: String
+        switch action {
+        case .mute: src = "set volume with output muted"
+        case .unmute: src = "set volume without output muted"
+        case .set: src = "set volume without output muted\nset volume output volume \(level ?? 50)"
+        case .up, .down:
+            let step = (level ?? 10) * (action == .up ? 1 : -1)
+            src = "set v to (output volume of (get volume settings)) + (\(step))\nif v < 0 then set v to 0\nif v > 100 then set v to 100\nset volume without output muted\nset volume output volume v"
+        }
+        let r = await AppleScriptRunner.shared.runString(src + "\nreturn (output volume of (get volume settings)) as text", timeout: 1)
+        guard case .success(let now) = r else { return .fail("Couldn't change the volume") }
+        return .ok(action == .mute ? "Muted" : "Volume \(now)%", undo: nil)
     }
 
     private func preferredTerminalApp(_ snap: DesktopSnapshot) -> DesktopSnapshot.TerminalApp {

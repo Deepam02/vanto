@@ -59,6 +59,9 @@ final class SessionController {
     /// Echo cancellation was on for this session's mic (logged; it adds latency).
     private var echoCancel = false
     // Latency of the last speech segment, copied into the next command record.
+    /// Speech just stopped a continuous scroll: that short utterance was the "stop" (often
+    /// heard as "Store", 4 Nov) and must not be routed or pile up in the buffer.
+    private var speechStoppedScroll = false
     /// Generations already retried after a timeout (one automatic retry each).
     private var timeoutRetried = Set<Int>()
     private var lastSegmentLagMs: Int?
@@ -372,7 +375,10 @@ final class SessionController {
             lastSpeechStart = Date()
             snapshots.prefetch()
             hud.model.hideCard()
-            executor.stopScrolling()
+            if executor.isScrolling {
+                executor.stopScrolling()
+                speechStoppedScroll = true
+            }
             holdActive = false
             // New speech: anything in flight is stale (generation ID), and nothing scheduled fires.
             generation += 1
@@ -392,6 +398,16 @@ final class SessionController {
             lastSpeechEnd = endedAt
             lastSegmentLagMs = Int(Date().timeIntervalSince(endedAt) * 1000)
             lastTranscribeMs = transcribeMs
+            if speechStoppedScroll {
+                speechStoppedScroll = false
+                let said = text.isEmpty ? live : text
+                if TextMatching.words(said).count <= 4 {
+                    if state == .speaking { state = pending != nil ? .pending : .listening }
+                    hud.model.mode = modeForIdle()
+                    hud.model.show(.info("Stopped scrolling"), for: 1.2)
+                    return
+                }
+            }
             if voiceDictation != nil && !muted {
                 if state == .speaking { state = pending != nil ? .pending : .listening }
                 voiceDictationSegment(text.isEmpty ? live : text)
