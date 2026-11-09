@@ -6,6 +6,8 @@ enum UndoAction {
     case chromeTab(windowID: Int, tabID: Int)
     case closeChromeTab(windowID: Int, tabID: Int, thenShow: (Int, Int)?)
     case reopenURL(String)
+    /// Chrome's "reopen closed tab" (⌘⇧T), so the page comes back with its history.
+    case reopenClosedTab(url: String)
     case deleteTyped(chars: Int)
     case restoreDraft(original: String)
 }
@@ -116,8 +118,8 @@ final class Executor {
             outcome = await BrowserAdapter.closeTab(tab)
         case .browserNavigate(let action):
             outcome = await BrowserAdapter.navigate(action)
-        case .browserSearch(let query):
-            outcome = await BrowserAdapter.search(query)
+        case .browserSearch(let query, let here):
+            outcome = here ? await BrowserAdapter.searchHere(query) : await BrowserAdapter.search(query)
         case .terminalFocus(let id):
             guard let s = snap.terminal(id) else { return .fail("That terminal session isn't open") }
             outcome = await TerminalAdapter.focus(s)
@@ -127,8 +129,13 @@ final class Executor {
         case .terminalRun(let id, let command, _, _):
             guard let s = snap.terminal(id) else { return .fail("That terminal session isn't open") }
             outcome = await TerminalAdapter.run(s, command)
-        case .typeText(let target, let app, let sessionID, let payload):
-            outcome = await typeText(target: target, app: app, sessionID: sessionID, payload: payload, snap: snap)
+        case .typeText(let target, let app, let sessionID, let payload, let source):
+            let typed = await typeText(target: target, app: app, sessionID: sessionID, payload: payload, snap: snap)
+            if source == .composed, case .ok(_, let undo) = typed, let d = draft {
+                outcome = .ok("Wrote this in \(d.appName) — read it, then say “send”", undo: undo)
+            } else {
+                outcome = typed
+            }
         case .newline:
             outcome = await newline()
         case .clearTyped:
@@ -147,8 +154,8 @@ final class Executor {
             outcome = await undoLast()
         case .menuCommand(let item, let menu):
             outcome = await UIAdapter.menuCommand(item: item, menu: menu)
-        case .clickElement(let name):
-            outcome = await UIAdapter.click(name: name)
+        case .clickElement(let name, let near):
+            outcome = await UIAdapter.click(name: name, near: near, anchor: textBoxFrame())
         case .focusTextBox(let app):
             outcome = await UIAdapter.focusTextBox(app: app, hints: hints, snapshot: snap)
         case .describeScreen:
@@ -385,8 +392,53 @@ final class Executor {
         case .element, .blind: ok = KeyPresser.press(d.hint?.submitKey ?? "return")
         }
         guard ok else { return .fail("Couldn't press send") }
+        if case .element(let t) = d.target {
+            // Never report "Sent" without looking: on X, Return is a new line and the post
+            // stayed in the box while the HUD said "Sent" (9 Nov). Then press the box's own
+            // send button (Post, Send, Reply…), the one nearest the box.
+            var check = await sendCheck(t, typed: d.typedText)
+            // A slow app may clear its box late: look twice before pressing a button, so a
+            // message is never sent twice.
+            if case .stillThere = check { check = await sendCheck(t, typed: d.typedText) }
+            switch check {
+            case .gone, .unreadable:
+                break
+            case .stillThere(let endsInNewline):
+                if endsInNewline { KeyPresser.backspace(1) }
+                guard let frame = AX.frame(t.element), let button = UIAdapter.sendButton(pid: t.pid, near: frame) else {
+                    return .fail("Didn't send — your text is still in the box. Say “click Post” or press send")
+                }
+                _ = UIAdapter.press(button)
+                if case .stillThere = await sendCheck(t, typed: d.typedText) {
+                    return .fail("Pressed “\(button.name)” but the text is still there — not sent")
+                }
+                draft = nil
+                return .ok("Sent with “\(button.name)” in \(d.appName)", undo: nil)
+            }
+        }
         draft = nil
         return .ok("Sent to \(d.appName)", undo: nil)
+    }
+
+    private enum SendCheck { case gone, unreadable, stillThere(endsInNewline: Bool) }
+
+    /// After sending, is the typed text still in its box? A box that went away or can't be
+    /// read counts as sent (the old behaviour).
+    private func sendCheck(_ t: TextInputResolver.Target, typed: String) async -> SendCheck {
+        try? await Task.sleep(nanoseconds: 450_000_000)
+        guard let value = AX.string(t.element, kAXValueAttribute) else { return .unreadable }
+        let probe = String(typed.trimmingCharacters(in: .whitespacesAndNewlines).prefix(24))
+        guard !probe.isEmpty, value.contains(probe) else { return .gone }
+        return .stillThere(endsInNewline: value.hasSuffix("\n"))
+    }
+
+    /// Where the text box is: the open draft's box, or the focused editable field. Clicks use
+    /// it to pick the right one of several same-named buttons ("Post" by the box, not the
+    /// sidebar's, 9 Nov).
+    private func textBoxFrame() -> CGRect? {
+        if let d = draft, case .element(let t) = d.target, let f = AX.frame(t.element) { return f }
+        if let el = AX.focusedElement(), AX.isEditable(el) { return AX.frame(el) }
+        return nil
     }
 
     private func newline() async -> ExecOutcome {
@@ -489,6 +541,10 @@ final class Executor {
             if let show { _ = await BrowserAdapter.switchTo(windowID: show.0, tabID: show.1) }
             return r.succeeded ? .ok("Undone", undo: nil) : r
         case .reopenURL(let url):
+            let r = await BrowserAdapter.openURL(url, newTab: true)
+            return r.succeeded ? .ok("Reopened the tab", undo: nil) : r
+        case .reopenClosedTab(let url):
+            if await BrowserAdapter.reopenClosedTab() { return .ok("Reopened the tab", undo: nil) }
             let r = await BrowserAdapter.openURL(url, newTab: true)
             return r.succeeded ? .ok("Reopened the tab", undo: nil) : r
         case .deleteTyped(let chars):

@@ -100,6 +100,15 @@ public struct DesktopSnapshot: Codable, Equatable, Sendable {
     /// Named buttons, links and tabs in the front window (inside the page, for a browser), so
     /// the router knows what "go to Projects" can mean here (4 Nov: it searched Google instead).
     public var frontControls: [String]?
+    /// Chrome tabs that were active, newest first (the active one included), so "the previous
+    /// tab" means the tab they were just on (9 Nov: it went to Netflix instead of YouTube).
+    public var recentTabIDs: [String]?
+
+    /// The tab that was active before the current one.
+    public var previousTab: Tab? {
+        let active = activeTab?.id
+        return recentTabIDs?.lazy.filter { $0 != active }.compactMap { self.tab($0) }.first
+    }
 
     public init(takenAt: Date = Date(), apps: [App] = [], windows: [Window] = [], tabs: [Tab] = [],
                 terminals: [TerminalSession] = [], focused: FocusedElement? = nil, secureInputOn: Bool = false) {
@@ -171,9 +180,13 @@ public struct DesktopSnapshot: Codable, Equatable, Sendable {
 
         if !tabs.isEmpty {
             out.append("chrome_tabs:")
-            for t in Self.rankTabs(tabs, for: transcript).prefix(Self.maxTabs) {
+            let previous = previousTab?.id
+            var ranked = Array(Self.rankTabs(tabs, for: transcript).prefix(Self.maxTabs))
+            if let p = previousTab, !ranked.contains(where: { $0.id == p.id }) { ranked.append(p) }
+            for t in ranked {
                 var flags: [String] = []
                 if t.active && t.frontWindow { flags.append("active") } else if t.active { flags.append("active in its window") }
+                if t.id == previous { flags.append("previous: the tab they were on before") }
                 let f = flags.isEmpty ? "" : " [\(flags.joined(separator: ","))]"
                 out.append("  \(t.id) | \"\(Self.clip(t.title))\" | \(Self.clip(t.url, 80))\(f)")
             }

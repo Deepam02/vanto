@@ -14,7 +14,12 @@ enum UIAdapter {
         let role: String
         let visible: Bool
         var region: Region = .main
+        var frame: CGRect?
     }
+
+    /// Shortcuts seen in control names this run ("Previous (SHIFT+p)" → "shift+p"), by the
+    /// name without the shortcut, lowercased. A hidden control's shortcut still works.
+    static var shortcuts: [String: String] = [:]
 
     /// Where a control sits in its window, for grouping ("Sidebar", "Near the text box").
     enum Region: String, CaseIterable {
@@ -152,12 +157,17 @@ enum UIAdapter {
                         return (cv[0] as? String) ?? (cv[1] as? String)
                     }.joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
                 }
-                if !name.isEmpty, name.count <= 80 {
+                // Up to 160 characters: YouTube's video links carry title, channel and views in
+                // one name ("I Am Done" wasn't found on 9 Nov with an 80-character cap).
+                if !name.isEmpty, name.count <= 160 {
                     let f = frame(v[4], v[5])
                     // Virtualised list items report 1 px heights: not really on screen.
                     let visible = f.map { $0.width > 2 && $0.height >= 4 && (bounds.isNull || bounds.intersects($0)) } ?? false
                     var item = Item(element: el, name: name, path: name, role: role, visible: visible)
-                    if let f { item.region = Region.of(f, in: bounds) }
+                    if let f { item.region = Region.of(f, in: bounds); item.frame = f }
+                    if (name.contains("(") || name.lowercased().contains("shortcut")), let s = ShortcutLabel.parse(name) {
+                        shortcuts[s.name.lowercased()] = s.keys
+                    }
                     out.append(item)
                 }
                 // A button's children are its own label; rows and cells hold more controls.
@@ -168,7 +178,10 @@ enum UIAdapter {
         return out
     }
 
-    static func click(name: String) async -> ExecOutcome {
+    /// Click a control by name. `near` picks among same-named ones ("text_box", "sidebar",
+    /// "top", "main"); `anchor` is the text box's frame, and without `near` the one closest
+    /// to it wins (X has a "Post" in the sidebar and one under the box, 9 Nov).
+    static func click(name: String, near: String? = nil, anchor: CGRect? = nil) async -> ExecOutcome {
         guard let app = NSWorkspace.shared.frontmostApplication else { return .fail("No app in front") }
         await exposeTree(app)
         // In a browser, look inside the page first: "new" on 4 Nov clicked Chrome's own New Tab.
@@ -181,27 +194,118 @@ enum UIAdapter {
             all = elements(pid, limit: 600, budget: 1.5, inWebArea: browser)
             if browser && NameMatch.best(name, in: all.map(\.name)) == nil { all = elements(pid, limit: 600, budget: 1.5) }
         }
+        if NameMatch.best(name, in: all.map(\.name)) == nil {
+            // Long pages (YouTube's video grid, 9 Nov): a slower, deeper look. Accuracy first.
+            all = elements(pid, limit: 1500, maxVisited: 12000, budget: 3.0, inWebArea: browser)
+        }
         // Visible first, so a nav link on screen beats one hidden in a collapsed menu; tree
         // order (top to bottom) is kept within each group.
         let items = all.filter(\.visible) + all.filter { !$0.visible }
         let appName = app.localizedName ?? "this app"
-        guard let i = NameMatch.best(name, in: items.map(\.name)) else {
+        guard let best = NameMatch.best(name, in: items.map(\.name)) else {
             // Lists that aren't exposed as buttons (Figma's pages, 4 Nov): click the visible text.
-            let texts = visibleTexts(pid, inWebArea: browser)
+            let texts = visibleTexts(pid, inWebArea: browser, budget: 2.0)
             if let t = NameMatch.best(name, in: texts.map(\.name)), let f = AX.frame(texts[t].element) {
                 KeyPresser.click(at: CGPoint(x: f.midX, y: f.midY))
                 return .ok("Clicked “\(texts[t].name)”", undo: nil)
             }
+            if let pressed = pressShortcut(for: name) { return pressed }
             return .fail("No “\(name)” on screen in \(appName)")
         }
-        let item = items[i]
-        if AX.perform(item.element, kAXPressAction) { return .ok("Clicked “\(item.name)”", undo: nil) }
-        // Some web elements have no press action: click their centre instead.
+        let item = pick(among: items, best: best, near: near, anchor: anchor)
+        return press(item) ? .ok("Clicked “\(item.name)”", undo: nil) : .fail("Couldn't click “\(item.name)”")
+    }
+
+    /// Press an element, or click its centre when it has no press action (some web elements).
+    static func press(_ item: Item) -> Bool {
+        if AX.perform(item.element, kAXPressAction) { return true }
         if item.visible, let f = AX.frame(item.element) {
             KeyPresser.click(at: CGPoint(x: f.midX, y: f.midY))
-            return .ok("Clicked “\(item.name)”", undo: nil)
+            return true
         }
-        return .fail("Couldn't click “\(item.name)”")
+        return false
+    }
+
+    /// The control to click when several share the best match's name: the one in the named
+    /// area, else the one nearest the text box, else one outside the sidebar.
+    static func pick(among items: [Item], best: Int, near: String?, anchor: CGRect?) -> Item {
+        let key = TextMatching.normalized(items[best].name)
+        let same = items.filter { $0.visible && TextMatching.normalized($0.name) == key }
+        guard same.count > 1 else { return items[best] }
+        func distance(_ i: Item) -> CGFloat {
+            guard let a = anchor, let f = i.frame else { return .greatestFiniteMagnitude }
+            return hypot(f.midX - a.midX, f.midY - a.midY)
+        }
+        switch near {
+        case "sidebar": if let i = same.first(where: { $0.region == .sidebar }) { return i }
+        case "top": if let i = same.first(where: { $0.region == .toolbar }) { return i }
+        case "main": if let i = same.first(where: { $0.region == .main }) { return i }
+        case "text_box":
+            if anchor != nil { return same.min { distance($0) < distance($1) }! }
+            if let i = same.first(where: { $0.region == .bottom }) { return i }
+        default: break
+        }
+        if anchor != nil { return same.min { distance($0) < distance($1) }! }
+        return same.first { $0.region != .sidebar } ?? items[best]
+    }
+
+    /// The control is gone but its shortcut is known ("Previous (SHIFT+p)"): press that.
+    /// Never while typing in a field, where the key would be typed as a letter.
+    static func pressShortcut(for name: String) -> ExecOutcome? {
+        var found = ShortcutLabel.parse(name)
+        if found == nil {
+            let names = Array(shortcuts.keys)
+            if let i = NameMatch.best(name, in: names) { found = (names[i], shortcuts[names[i]]!) }
+        }
+        guard let (label, keys) = found else { return nil }
+        if let f = AX.focusedElement(), AX.isEditable(f) { return nil }
+        guard KeyPresser.press(keys) else { return nil }
+        return .ok("Pressed \(keys) for “\(label)”", undo: nil)
+    }
+
+    /// Words a box's own send button is called by.
+    static let sendWords: Set<String> = ["send", "post", "reply", "tweet", "submit", "comment", "share", "publish"]
+
+    /// The send button that belongs to the text box at `box`: named with a send word, the one
+    /// nearest the box.
+    static func sendButton(pid: pid_t, near box: CGRect) -> Item? {
+        let browser = browserBundleIDs.contains(NSRunningApplication(processIdentifier: pid)?.bundleIdentifier ?? "")
+        let buttons = elements(pid, limit: 800, budget: 1.5, inWebArea: browser).filter { item in
+            guard item.visible, item.frame != nil, item.role == kAXButtonRole || item.role == "AXLink" else { return false }
+            let words = TextMatching.words(item.name).map(\.norm)
+            return words.count <= 3 && words.contains { sendWords.contains($0) }
+        }
+        return buttons.min { a, b in
+            hypot(a.frame!.midX - box.midX, a.frame!.midY - box.midY) < hypot(b.frame!.midX - box.midX, b.frame!.midY - box.midY)
+        }
+    }
+
+    /// The site's own search box in the front browser page: a search field, or a text field
+    /// or combo box named Search. The one highest on the page.
+    static func searchField(_ pid: pid_t, budget: TimeInterval = 1.5) -> AXUIElement? {
+        let axApp = AX.app(pid)
+        guard let window = AX.element(axApp, kAXFocusedWindowAttribute) ?? AX.element(axApp, kAXMainWindowAttribute) else { return nil }
+        let attrs = [kAXRoleAttribute, kAXSubroleAttribute, kAXTitleAttribute, kAXDescriptionAttribute,
+                     kAXPlaceholderValueAttribute, kAXChildrenAttribute]
+        let deadline = Date().addingTimeInterval(budget)
+        var found: [(el: AXUIElement, y: CGFloat)] = []
+        var queue: [(el: AXUIElement, web: Bool)] = [(window, false)]
+        var head = 0
+        while head < queue.count, head < 8000, Date() < deadline {
+            let (el, web) = queue[head]
+            head += 1
+            let v = AX.values(el, attrs)
+            let role = v[0] as? String ?? ""
+            let inWeb = web || role == "AXWebArea"
+            if inWeb, [kAXTextFieldRole, kAXComboBoxRole, "AXSearchField"].contains(role) {
+                let text = [v[2], v[3], v[4]].compactMap { ($0 as? String)?.lowercased() }.joined(separator: " ")
+                if (v[1] as? String) == "AXSearchField" || text.contains("search"), let f = AX.frame(el), f.width > 40 {
+                    found.append((el, f.minY))
+                }
+            }
+            if let children = v[5] as? [AXUIElement] { queue.append(contentsOf: children.map { ($0, inWeb) }) }
+        }
+        return found.min { $0.y < $1.y }?.el
     }
 
     /// Visible text labels in the front window (or its page), for clicking things that are only

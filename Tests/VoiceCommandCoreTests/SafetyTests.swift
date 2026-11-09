@@ -148,13 +148,13 @@ let snap: DesktopSnapshot = {
     @Test func typeTextUsesTranscriptWords() {
         let d = ActionPolicy.evaluate(.typeText(target: .focused, app: nil, sessionID: nil, payload: "Hello team, the deploy is done!"),
                                       context: ctx("type hello team, the deploy is done"))
-        guard case .run(.typeText(_, _, _, let p), _, _) = d else { Issue.record("expected run, got \(d)"); return }
+        guard case .run(.typeText(_, _, _, let p, _), _, _) = d else { Issue.record("expected run, got \(d)"); return }
         #expect(p == "hello team, the deploy is done")
     }
 
     @Test func terminalTypeDefaultsToClaudeSession() {
         let d = ActionPolicy.evaluate(.typeText(target: .terminal, app: nil, sessionID: nil, payload: "fix the tests"), context: ctx("ask claude to fix the tests"))
-        guard case .run(.typeText(_, _, let sid, _), _, _) = d else { Issue.record("expected run, got \(d)"); return }
+        guard case .run(.typeText(_, _, let sid, _, _), _, _) = d else { Issue.record("expected run, got \(d)"); return }
         #expect(sid == "terminal:ttys001")
     }
 

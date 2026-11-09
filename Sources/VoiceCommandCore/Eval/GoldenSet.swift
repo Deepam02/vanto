@@ -19,6 +19,8 @@ public struct GoldenCase: Codable {
     public var draft: RouterInputDraft?
     public var pending: String?
     public var lastQuestion: String?
+    /// A look_again follow-up turn: what the request already did.
+    public var alreadyDone: [String]?
     public var expect: Expectation
 
     public struct RouterInputDraft: Codable {
@@ -30,6 +32,8 @@ public struct GoldenCase: Codable {
     public struct Expectation: Codable {
         /// Exact ordered sequence of tool calls.
         public var sequence: [CallMatcher]?
+        /// Several right answers: the calls must match one of these sequences exactly.
+        public var anyOf: [[CallMatcher]]?
         /// Alternative: every call must match this, at least `minCount` times.
         public var each: CallMatcher?
         public var minCount: Int?
@@ -64,7 +68,8 @@ public struct GoldenCase: Codable {
             draft: draft.map { RouterInput.Draft(app: $0.app, target: $0.target, typedText: $0.typedText) },
             pending: pending,
             transcript: transcript,
-            lastQuestion: lastQuestion)
+            lastQuestion: lastQuestion,
+            alreadyDone: alreadyDone)
     }
 }
 
@@ -160,6 +165,13 @@ public enum Grader {
                 for (m, call) in zip(seq, calls) { reasons += match(m, call) }
             }
         }
+        if let options = e.anyOf {
+            let errs = options.map { seq -> [String] in
+                guard seq.count == calls.count else { return ["expected \(seq.map(\.tool)), got \(calls.map(\.name))"] }
+                return zip(seq, calls).flatMap { match($0, $1) }
+            }
+            if !errs.contains(where: \.isEmpty) { reasons.append("matched none of \(options.count) answers: " + errs.map { $0.joined(separator: ", ") }.joined(separator: " | ")) }
+        }
         if let each = e.each {
             if calls.count < (e.minCount ?? 1) { reasons.append("expected at least \(e.minCount ?? 1) × \(each.tool), got \(calls.count)") }
             for call in calls { reasons += match(each, call) }
@@ -181,7 +193,7 @@ public enum Grader {
                     reasons.append("policy: no \(tool) call to check"); continue
                 }
                 let got: String
-                switch decisions[idx] { case .run: got = "run"; case .hold: got = "hold"; case .reject(let m): got = "reject (\(m))" }
+                switch decisions[idx] { case .run: got = "run"; case .hold: got = "hold"; case .reject(let m): got = "reject (\(m))"; case .skip(let m): got = "skip (\(m))" }
                 if !got.hasPrefix(want) { reasons.append("policy for \(tool): expected \(want), got \(got)") }
             }
         }

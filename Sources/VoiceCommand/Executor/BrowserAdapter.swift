@@ -142,7 +142,7 @@ enum BrowserAdapter {
         let r = await AppleScriptRunner.shared.runString(src, timeout: 3)
         if case .success("missing") = r { return .fail("That tab is already closed") }
         guard case .success = r else { return .fail(errorText(r, fallback: "Couldn't close that tab")) }
-        return .ok("Closed \(DesktopSnapshot.clipTitle(tab.title))", undo: .reopenURL(tab.url))
+        return .ok("Closed \(DesktopSnapshot.clipTitle(tab.title))", undo: .reopenClosedTab(url: tab.url))
     }
 
     static func navigate(_ action: NavigateAction) async -> ExecOutcome {
@@ -167,6 +167,45 @@ enum BrowserAdapter {
         let outcome = await openURL(comps.url!.absoluteString, newTab: true)
         if case .ok(_, let undo) = outcome { return .ok("Searching: \(query)", undo: undo) }
         return outcome
+    }
+
+    /// Search inside the site in the active tab with its own search box: on YouTube, "open
+    /// the Senorita video" went to Google twice (9 Nov). Falls back to a web search.
+    static func searchHere(_ query: String) async -> ExecOutcome {
+        guard let app = NSRunningApplication.runningApplications(withBundleIdentifier: BrowserTabs.chromeBundleID).first else {
+            return await search(query)
+        }
+        await activateChrome()
+        await UIAdapter.exposeTree(app)
+        let pid = app.processIdentifier
+        guard let box = UIAdapter.searchField(pid), (try? await TextInputResolver.focus(box, pid: pid)) == true else {
+            return await search(query)
+        }
+        _ = KeyPresser.press("cmd+a")
+        await PasteService.paste(query)
+        try? await Task.sleep(nanoseconds: 150_000_000)
+        guard KeyPresser.press("return") else { return .fail("Couldn't start the search") }
+        let site = await activeHost() ?? "this site"
+        return .ok("Searching \(site) for “\(query)”", undo: nil)
+    }
+
+    /// The host of the active tab of Chrome's front window ("youtube.com").
+    static func activeHost() async -> String? {
+        let src = """
+        \(chrome)
+            if (count of windows) is 0 then return ""
+            return URL of active tab of front window
+        end tell
+        """
+        guard case .success(let s) = await AppleScriptRunner.shared.runString(src, timeout: 1) else { return nil }
+        return URL(string: s)?.host?.replacingOccurrences(of: "www.", with: "")
+    }
+
+    /// Chrome's "reopen closed tab" (⌘⇧T): the page comes back with its history.
+    static func reopenClosedTab() async -> Bool {
+        await activateChrome()
+        guard NSWorkspace.shared.frontmostApplication?.bundleIdentifier == BrowserTabs.chromeBundleID else { return false }
+        return KeyPresser.press("cmd+shift+t")
     }
 
     static func errorText<T>(_ r: Result<T, AppleScriptRunner.ScriptError>, fallback: String) -> String {

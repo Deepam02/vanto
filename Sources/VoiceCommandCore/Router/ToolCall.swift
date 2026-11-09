@@ -25,11 +25,13 @@ public enum ToolCall: Equatable, Sendable {
     case browserNewTab
     case browserCloseTab(tabID: String)
     case browserNavigate(NavigateAction)
-    case browserSearch(query: String)
+    /// `here`: use the search box of the site in the active tab instead of Google.
+    case browserSearch(query: String, here: Bool = false)
     case terminalFocus(sessionID: String)
     case terminalNew(cwd: String?)
     case terminalRun(sessionID: String, command: String, source: CommandSource, risk: CommandRisk)
-    case typeText(target: TypeTarget, app: String?, sessionID: String?, payload: String)
+    /// `composed`: text the router wrote because the person asked it to write something.
+    case typeText(target: TypeTarget, app: String?, sessionID: String?, payload: String, source: CommandSource = .verbatim)
     case newline
     case clearTyped
     case submit(app: String?, sendPhrase: String)
@@ -37,9 +39,12 @@ public enum ToolCall: Equatable, Sendable {
     case scroll(direction: ScrollDirection, amount: ScrollAmount)
     // Generic control of the front app (docs/generic-control.md): no per-app code.
     case menuCommand(item: String, menu: String?)
-    case clickElement(name: String)
+    /// `near`: which of several same-named controls ("text box", "sidebar", "top", "main").
+    case clickElement(name: String, near: String? = nil)
     case focusTextBox(app: String?)
     case describeScreen
+    /// The rest of the request needs the screen after this reply's actions: look again and finish it.
+    case lookAgain
     // Drafts and dictation.
     case rewriteDraft(text: String)
     case startDictation(target: TypeTarget, app: String?, sessionID: String?, text: String?)
@@ -75,6 +80,7 @@ public enum ToolCall: Equatable, Sendable {
         case .clickElement: return "click_element"
         case .focusTextBox: return "focus_text_box"
         case .describeScreen: return "describe_screen"
+        case .lookAgain: return "look_again"
         case .rewriteDraft: return "rewrite_draft"
         case .startDictation: return "start_dictation"
         case .systemVolume: return "system_volume"
@@ -91,17 +97,17 @@ public enum ToolCall: Equatable, Sendable {
         case .browserOpenURL(let u, let n): return "browser_open_url(\(u), new_tab: \(n))"
         case .browserCloseTab(let t): return "browser_close_tab(\(t))"
         case .browserNavigate(let a): return "browser_navigate(\(a.rawValue))"
-        case .browserSearch(let q): return "browser_search(\(q))"
+        case .browserSearch(let q, let here): return "browser_search(\(q)\(here ? ", here" : ""))"
         case .terminalFocus(let s): return "terminal_focus(\(s))"
         case .terminalNew(let c): return "terminal_new(\(c ?? ""))"
         case .terminalRun(let s, let c, let src, let r): return "terminal_run(\(s), \"\(c)\", \(src.rawValue), \(r.rawValue))"
-        case .typeText(let t, let a, let s, let p):
-            return "type_text(\(t.rawValue)\(a.map { ", app: \($0)" } ?? "")\(s.map { ", session: \($0)" } ?? ""), \"\(p)\")"
+        case .typeText(let t, let a, let s, let p, let src):
+            return "type_text(\(t.rawValue)\(a.map { ", app: \($0)" } ?? "")\(s.map { ", session: \($0)" } ?? ""), \"\(p)\"\(src == .composed ? ", composed" : ""))"
         case .submit(let a, let p): return "submit(\(a ?? "")\(a == nil ? "" : ", ")\"\(p)\")"
         case .pressKeys(let k): return "press_keys(\(k))"
         case .scroll(let d, let a): return "scroll(\(d.rawValue), \(a.rawValue))"
         case .menuCommand(let i, let m): return "menu_command(\(m.map { "\($0) › " } ?? "")\(i))"
-        case .clickElement(let n): return "click_element(\(n))"
+        case .clickElement(let n, let near): return "click_element(\(n)\(near.map { ", near \($0)" } ?? ""))"
         case .focusTextBox(let a): return "focus_text_box(\(a ?? "front app"))"
         case .rewriteDraft(let t): return "rewrite_draft(\"\(t)\")"
         case .systemVolume(let a, let l): return "system_volume(\(a.rawValue)\(l.map { ", \($0)" } ?? ""))"
@@ -174,7 +180,7 @@ public enum ToolCall: Equatable, Sendable {
         case "browser_new_tab": return .browserNewTab
         case "browser_close_tab": return .browserCloseTab(tabID: try str("tab_id"))
         case "browser_navigate": return .browserNavigate(try enumValue("action", NavigateAction.self))
-        case "browser_search": return .browserSearch(query: try str("query"))
+        case "browser_search": return .browserSearch(query: try str("query"), here: (input["here"] as? Bool) ?? false)
         case "terminal_focus": return .terminalFocus(sessionID: try str("session_id"))
         case "terminal_new": return .terminalNew(cwd: optStr("cwd"))
         case "terminal_run":
@@ -188,7 +194,8 @@ public enum ToolCall: Equatable, Sendable {
                 target: try enumValue("target", TypeTarget.self),
                 app: optStr("app"),
                 sessionID: optStr("session_id"),
-                payload: try str("payload"))
+                payload: try str("payload"),
+                source: try enumValue("source", CommandSource.self, default: .verbatim))
         case "newline": return .newline
         case "clear_typed": return .clearTyped
         case "submit": return .submit(app: optStr("app"), sendPhrase: try str("send_phrase"))
@@ -198,9 +205,10 @@ public enum ToolCall: Equatable, Sendable {
                 direction: try enumValue("direction", ScrollDirection.self),
                 amount: try enumValue("amount", ScrollAmount.self, default: .small))
         case "menu_command": return .menuCommand(item: try str("item"), menu: optStr("menu"))
-        case "click_element": return .clickElement(name: try str("name"))
+        case "click_element": return .clickElement(name: try str("name"), near: optStr("near"))
         case "focus_text_box": return .focusTextBox(app: optStr("app"))
         case "describe_screen": return .describeScreen
+        case "look_again": return .lookAgain
         case "rewrite_draft": return .rewriteDraft(text: try str("text"))
         case "start_dictation":
             return .startDictation(

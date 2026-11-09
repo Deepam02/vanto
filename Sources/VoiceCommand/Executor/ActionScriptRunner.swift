@@ -84,7 +84,7 @@ final class ActionScriptRunner {
             var result: String
             var ok: Bool
             switch decision {
-            case .reject(let m):
+            case .reject(let m), .skip(let m):
                 result = "rejected: \(m)"; ok = want == "reject"
             case .hold(_, let prompt):
                 result = "held: \(prompt)"; ok = want == "hold"
@@ -105,7 +105,7 @@ final class ActionScriptRunner {
 
     private func defaultTranscript(_ call: ToolCall) -> String {
         switch call {
-        case .typeText(_, _, _, let p): return "type \(p)"
+        case .typeText(_, _, _, let p, _): return "type \(p)"
         case .terminalRun(_, let c, _, _): return "run \(c)"
         case .submit(_, let p): return p
         case .pressKeys(let k): return "press \(k)"

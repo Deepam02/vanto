@@ -1,6 +1,7 @@
 import AVFoundation
 import CoreML
 import FluidAudio
+import VoiceCommandCore
 
 /// Speech pipeline (Final review point 2):
 /// - Silero VAD on every 256 ms chunk decides when speech starts and ends.
@@ -12,7 +13,8 @@ final class SpeechEngine: @unchecked Sendable {
     enum Event {
         case speechStarted(at: Date)
         case partial(String)
-        case segment(text: String, live: String, startedAt: Date, endedAt: Date, transcribeMs: Int)
+        /// `raw` is the transcript before vocabulary boosting, when boosting changed it.
+        case segment(text: String, live: String, raw: String?, startedAt: Date, endedAt: Date, transcribeMs: Int)
         case failure(String)
     }
 
@@ -32,14 +34,6 @@ final class SpeechEngine: @unchecked Sendable {
     private(set) var modelsLoaded = false
 
     static let sampleRate = 16_000
-    static let baseVocabulary = [
-        // Not "Claude Code": boosting it turned a plain "Claude" into "Claude Code" (4 Nov).
-        "Cursor", "Claude", "Ghostty", "iTerm", "npm", "GitHub", "ChatGPT", "Codex",
-        "Slack", "pnpm", "localhost", "Vercel", "Linear", "Chrome", "PR", "README",
-        // Sites people say by name. "Xcode" is left out: boosting it turned "X.com" into
-        // "Xcode" (3 Nov log); running apps are added per session anyway.
-        "x.com", "Twitter", "LinkedIn", "Netflix", "YouTube", "Gmail", "Notion", "Figma",
-    ]
 
     // MARK: Models
 
@@ -66,25 +60,16 @@ final class SpeechEngine: @unchecked Sendable {
         }
     }
 
-    /// Shell commands and sites with the ways they get misheard (3–4 Nov log): the alias
-    /// is what the audio sounds like, the term is what gets written.
-    static let spokenAliases: [(String, [String])] = [
-        // No spelled-out letters ("p w d"): they matched letters inside names ("B Pwd O" for Blooio).
-        ("ls", ["el es", "ellis"]), ("pwd", ["twd", "pee double you dee"]), ("cd", ["see dee"]),
-        ("git status", ["get status"]), ("npm", ["en pee em"]), ("mkdir", ["make dir", "em kay dir"]),
-        ("x.com", ["x dot com", "ex dot com"]),
-    ]
-
     /// Rebuild the vocabulary for this session: built-in words and aliases, the person's own
     /// dictionary, and names from the screen (apps, tab and window titles, folders).
     func setVocabulary(extra: [String], personal: [(String, [String])] = []) async {
         guard let ctc = ctcModels else { return }
         var seen = Set<String>()
         var terms: [CustomVocabularyTerm] = []
-        for (text, aliases) in personal + Self.spokenAliases where seen.insert(text.lowercased()).inserted {
+        for (text, aliases) in personal + ScreenVocabulary.spokenAliases where seen.insert(text.lowercased()).inserted {
             terms.append(CustomVocabularyTerm(text: text, aliases: aliases.isEmpty ? nil : aliases))
         }
-        for word in Self.baseVocabulary + extra {
+        for word in ScreenVocabulary.base + extra {
             let w = word.trimmingCharacters(in: .whitespaces)
             if w.count >= 2, seen.insert(w.lowercased()).inserted { terms.append(CustomVocabularyTerm(text: w)) }
         }
@@ -235,9 +220,9 @@ final class SpeechEngine: @unchecked Sendable {
                 st.segment.removeAll()
                 await eou?.reset()
                 let t0 = Date()
-                let text = await transcribe(audio) ?? live
+                let heard = await transcribe(audio)
                 let ms = Int(Date().timeIntervalSince(t0) * 1000)
-                emit(.segment(text: text, live: live, startedAt: st.segmentStart, endedAt: eventTime, transcribeMs: ms))
+                emit(.segment(text: heard?.text ?? live, live: live, raw: heard?.raw, startedAt: st.segmentStart, endedAt: eventTime, transcribeMs: ms))
             }
         }
     }
@@ -253,7 +238,8 @@ final class SpeechEngine: @unchecked Sendable {
     }
 
     /// Batch Parakeet TDT v2 with vocabulary rescoring. Short clips are padded to 1 s.
-    private func transcribe(_ audio: [Float]) async -> String? {
+    /// `raw` is the text before rescoring, only when rescoring changed it (for the log).
+    private func transcribe(_ audio: [Float]) async -> (text: String, raw: String?)? {
         guard let asr, !audio.isEmpty else { return nil }
         var samples = audio
         if samples.count < Self.sampleRate { samples.append(contentsOf: [Float](repeating: 0, count: Self.sampleRate - samples.count)) }
@@ -261,13 +247,16 @@ final class SpeechEngine: @unchecked Sendable {
             var decoderState = try TdtDecoderState(decoderLayers: await asr.decoderLayerCount)
             let result = try await asr.transcribe(samples, decoderState: &decoderState)
             var text = result.text
+            var raw: String?
             if let vocab, let timings = result.tokenTimings,
                vocab.hasCTCRescoringCandidates(text: text, tokenTimings: timings),
                let rescored = await vocab.rescore(text: text, tokenTimings: timings, audioSamples: samples),
                rescored.wasModified {
+                raw = text.trimmingCharacters(in: .whitespacesAndNewlines)
                 text = rescored.text
             }
-            return text.trimmingCharacters(in: .whitespacesAndNewlines)
+            let final = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            return (final, raw == final ? nil : raw)
         } catch {
             emit(.failure("Transcription failed: \(error.localizedDescription)"))
             return nil

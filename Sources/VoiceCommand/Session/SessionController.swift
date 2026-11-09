@@ -233,7 +233,7 @@ final class SessionController {
 
     /// Words to listen for this session: the person's dictionary, then names on screen.
     private func loadVocabulary(_ snap: DesktopSnapshot) async {
-        await speech.setVocabulary(extra: snap.apps.map(\.name) + ScreenVocabulary.terms(from: snap),
+        await speech.setVocabulary(extra: ScreenVocabulary.appTerms(snap.apps.map(\.name)) + ScreenVocabulary.terms(from: snap),
                                    personal: ScreenVocabulary.parseDictionary(settings.personalDictionary))
     }
 
@@ -392,7 +392,7 @@ final class SessionController {
             partial = text
             refreshLiveText()
 
-        case .segment(let text, let live, _, let endedAt, let transcribeMs):
+        case .segment(let text, let live, let raw, _, let endedAt, let transcribeMs):
             lastActivity = Date()
             partial = ""
             lastSpeechEnd = endedAt
@@ -420,7 +420,7 @@ final class SessionController {
                 }
                 return
             }
-            let id = buffer.append(text.isEmpty ? live : text, endedAt: endedAt)
+            let id = buffer.append(text.isEmpty ? live : text, endedAt: endedAt, raw: text.isEmpty ? nil : raw)
             _ = id
             buffer.dropStale()
             refreshLiveText()
@@ -439,7 +439,7 @@ final class SessionController {
             lastActivity = Date()
         case .partial(let text):
             partial = text
-        case .segment(let text, let live, _, _, _):
+        case .segment(let text, let live, _, _, _, _):
             lastActivity = Date()
             partial = ""
             let words = text.isEmpty ? live : text
@@ -477,6 +477,10 @@ final class SessionController {
     /// Past this many words it's probably dictation, not a command: give pauses longer.
     private static let longUtteranceWords = 20
     private static let longUtteranceExtraMs = 900
+    /// Extra router turns after look_again, per request.
+    private static let maxFollowUps = 2
+    /// History note for actions that ran before newer speech cancelled the request.
+    static let doneWhileTalking = "done while you were still talking"
 
     private func scheduleRoute(after speechEnd: Date) {
         scheduledRoute?.cancel()
@@ -496,6 +500,20 @@ final class SessionController {
         guard !transcript.isEmpty else { return }
         let words = TextMatching.words(transcript).map(\.norm)
 
+        // "End the session" is local too, so leftover words before it can't stall it.
+        if SessionPhrases.endsSession(transcript) {
+            var record = CommandRecord(sessionID: sessionID, generation: gen, transcript: transcript)
+            record.rawTranscript = buffer.latestRaw
+            record.speechEndAt = lastSpeechEnd?.timeIntervalSince1970
+            record.tools = ["end_session"]
+            record.decisions = ["end_session (local)"]
+            record.outcome = "ok"
+            record.actionDoneAt = Date().timeIntervalSince1970
+            buffer.consumeAll()
+            log.append(record)
+            end(reason: "spoken")
+            return
+        }
         // Spoken mute is local: no round trip needed.
         if TextMatching.contains(transcript, anyOf: Self.mutePhrases) && words.count <= 5 {
             buffer.consumeAll()
@@ -511,17 +529,19 @@ final class SessionController {
         if Self.holdPhrases.contains(where: { TextMatching.normalized(transcript).hasSuffix($0) }) { holdActive = true }
 
         let segmentIDs = buffer.latestSegmentIDs
+        let raw = buffer.latestRaw
         routeTask?.cancel()
         routeTask = Task { [weak self] in
-            await self?.route(transcript: transcript, segmentIDs: segmentIDs, generation: gen)
+            await self?.route(transcript: transcript, raw: raw, segmentIDs: segmentIDs, generation: gen)
         }
     }
 
-    private func route(transcript: String, segmentIDs: [Int], generation gen: Int) async {
+    private func route(transcript: String, raw: String? = nil, segmentIDs: [Int], generation gen: Int) async {
         let previousState = state
         state = .routing
         hud.model.mode = .thinking
         var record = CommandRecord(sessionID: sessionID, generation: gen, transcript: transcript)
+        record.rawTranscript = raw
         record.liveTranscript = hud.model.liveText
         record.speechEndAt = lastSpeechEnd?.timeIntervalSince1970
         record.transcriptFinalAt = Date().timeIntervalSince1970
@@ -532,7 +552,7 @@ final class SessionController {
         let snap = await snapshots.current(since: lastSpeechStart)
         guard generation == gen, !Task.isCancelled else { restore(previousState); return }
 
-        let input = RouterInput(history: history.render(), snapshot: snap, draft: executor.draftForRouter,
+        var input = RouterInput(history: history.render(), snapshot: snap, draft: executor.draftForRouter,
                                 pending: pending.map { "\($0.call.summary) — waiting for a spoken yes" }, transcript: transcript,
                                 lastQuestion: history.lastQuestion)
         var policy = ActionPolicy.ReplyEvaluator(context: PolicyContext(
@@ -542,6 +562,7 @@ final class SessionController {
         var outcomeLines: [String] = []
         var acted = false, waited = false, ignored = false, ended = false, anyFailed = false, anyHeld = false
         var stopExecuting = false
+        var lookAgain = false
 
         // What the stream did, for the log when no tool call comes back.
         var events = 0, lastStop: String?, replyText = ""
@@ -585,6 +606,8 @@ final class SessionController {
                         case .held(let msg): anyHeld = true; outcomeLines.append(msg); stopExecuting = true
                         case .ended: ended = true; stopExecuting = true
                         case .rejected(let msg): anyFailed = true; outcomeLines.append(msg)
+                        case .lookAgain: lookAgain = true
+                        case .skipped: break
                         case .stale: throw CancellationError()
                         }
                     }
@@ -640,6 +663,12 @@ final class SessionController {
                 keepWords(after: RouterError.timeout.hudMessage)
             } else {
                 record.outcome = "cancelled"
+                // Newer speech came in after something already ran. The words are routed again
+                // with it, so record what's done: the Netflix tab was switched to twice (9 Nov).
+                if acted {
+                    history.add(.init(transcript: transcript, actions: record.decisions, outcome: Self.doneWhileTalking))
+                    lastActedRecordID = record.id
+                }
             }
             finish(record, previousState: previousState, gen: gen)
             return
@@ -659,6 +688,37 @@ final class SessionController {
 
         func diagnostics() -> String {
             " (events: \(events), stop: \(lastStop ?? "none")\(replyText.isEmpty ? "" : ", text: \"\(replyText)\""))"
+        }
+
+        // A second look (9 Nov: "go back to YouTube and open this video" only switched the
+        // tab). The router asked to see the screen its actions made: read it and finish.
+        var followUps = 0
+        while lookAgain, !stopExecuting, followUps < Self.maxFollowUps, generation == gen, !Task.isCancelled {
+            lookAgain = false
+            followUps += 1
+            record.followUps = followUps
+            state = .routing
+            hud.model.mode = .thinking
+            try? await Task.sleep(nanoseconds: 800_000_000)          // let the page or app settle
+            guard generation == gen, !Task.isCancelled else { break }
+            var fresh = await snapshots.refresh()
+            if fresh.frontControls == nil {
+                try? await Task.sleep(nanoseconds: 700_000_000)
+                fresh = await snapshots.refresh()
+            }
+            guard generation == gen, !Task.isCancelled else { break }
+            input = RouterInput(history: history.render(), snapshot: fresh, draft: executor.draftForRouter,
+                                pending: pending.map { "\($0.call.summary) — waiting for a spoken yes" }, transcript: transcript,
+                                alreadyDone: record.decisions)
+            policy = ActionPolicy.ReplyEvaluator(context: PolicyContext(
+                transcript: transcript, snapshot: fresh, draftOpen: executor.draft != nil,
+                draftText: executor.draft?.typedText ?? "", hasPending: pending != nil, pendingSummary: pending?.call.summary))
+            do {
+                _ = try await runReply(followUps)
+            } catch {
+                record.mismatchNotes.append("follow-up \(followUps) stopped: \(error)")
+                break
+            }
         }
 
         // Segmentation (Final review 3): actions or ignore move the cursor; wait_for_more doesn't.
@@ -712,7 +772,7 @@ final class SessionController {
     }
 
     private enum CallResult {
-        case waited, ignored, ended, stale
+        case waited, ignored, ended, stale, lookAgain, skipped
         case acted(ok: Bool, String)
         case held(String)
         case rejected(String)
@@ -733,6 +793,9 @@ final class SessionController {
         case .endSession:
             record.decisions.append("end_session")
             return .ended
+        case .lookAgain:
+            record.decisions.append("look_again")
+            return .lookAgain
         default:
             break
         }
@@ -742,6 +805,10 @@ final class SessionController {
         case .reject(let msg):
             record.decisions.append("\(call.summary) → rejected: \(msg)")
             return .rejected(msg)
+
+        case .skip(let why):
+            record.decisions.append("\(call.summary) → skipped: \(why)")
+            return .skipped
 
         case .hold(let held, var prompt):
             record.decisions.append("\(held.summary) → pending")

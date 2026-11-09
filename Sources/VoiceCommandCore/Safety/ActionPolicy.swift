@@ -15,6 +15,8 @@ public enum PolicyDecision: Equatable, Sendable {
     case hold(ToolCall, prompt: String)
     /// Refuse, with one HUD line.
     case reject(String)
+    /// Leave this call out quietly: it repeats an earlier call in the same reply.
+    case skip(String)
 
     public var isReject: Bool { if case .reject = self { return true }; return false }
 }
@@ -65,16 +67,26 @@ public enum ActionPolicy {
     public struct ReplyEvaluator: Sendable {
         public private(set) var context: PolicyContext
         private var payloadEndWord: Int?   // where this reply's typed payload ends in the transcript
+        private var composed = false       // this reply typed text the router wrote
+        private var removedTyped = false   // this reply already took typed text back out
 
         public init(context: PolicyContext) { self.context = context }
 
         public mutating func next(_ call: ToolCall) -> PolicyDecision {
+            // One removal per request: "go back" after typing ran clear_typed and then
+            // undo_last, which undid the action before as well (9 Nov).
+            if removedTyped, case .undoLast = call { return .skip("already removed what was typed") }
+            // Text the router wrote is read before it is sent: never sent in the same reply.
+            if composed, case .submit = call { return .reject("Read it first, then say “send”") }
             let d = ActionPolicy.evaluate(call, context: context, payloadEndWord: payloadEndWord)
-            if case .run(let c, _, _) = d, case .typeText(_, _, _, let payload) = c {
+            if case .run(let c, _, _) = d, case .typeText(_, _, _, let payload, let source) = c {
                 context.draftOpen = true
                 context.draftText += (context.draftText.isEmpty ? "" : " ") + payload
-                payloadEndWord = TextMatching.transcriptSpan(for: payload, in: context.transcript)?.wordEnd
+                if source == .composed { composed = true } else {
+                    payloadEndWord = TextMatching.transcriptSpan(for: payload, in: context.transcript)?.wordEnd
+                }
             }
+            if case .run(.clearTyped, _, _) = d { removedTyped = true }
             if case .run(.confirmPending, _, _) = d { context.hasPending = false }
             return d
         }
@@ -109,7 +121,18 @@ public enum ActionPolicy {
             }
             return .run(call, minPauseMs: 0, note: nil)
 
-        case .typeText(let target, let app, var sessionID, let payload):
+        case .typeText(let target, let app, var sessionID, let payload, let source):
+            if source == .composed {
+                // Written for them: only when they asked for writing, never into a terminal
+                // (the text would be a command or a prompt they didn't say), and never sent
+                // without a spoken send (submit is still gated).
+                guard target != .terminal else { return .reject("I only type your own words into a terminal") }
+                guard isComposeRequest(ctx.transcript) else { return .reject("Couldn't match the text to what you said — nothing typed") }
+                if target == .focused, let f = snap.focused, f.secure { return .reject("That's a password field — not typing") }
+                let text = payload.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !text.isEmpty, text.count <= 3000 else { return .reject("That's too long to type") }
+                return .run(.typeText(target: target, app: app, sessionID: nil, payload: text, source: .composed), minPauseMs: 0, note: "composed")
+            }
             if target == .terminal {
                 if let sid = sessionID, snap.terminal(sid) == nil { sessionID = snap.terminal(inWindow: sid)?.id }
                 if sessionID == nil { sessionID = defaultTerminal(snap)?.id }
@@ -186,7 +209,7 @@ public enum ActionPolicy {
             }
             return .run(call, minPauseMs: combo.isPlainReturn ? holdPauseMs : 0, note: nil)
 
-        case .clickElement(let name), .menuCommand(let name, _):
+        case .clickElement(let name, _), .menuCommand(let name, _):
             // Pressing "Delete", "Send", "Pay"… by name is irreversible: ask first.
             if let word = riskyClickWords.first(where: { TextMatching.contains(name, anyOf: [$0]) }) {
                 return .hold(call, prompt: "\(word.capitalized): press “\(name)”? Say \"yes\".")
@@ -213,6 +236,18 @@ public enum ActionPolicy {
         default:
             return .run(call, minPauseMs: 0, note: nil)
         }
+    }
+
+    /// Asking for writing ("write a post announcing…", "draft a reply", "make a post about"),
+    /// as opposed to dictating the words. Composed text is allowed only then.
+    public static let composeRequests = [
+        "write", "draft", "compose", "come up with", "make a post", "make a tweet", "create a post", "make the post",
+        "post about", "tweet about", "reply to", "respond to", "rewrite", "announce", "announcing", "something nice",
+        "something like", "in a nice way", "in a beautiful manner", "nicely",
+    ]
+
+    public static func isComposeRequest(_ transcript: String) -> Bool {
+        TextMatching.contains(transcript, anyOf: composeRequests)
     }
 
     /// Words that make a click or menu command irreversible enough to need a spoken yes.

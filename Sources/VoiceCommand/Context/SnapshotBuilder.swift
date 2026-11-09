@@ -16,6 +16,8 @@ final class SnapshotBuilder: ObservableObject {
     var hints: AppHints
     /// The terminal session opened by voice this session (commands go there by default).
     var preferredShellID: String?
+    /// Chrome tabs that were active, newest first, as seen at each refresh.
+    private var recentTabIDs: [String] = []
     private var timer: Timer?
     private var activationObserver: NSObjectProtocol?
     private var inflight: Task<DesktopSnapshot, Never>?
@@ -128,6 +130,13 @@ final class SnapshotBuilder: ObservableObject {
         var snap = DesktopSnapshot(takenAt: Date(), apps: apps, windows: windows, tabs: await tabs, terminals: terminals,
                                    focused: focused, secureInputOn: IsSecureEventInputEnabled())
         if let id = preferredShellID, terminals.contains(where: { $0.id == id }) { snap.preferredShellID = id }
+        if let active = snap.activeTab?.id, recentTabIDs.first != active {
+            recentTabIDs.removeAll { $0 == active }
+            recentTabIDs.insert(active, at: 0)
+            if recentTabIDs.count > 6 { recentTabIDs.removeLast() }
+        }
+        recentTabIDs.removeAll { id in !snap.tabs.contains { $0.id == id } && !snap.tabs.isEmpty }
+        snap.recentTabIDs = recentTabIDs
         if !denied.contains(front?.bundleIdentifier ?? "") {
             snap.terminalScreen = await TerminalSessions.frontScreen(terminals)
             if let front { snap.frontControls = await Self.controls(of: front) }

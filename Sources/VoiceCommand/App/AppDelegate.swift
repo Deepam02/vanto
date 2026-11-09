@@ -100,7 +100,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             switch e {
             case .speechStarted: out("  [speech start]")
             case .partial: break
-            case .segment(let text, let live, let start, let end, let ms):
+            case .segment(let text, let live, _, let start, let end, let ms):
                 out(String(format: "  segment %.2fs: \"%@\" (live: \"%@\", TDT %d ms)", end.timeIntervalSince(start), text, live, ms))
             case .failure(let m): out("  failure: \(m)")
             }

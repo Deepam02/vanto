@@ -152,3 +152,22 @@ the injection case answering with a question (a safe miss, DECISIONS 40).
 - A macOS keychain prompt (SecurityAgent) appeared once after a rebuild and was described
   as the front app; click "Always Allow" so the API key read doesn't ask again.
 
+
+## 9 Nov sessions (branch fix/nov9-sessions)
+
+Plan and evidence: docs/plans/2026-11-09-session-fixes.md (60 commands, rows 366–435).
+- **Vocabulary**: no more "Mkdir", "Vercel" or "Messages" for everyday words; `rawTranscript`
+  in the log (DECISIONS 53).
+- **End the session** locally (DECISIONS 54).
+- **Send is checked** and presses the box's own Post/Send button when Return doesn't send;
+  same-named buttons resolved by the text box or `near` (DECISIONS 57, 58).
+- **Writing on request** (`type_text` composed), instruction words left out of dictated
+  payloads, one removal per "go back" (DECISIONS 55).
+- **Tabs**: "previous tab" uses the tab they were on; "reopen the tab you closed" is ⌘⇧T
+  (undo of a closed tab too); search inside the site in front (`browser_search` here).
+- **Clicks**: names up to 160 characters (YouTube video links), a deeper 3 s look on a miss,
+  label shortcuts as a fallback.
+- **look_again**: a second look after switching tab or app, so "go to YouTube and open this
+  video" finishes (DECISIONS 56).
+- router-eval: 99 cases (19 new from 9 Nov), 100% over 3 runs (300/300); p50 time to first
+  tool call ~920 ms. Unit tests: 63 pass.

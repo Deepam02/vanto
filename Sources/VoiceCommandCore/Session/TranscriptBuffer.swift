@@ -9,6 +9,8 @@ public struct TranscriptBuffer: Sendable {
         public let id: Int
         public var text: String
         public let endedAt: Date
+        /// What speech recognition heard before vocabulary boosting, when boosting changed it.
+        public var raw: String?
     }
 
     public private(set) var segments: [Segment] = []
@@ -22,18 +24,25 @@ public struct TranscriptBuffer: Sendable {
     public init() {}
 
     @discardableResult
-    public mutating func append(_ text: String, endedAt: Date = Date()) -> Int {
+    public mutating func append(_ text: String, endedAt: Date = Date(), raw: String? = nil) -> Int {
         let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
         let id = nextID
         nextID += 1
         guard !clean.isEmpty else { return id }
-        segments.append(Segment(id: id, text: clean, endedAt: endedAt))
+        segments.append(Segment(id: id, text: clean, endedAt: endedAt, raw: raw))
         return id
     }
 
     /// The text after the cursor, segments joined by single spaces.
     public var latest: String {
         segments[cursor...].map(\.text).joined(separator: " ")
+    }
+
+    /// `latest` as heard before vocabulary boosting, or nil when boosting changed nothing.
+    public var latestRaw: String? {
+        let pending = segments[cursor...]
+        guard pending.contains(where: { $0.raw != nil }) else { return nil }
+        return pending.map { $0.raw ?? $0.text }.joined(separator: " ")
     }
 
     public var latestSegmentIDs: [Int] { segments[cursor...].map(\.id) }
