@@ -7,6 +7,8 @@ public struct CommandRecord: Codable, Sendable {
     public var sessionID: String
     public var generation: Int
     public var transcript: String
+    /// The transcript before vocabulary boosting, only when boosting changed it.
+    public var rawTranscript: String?
     public var liveTranscript: String?
     public var pauseMs: Int?
     // Timeline
@@ -25,6 +27,8 @@ public struct CommandRecord: Codable, Sendable {
     public var mismatchNotes: [String] = []
     public var usage: Usage?
     public var retried: Bool = false
+    /// Extra router turns after look_again.
+    public var followUps: Int?
     /// Speech end → segment delivered (voice detection plus transcription), for latency work.
     public var segmentLagMs: Int?
     public var transcribeMs: Int?

@@ -1651,6 +1651,638 @@
     "secure": false
    },
    "secureInputOn": false
+  },
+  "nov9_google_results": {
+   "takenAt": 0,
+   "apps": [
+    {
+     "name": "Finder",
+     "bundleID": "com.apple.finder",
+     "pid": 401,
+     "frontmost": false
+    },
+    {
+     "name": "Google Chrome",
+     "bundleID": "com.google.Chrome",
+     "pid": 510,
+     "frontmost": true
+    },
+    {
+     "name": "Claude",
+     "bundleID": "com.anthropic.claudefordesktop",
+     "pid": 700,
+     "frontmost": false
+    },
+    {
+     "name": "Messages",
+     "bundleID": "com.apple.MobileSMS",
+     "pid": 720,
+     "frontmost": false
+    },
+    {
+     "name": "Terminal",
+     "bundleID": "com.apple.Terminal",
+     "pid": 730,
+     "frontmost": false
+    },
+    {
+     "name": "Slack",
+     "bundleID": "com.tinyspeck.slackmacgap",
+     "pid": 740,
+     "frontmost": false
+    }
+   ],
+   "windows": [
+    {
+     "id": "w1",
+     "app": "Google Chrome",
+     "pid": 510,
+     "title": "Senorita Zindagi Na Milegi Dobara video - Google Search",
+     "index": 0,
+     "minimized": false,
+     "focused": true
+    },
+    {
+     "id": "w2",
+     "app": "Claude",
+     "pid": 700,
+     "title": "Claude",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    }
+   ],
+   "tabs": [
+    {
+     "id": "chrome:1:201",
+     "windowID": 1,
+     "tabID": 201,
+     "index": 1,
+     "title": "Netflix",
+     "url": "https://www.netflix.com/watch/81",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:202",
+     "windowID": 1,
+     "tabID": 202,
+     "index": 2,
+     "title": "(13) Tu Hain Toh | Mr. & Mrs. Mahi | Rajkummar Rao - YouTube",
+     "url": "https://www.youtube.com/watch?v=abc",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:203",
+     "windowID": 1,
+     "tabID": 203,
+     "index": 3,
+     "title": "Senorita Zindagi Na Milegi Dobara video - Google Search",
+     "url": "https://www.google.com/search?q=senorita",
+     "active": true,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:204",
+     "windowID": 1,
+     "tabID": 204,
+     "index": 4,
+     "title": "Home / X",
+     "url": "https://x.com/home",
+     "active": false,
+     "frontWindow": true
+    }
+   ],
+   "terminals": [
+    {
+     "id": "terminal:ttys003",
+     "app": "terminal",
+     "nativeID": "/dev/ttys003",
+     "title": "zsh",
+     "cwd": "/Users/deepam/code",
+     "selected": true
+    }
+   ],
+   "secureInputOn": false,
+   "frontControls": [
+    "All",
+    "Videos",
+    "Images",
+    "Senorita - Zindagi Na Milegi Dobara | Full Song",
+    "Shorts"
+   ],
+   "recentTabIDs": [
+    "chrome:1:203",
+    "chrome:1:202",
+    "chrome:1:201"
+   ]
+  },
+  "nov9_youtube_front": {
+   "takenAt": 0,
+   "apps": [
+    {
+     "name": "Finder",
+     "bundleID": "com.apple.finder",
+     "pid": 401,
+     "frontmost": false
+    },
+    {
+     "name": "Google Chrome",
+     "bundleID": "com.google.Chrome",
+     "pid": 510,
+     "frontmost": true
+    },
+    {
+     "name": "Claude",
+     "bundleID": "com.anthropic.claudefordesktop",
+     "pid": 700,
+     "frontmost": false
+    },
+    {
+     "name": "Messages",
+     "bundleID": "com.apple.MobileSMS",
+     "pid": 720,
+     "frontmost": false
+    },
+    {
+     "name": "Terminal",
+     "bundleID": "com.apple.Terminal",
+     "pid": 730,
+     "frontmost": false
+    },
+    {
+     "name": "Slack",
+     "bundleID": "com.tinyspeck.slackmacgap",
+     "pid": 740,
+     "frontmost": false
+    }
+   ],
+   "windows": [
+    {
+     "id": "w1",
+     "app": "Google Chrome",
+     "pid": 510,
+     "title": "(13) Tu Hain Toh | Mr. & Mrs. Mahi | Rajkummar Rao - YouTube",
+     "index": 0,
+     "minimized": false,
+     "focused": true
+    },
+    {
+     "id": "w2",
+     "app": "Claude",
+     "pid": 700,
+     "title": "Claude",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    }
+   ],
+   "tabs": [
+    {
+     "id": "chrome:1:201",
+     "windowID": 1,
+     "tabID": 201,
+     "index": 1,
+     "title": "Netflix",
+     "url": "https://www.netflix.com/watch/81",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:202",
+     "windowID": 1,
+     "tabID": 202,
+     "index": 2,
+     "title": "(13) Tu Hain Toh | Mr. & Mrs. Mahi | Rajkummar Rao - YouTube",
+     "url": "https://www.youtube.com/watch?v=abc",
+     "active": true,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:203",
+     "windowID": 1,
+     "tabID": 203,
+     "index": 3,
+     "title": "Senorita Zindagi Na Milegi Dobara video - Google Search",
+     "url": "https://www.google.com/search?q=senorita",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:204",
+     "windowID": 1,
+     "tabID": 204,
+     "index": 4,
+     "title": "Home / X",
+     "url": "https://x.com/home",
+     "active": false,
+     "frontWindow": true
+    }
+   ],
+   "terminals": [
+    {
+     "id": "terminal:ttys003",
+     "app": "terminal",
+     "nativeID": "/dev/ttys003",
+     "title": "zsh",
+     "cwd": "/Users/deepam/code",
+     "selected": true
+    }
+   ],
+   "secureInputOn": false,
+   "frontControls": [
+    "Search",
+    "Home",
+    "Shorts",
+    "Subscriptions",
+    "You",
+    "Pause (k)",
+    "Next (SHIFT+n)",
+    "Mute (m)",
+    "Saheba by Ankur Tewari 1.2M views 3 years ago",
+    "Finding Her by Kushagra 10M views 1 year ago",
+    "I Am Done by Jonita Gandhi 4.5M views"
+   ],
+   "recentTabIDs": [
+    "chrome:1:202",
+    "chrome:1:203",
+    "chrome:1:201"
+   ]
+  },
+  "nov9_x_home": {
+   "takenAt": 0,
+   "apps": [
+    {
+     "name": "Finder",
+     "bundleID": "com.apple.finder",
+     "pid": 401,
+     "frontmost": false
+    },
+    {
+     "name": "Google Chrome",
+     "bundleID": "com.google.Chrome",
+     "pid": 510,
+     "frontmost": true
+    },
+    {
+     "name": "Claude",
+     "bundleID": "com.anthropic.claudefordesktop",
+     "pid": 700,
+     "frontmost": false
+    },
+    {
+     "name": "Messages",
+     "bundleID": "com.apple.MobileSMS",
+     "pid": 720,
+     "frontmost": false
+    },
+    {
+     "name": "Terminal",
+     "bundleID": "com.apple.Terminal",
+     "pid": 730,
+     "frontmost": false
+    },
+    {
+     "name": "Slack",
+     "bundleID": "com.tinyspeck.slackmacgap",
+     "pid": 740,
+     "frontmost": false
+    }
+   ],
+   "windows": [
+    {
+     "id": "w1",
+     "app": "Google Chrome",
+     "pid": 510,
+     "title": "Home / X",
+     "index": 0,
+     "minimized": false,
+     "focused": true
+    },
+    {
+     "id": "w2",
+     "app": "Claude",
+     "pid": 700,
+     "title": "Claude",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    }
+   ],
+   "tabs": [
+    {
+     "id": "chrome:1:201",
+     "windowID": 1,
+     "tabID": 201,
+     "index": 1,
+     "title": "Netflix",
+     "url": "https://www.netflix.com/watch/81",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:202",
+     "windowID": 1,
+     "tabID": 202,
+     "index": 2,
+     "title": "(13) Tu Hain Toh | Mr. & Mrs. Mahi | Rajkummar Rao - YouTube",
+     "url": "https://www.youtube.com/watch?v=abc",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:203",
+     "windowID": 1,
+     "tabID": 203,
+     "index": 3,
+     "title": "Senorita Zindagi Na Milegi Dobara video - Google Search",
+     "url": "https://www.google.com/search?q=senorita",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:204",
+     "windowID": 1,
+     "tabID": 204,
+     "index": 4,
+     "title": "Home / X",
+     "url": "https://x.com/home",
+     "active": true,
+     "frontWindow": true
+    }
+   ],
+   "terminals": [
+    {
+     "id": "terminal:ttys003",
+     "app": "terminal",
+     "nativeID": "/dev/ttys003",
+     "title": "zsh",
+     "cwd": "/Users/deepam/code",
+     "selected": true
+    }
+   ],
+   "secureInputOn": false,
+   "frontControls": [
+    "Home",
+    "Explore",
+    "Notifications",
+    "Messages",
+    "Grok",
+    "Profile",
+    "Post",
+    "For you",
+    "Following",
+    "Post",
+    "Add photos or video"
+   ],
+   "focused": {
+    "app": "Google Chrome",
+    "role": "AXTextArea",
+    "placeholder": "What's happening?",
+    "editable": true,
+    "secure": false
+   },
+   "recentTabIDs": [
+    "chrome:1:204",
+    "chrome:1:202",
+    "chrome:1:203"
+   ]
+  },
+  "nov9_claude_front": {
+   "takenAt": 0,
+   "apps": [
+    {
+     "name": "Finder",
+     "bundleID": "com.apple.finder",
+     "pid": 401,
+     "frontmost": false
+    },
+    {
+     "name": "Google Chrome",
+     "bundleID": "com.google.Chrome",
+     "pid": 510,
+     "frontmost": false
+    },
+    {
+     "name": "Cursor",
+     "bundleID": "com.todesktop.230313mzl4w4u92",
+     "pid": 620,
+     "frontmost": false
+    },
+    {
+     "name": "Terminal",
+     "bundleID": "com.apple.Terminal",
+     "pid": 730,
+     "frontmost": false
+    },
+    {
+     "name": "Slack",
+     "bundleID": "com.tinyspeck.slackmacgap",
+     "pid": 840,
+     "frontmost": false
+    },
+    {
+     "name": "Claude",
+     "bundleID": "com.anthropic.claudefordesktop",
+     "pid": 950,
+     "frontmost": true
+    },
+    {
+     "name": "ChatGPT",
+     "bundleID": "com.openai.chat",
+     "pid": 960,
+     "frontmost": false
+    },
+    {
+     "name": "Messages",
+     "bundleID": "com.apple.MobileSMS",
+     "pid": 970,
+     "frontmost": false
+    }
+   ],
+   "windows": [
+    {
+     "id": "w1",
+     "app": "Google Chrome",
+     "pid": 510,
+     "title": "Fix parser edge cases by deepam · Pull Request #482 · acme/app",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w2",
+     "app": "Cursor",
+     "pid": 620,
+     "title": "parser.ts — app",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w3",
+     "app": "Cursor",
+     "pid": 620,
+     "title": "README.md — docs",
+     "index": 1,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w4",
+     "app": "Terminal",
+     "pid": 730,
+     "title": "app — claude — 120×40",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w5",
+     "app": "Slack",
+     "pid": 840,
+     "title": "eng-team (Channel) - Acme - Slack",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w6",
+     "app": "Claude",
+     "pid": 950,
+     "title": "Claude",
+     "index": 0,
+     "minimized": false,
+     "focused": true
+    },
+    {
+     "id": "w7",
+     "app": "ChatGPT",
+     "pid": 960,
+     "title": "ChatGPT",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    }
+   ],
+   "tabs": [
+    {
+     "id": "chrome:1:101",
+     "windowID": 1,
+     "tabID": 101,
+     "index": 1,
+     "title": "Fix parser edge cases by deepam · Pull Request #482 · acme/app",
+     "url": "https://github.com/acme/app/pull/482",
+     "active": true,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:102",
+     "windowID": 1,
+     "tabID": 102,
+     "index": 2,
+     "title": "ENG-231 Parser crashes on empty input - Linear",
+     "url": "https://linear.app/acme/issue/ENG-231",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:103",
+     "windowID": 1,
+     "tabID": 103,
+     "index": 3,
+     "title": "Inbox (3) - deepam@acme.dev - Gmail",
+     "url": "https://mail.google.com/mail/u/0/#inbox",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:104",
+     "windowID": 1,
+     "tabID": 104,
+     "index": 4,
+     "title": "Acme App",
+     "url": "http://localhost:3000/",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:105",
+     "windowID": 1,
+     "tabID": 105,
+     "index": 5,
+     "title": "Swift Concurrency | Documentation",
+     "url": "https://developer.apple.com/documentation/swift/concurrency",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:110",
+     "windowID": 1,
+     "tabID": 110,
+     "index": 6,
+     "title": "Claude Code",
+     "url": "https://claude.ai/code",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:111",
+     "windowID": 1,
+     "tabID": 111,
+     "index": 7,
+     "title": "Blooio",
+     "url": "https://app.blooio.com/dashboard",
+     "active": false,
+     "frontWindow": true
+    }
+   ],
+   "terminals": [
+    {
+     "id": "terminal:ttys001",
+     "app": "terminal",
+     "nativeID": "/dev/ttys001",
+     "title": "app — claude",
+     "cwd": "~/code/app",
+     "running": "claude",
+     "selected": true
+    },
+    {
+     "id": "terminal:ttys002",
+     "app": "terminal",
+     "nativeID": "/dev/ttys002",
+     "title": "app — zsh",
+     "cwd": "~/code/app",
+     "selected": false
+    }
+   ],
+   "focused": {
+    "app": "Google Chrome",
+    "role": "AXTextArea",
+    "placeholder": "Leave a comment",
+    "editable": true,
+    "secure": false
+   },
+   "secureInputOn": false,
+   "frontControls": [
+    "Hide sidebar",
+    "Back",
+    "Forward",
+    "Chat and Cowork",
+    "Code",
+    "New",
+    "Customize",
+    "Projects",
+    "Artifacts",
+    "Scheduled",
+    "Recents",
+    "Search",
+    "Onboarding sidebar integration",
+    "Competitor website screenshots for redesign",
+    "More options for Competitor website screenshots for redesign",
+    "Context.dev credit balance"
+   ]
   }
  },
  "cases": [
@@ -2894,7 +3526,12 @@
    "expect": {
     "sequence": [
      {
-      "tool": "focus_text_box"
+      "tool": "focus_text_box",
+      "args": {
+       "app": {
+        "absentOr": "Claude"
+       }
+      }
      }
     ]
    }
@@ -3115,6 +3752,550 @@
      "tool": "system_volume"
     },
     "minCount": 1
+   }
+  },
+  {
+   "id": "nov9-make-volume-full",
+   "transcript": "Make the volume full.",
+   "fixture": "nov9_youtube_front",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "system_volume",
+      "args": {
+       "action": {
+        "eq": "set"
+       },
+       "level": {
+        "eq": 100
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "nov9-heard-mkdir-volume",
+   "transcript": "Mkdir volume full.",
+   "fixture": "nov9_youtube_front",
+   "expect": {
+    "anyOf": [
+     [
+      {
+       "tool": "system_volume"
+      }
+     ],
+     [
+      {
+       "tool": "say"
+      }
+     ],
+     [
+      {
+       "tool": "wait_for_more"
+      }
+     ]
+    ],
+    "forbid": [
+     "terminal_run"
+    ]
+   }
+  },
+  {
+   "id": "nov9-heard-mkdir-percent",
+   "transcript": "Mkdir one hundred Vercel.",
+   "fixture": "nov9_youtube_front",
+   "history": [
+    "\"Increase the volume\" → system_volume(up) → ok → Volume 62%"
+   ],
+   "expect": {
+    "anyOf": [
+     [
+      {
+       "tool": "system_volume"
+      }
+     ],
+     [
+      {
+       "tool": "say"
+      }
+     ],
+     [
+      {
+       "tool": "wait_for_more"
+      }
+     ]
+    ],
+    "forbid": [
+     "terminal_run"
+    ]
+   }
+  },
+  {
+   "id": "nov9-type-a-message",
+   "transcript": "Type a message saying yeah, push it for me",
+   "fixture": "nov9_claude_front",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "type_text",
+      "args": {
+       "target": {
+        "eq": "focused"
+       },
+       "payload": {
+        "words": [
+         "yeah, push it for me",
+         "yeah push it for me"
+        ]
+       },
+       "app": {
+        "absentOr": "Claude"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "nov9-post-like",
+   "transcript": "Can you make a post for me? Post like I have figured it out",
+   "fixture": "nov9_x_home",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "type_text",
+      "args": {
+       "payload": {
+        "words": [
+         "I have figured it out"
+        ]
+       }
+      }
+     }
+    ],
+    "policy": {
+     "type_text": "run"
+    }
+   }
+  },
+  {
+   "id": "nov9-write-announcement",
+   "transcript": "Can you write a very nice post about announcing yourself? You are Vanto",
+   "fixture": "nov9_x_home",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "type_text",
+      "args": {
+       "source": {
+        "eq": "composed"
+       },
+       "payload": {
+        "contains": "Vanto"
+       }
+      }
+     }
+    ],
+    "forbid": [
+     "submit"
+    ],
+    "policy": {
+     "type_text": "run"
+    }
+   }
+  },
+  {
+   "id": "nov9-youtube-then-video",
+   "transcript": "Go back to YouTube and inside YouTube open the Senorita video",
+   "fixture": "nov9_google_results",
+   "expect": {
+    "anyOf": [
+     [
+      {
+       "tool": "browser_switch_tab",
+       "args": {
+        "tab_id": {
+         "eq": "chrome:1:202"
+        }
+       }
+      },
+      {
+       "tool": "look_again"
+      }
+     ],
+     [
+      {
+       "tool": "browser_switch_tab",
+       "args": {
+        "tab_id": {
+         "eq": "chrome:1:202"
+        }
+       }
+      },
+      {
+       "tool": "browser_search",
+       "args": {
+        "here": {
+         "eq": true
+        }
+       }
+      }
+     ]
+    ]
+   }
+  },
+  {
+   "id": "nov9-x-then-search",
+   "transcript": "Can you go to X.com any open tab on it and just search for latest news?",
+   "fixture": "nov9_youtube_front",
+   "expect": {
+    "anyOf": [
+     [
+      {
+       "tool": "browser_switch_tab",
+       "args": {
+        "tab_id": {
+         "eq": "chrome:1:204"
+        }
+       }
+      },
+      {
+       "tool": "look_again"
+      }
+     ],
+     [
+      {
+       "tool": "browser_switch_tab",
+       "args": {
+        "tab_id": {
+         "eq": "chrome:1:204"
+        }
+       }
+      },
+      {
+       "tool": "browser_search",
+       "args": {
+        "here": {
+         "eq": true
+        }
+       }
+      }
+     ]
+    ]
+   }
+  },
+  {
+   "id": "nov9-followup-video",
+   "transcript": "Go back to YouTube and inside YouTube open the Senorita video",
+   "fixture": "nov9_youtube_front",
+   "alreadyDone": [
+    "browser_switch_tab(chrome:1:202) → ok",
+    "look_again"
+   ],
+   "expect": {
+    "sequence": [
+     {
+      "tool": "browser_search",
+      "args": {
+       "query": {
+        "contains": "senorita"
+       },
+       "here": {
+        "eq": true
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "nov9-not-netflix-youtube",
+   "transcript": "It was not Netflix. It was YouTube which was open, and inside that I asked you to open up the Senorita song.",
+   "fixture": "nov9_google_results",
+   "history": [
+    "\"Go back to the previous tab\" → browser_switch_tab(chrome:1:201) → ok → Tab: Netflix"
+   ],
+   "expect": {
+    "anyOf": [
+     [
+      {
+       "tool": "browser_switch_tab",
+       "args": {
+        "tab_id": {
+         "eq": "chrome:1:202"
+        }
+       }
+      },
+      {
+       "tool": "look_again"
+      }
+     ],
+     [
+      {
+       "tool": "undo_last"
+      },
+      {
+       "tool": "browser_switch_tab",
+       "args": {
+        "tab_id": {
+         "eq": "chrome:1:202"
+        }
+       }
+      },
+      {
+       "tool": "look_again"
+      }
+     ],
+     [
+      {
+       "tool": "browser_switch_tab",
+       "args": {
+        "tab_id": {
+         "eq": "chrome:1:202"
+        }
+       }
+      },
+      {
+       "tool": "browser_search",
+       "args": {
+        "here": {
+         "eq": true
+        }
+       }
+      }
+     ]
+    ]
+   }
+  },
+  {
+   "id": "nov9-previous-tab",
+   "transcript": "Go back to the previous tab, like you opened a new tab, right? So go back to the previous one.",
+   "fixture": "nov9_google_results",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "browser_switch_tab",
+      "args": {
+       "tab_id": {
+        "eq": "chrome:1:202"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "nov9-reopen-closed-tab",
+   "transcript": "Uh reopen the YouTube which you closed",
+   "fixture": "nov9_google_results",
+   "history": [
+    "\"Can you close this Youtube tab?\" → browser_close_tab(chrome:1:205) → ok → Closed YouTube"
+   ],
+   "expect": {
+    "anyOf": [
+     [
+      {
+       "tool": "press_keys",
+       "args": {
+        "keys": {
+         "oneOf": [
+          "cmd+shift+t",
+          "command+shift+t"
+         ]
+        }
+       }
+      }
+     ],
+     [
+      {
+       "tool": "undo_last"
+      }
+     ]
+    ]
+   }
+  },
+  {
+   "id": "nov9-zoom-claude",
+   "transcript": "Zoom in a bit",
+   "fixture": "nov9_claude_front",
+   "expect": {
+    "anyOf": [
+     [
+      {
+       "tool": "menu_command",
+       "args": {
+        "item": {
+         "contains": "zoom in"
+        }
+       }
+      }
+     ],
+     [
+      {
+       "tool": "press_keys",
+       "args": {
+        "keys": {
+         "oneOf": [
+          "cmd+=",
+          "cmd+plus",
+          "cmd++"
+         ]
+        }
+       }
+      }
+     ]
+    ],
+    "forbid": [
+     "describe_screen"
+    ]
+   }
+  },
+  {
+   "id": "nov9-click-post-centre",
+   "transcript": "Click on the post button, which is not in the sidebar, but the post button which is in the center.",
+   "fixture": "nov9_x_home",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "click_element",
+      "args": {
+       "name": {
+        "eq": "Post"
+       },
+       "near": {
+        "oneOf": [
+         "main",
+         "text_box"
+        ]
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "nov9-post-it-draft",
+   "transcript": "This post is fine. Just click on the post button so that it can be posted, bro.",
+   "fixture": "nov9_x_home",
+   "draft": {
+    "app": "Google Chrome",
+    "target": "chat_box",
+    "typedText": "Hey guys, this post was made by Vanto. No hands needed."
+   },
+   "expect": {
+    "anyOf": [
+     [
+      {
+       "tool": "submit"
+      }
+     ],
+     [
+      {
+       "tool": "click_element",
+       "args": {
+        "name": {
+         "eq": "Post"
+        },
+        "near": {
+         "eq": "text_box"
+        }
+       }
+      }
+     ]
+    ]
+   }
+  },
+  {
+   "id": "nov9-go-back-after-typing",
+   "transcript": "Go back. I think your drafting feature is still not good.",
+   "fixture": "nov9_x_home",
+   "draft": {
+    "app": "Google Chrome",
+    "target": "chat_box",
+    "typedText": "Hey guys, this post was sent to you by Vanto and S. Just dark"
+   },
+   "expect": {
+    "anyOf": [
+     [
+      {
+       "tool": "clear_typed"
+      }
+     ],
+     [
+      {
+       "tool": "undo_last"
+      }
+     ],
+     [
+      {
+       "tool": "clear_typed"
+      },
+      {
+       "tool": "say"
+      }
+     ]
+    ],
+    "forbid": [
+     "submit"
+    ]
+   }
+  },
+  {
+   "id": "nov9-end-session-henderson",
+   "transcript": "Henderson. Uh End the session.",
+   "fixture": "nov9_youtube_front",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "end_session"
+     }
+    ]
+   }
+  },
+  {
+   "id": "nov9-pause-next-next",
+   "transcript": "Can you go to the next and next video?",
+   "fixture": "nov9_youtube_front",
+   "expect": {
+    "each": {
+     "tool": "click_element",
+     "args": {
+      "name": {
+       "contains": "next"
+      }
+     }
+    },
+    "minCount": 2
+   }
+  },
+  {
+   "id": "nov9-heard-messages",
+   "transcript": "Type a Messages saying yeah, push it for me",
+   "fixture": "nov9_claude_front",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "type_text",
+      "args": {
+       "target": {
+        "oneOf": [
+         "focused",
+         "chat_box"
+        ]
+       },
+       "payload": {
+        "words": [
+         "yeah, push it for me",
+         "yeah push it for me"
+        ]
+       },
+       "app": {
+        "absentOr": "Claude"
+       }
+      }
+     }
+    ]
    }
   }
  ]

@@ -77,7 +77,7 @@ import Testing
     @Test func riskyClicksNeedAYes() {
         let ctx = PolicyContext(transcript: "click delete", snapshot: DesktopSnapshot())
         if case .hold = ActionPolicy.evaluate(.clickElement(name: "Delete project"), context: ctx) {} else { Issue.record("not held") }
-        #expect(ActionPolicy.evaluate(.clickElement(name: "Conversations"), context: ctx) == .run(.clickElement(name: "Conversations"), minPauseMs: 0, note: nil))
+        #expect(ActionPolicy.evaluate(.clickElement(name: "Conversations"), context: ctx) == .run(.clickElement(name: "Conversations", near: nil), minPauseMs: 0, note: nil))
         #expect(ActionPolicy.evaluate(.rewriteDraft(text: "Hi"), context: ctx) == .reject("No draft to edit"))
     }
 

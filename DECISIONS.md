@@ -191,3 +191,27 @@ option and noted it here. "Final review" refers to the PRD section that override
     breadth-first with a time budget everywhere they walk a tree: Electron answers each call in
     milliseconds, so per-attribute walks took minutes.
 
+53. **Speech vocabulary never boosts everyday words** (9 Nov log). "Vercel" left the built-in
+    list ("percent" → "Vercel"), the `mkdir` alias "make dir" went ("make the post" → "Mkdir
+    post"), and running apps named with ordinary words (Messages, Notes, Mail…) aren't boosted
+    ("type a message" went to the Messages app). The router still sees every running app. The
+    log keeps `rawTranscript`, what was heard before boosting, when boosting changed it.
+54. **"End the session" is handled on the device** when it is the last clause, after nothing
+    but filler: leftover words before it ("Henderson. Uh End the session.") had the router
+    wait. "I'm done" and "that's all" stay with the router: they can end a dictated sentence.
+55. **The router may write text, only when asked to write** (`type_text` source `composed`):
+    the transcript must ask for writing ("write", "draft", "make a post about"…); never into
+    a terminal; never sent in the same reply. Verbatim typing is as strict as before.
+56. **One extra look, at most two** (`look_again`): when the rest of a request needs the
+    screen an action produces, the router calls `look_again`; the app waits ~0.8 s, reads the
+    screen again and asks the router to finish, with what was already done listed. Each turn
+    costs a router call (~1 s); accuracy first.
+57. **Send is checked.** After Return in a text box, the box is read again (twice, so a slow
+    app never sends twice); if the text is still there, the box's own send button (Post,
+    Send, Reply…), the one nearest the box, is pressed. "Sent" is only reported when the text
+    left the box or the box can't be read.
+58. **Same-named controls**: the one nearest the text box wins, unless the person says which
+    (`near`: text_box, sidebar, top, main). Shortcuts shown in labels ("Previous (SHIFT+p)")
+    are pressed when the control is gone, never while a text field has focus.
+59. **Actions that ran before newer speech cancelled the request go in the history** ("done
+    while you were still talking"), so the merged request isn't done twice.
