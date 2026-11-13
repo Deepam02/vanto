@@ -171,3 +171,19 @@ Plan and evidence: docs/plans/2026-11-09-session-fixes.md (60 commands, rows 366
   video" finishes (DECISIONS 56).
 - router-eval: 99 cases (19 new from 9 Nov), 100% over 3 runs (300/300); p50 time to first
   tool call ~920 ms. Unit tests: 63 pass.
+
+## Never lose dictation (branch feature/never-lose-dictation)
+
+Spec: docs/specs/never-lose-dictation.md; owner's decisions of 13 Nov in DECISIONS 61–62.
+- **Stage 1, core library** (VoiceCommandCore, unit-tested):
+  - `TranscriptBuffer` disposes instead of consuming; the app writes every disposition to the
+    speech history (`SpeechHistory`, history.jsonl) (DECISIONS 60, 61).
+  - `IntentGate` (rules 1–4 of §5.3, explicit starts, "Vanto, …", recovery phrases) and
+    `FocusKind.from(snapshot)`; on the labelled logs: 0 commands typed, 0 dictations as
+    certain commands, 22/30 dictations local (DECISIONS 63–65).
+  - `TypingMode` policy and surfaces (DECISIONS 62).
+  - `Dictation.mend` (live typing, same text as `clean`), recovery phrases, never-mind rule,
+    "send this message" ends a dictation (DECISIONS 66).
+  - Not yet wired: the gate, typing modes and recovery in the app (stage 3); router `dictate`
+    and `keep` (stage 2). Unit tests: 97 pass.
+

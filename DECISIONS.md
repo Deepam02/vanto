@@ -215,3 +215,39 @@ option and noted it here. "Final review" refers to the PRD section that override
     are pressed when the control is gone, never while a text field has focus.
 59. **Actions that ran before newer speech cancelled the request go in the history** ("done
     while you were still talking"), so the merged request isn't done twice.
+
+## Never lose dictation (13 Nov, docs/specs/never-lose-dictation.md)
+
+60. **Words leave the buffer only with a disposition** (spec §3 I1): `dispose(_:as:)` with
+    acted, typed, kept(reason) or discarded. `consume`, `consumeAll` and `dropStale` are gone;
+    stale words are `kept(stale)`, a failed action's words `kept(failed)`, `ignore`
+    `kept(not_for_me)`, a session's leftovers `kept(session_ended)`. Speech while muted is
+    still not recorded (the person asked Vanto not to listen).
+61. **Speech history, not a 24-hour Kept store** (Deepam's choice: no expiry, no cap).
+    Every disposition is a line in ~/Library/Application Support/VoiceCommand/history.jsonl;
+    the Kept list is the kept and discarded lines. Only the file's tail is read at start;
+    "the one about X" falls back to reading the whole file.
+62. **Typing mode depends on where and how sure** (Deepam's choice, spec §10): live,
+    per-segment typing into assistants (Claude Code, Codex, Claude, ChatGPT, Cursor) and
+    long-form editors; one paste on a pause into message boxes (Slack, Messages, WhatsApp,
+    Mail/Gmail, X, LinkedIn, Discord, Teams) and unknown apps, and whenever the router (not
+    the device) decided or media is playing. Hold Fn still types on release.
+63. **The intent gate's thresholds** (3–4 and 9 Nov logs, 497 utterances hand-labelled in
+    Tools/intent-eval): certain command ≤ 12 words; certain dictation ≥ 14 words, a field or
+    prompt focused, first person or a greeting to someone, and none of: "can you"-style asks,
+    talk to Vanto about the screen ("you opened", "the other one", "go back"), screen words
+    (tab, window, button, video…), or a sentence that starts like a command. Result: 0
+    commands typed, 0 dictations as certain commands; 22 of 30 dictations decided locally.
+64. **A prompt to an assistant is never a certain command.** Prompts say "can you" and are
+    imperative ("Run the tests…"); with an assistant prompt focused only "Vanto, …" is
+    certain, everything else the router decides. Commands cost no extra latency: they went to
+    the router before too.
+65. **"Write" starts dictation only with "saying", a colon, "down" or "the following".**
+    "Write a post about X" is a request to compose (DECISIONS 55) and stays with the router;
+    "type a message saying X" types X without a router call. A polite "can you type/dictate…"
+    needs a "saying" too.
+66. **Recovery phrases need something to recover**: "that was a command" / "scratch that"
+    only after typing, "type that instead" only after an action or with words kept, "copy it"
+    only with words kept (otherwise it's an ordinary copy). "Never mind" erases a run under
+    3 s old; an older run's words are kept. "Cancel dictation" always erases (discarded, still
+    in the history).

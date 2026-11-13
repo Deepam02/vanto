@@ -1,9 +1,89 @@
 import Foundation
 
-/// One transcript buffer per session with a "consumed" cursor (Final review point 3).
+/// Where a finished speech segment ended up (docs/specs/never-lose-dictation.md §3).
+/// Every segment gets exactly one: words are never just dropped.
+public enum Disposition: Equatable, Hashable, Sendable {
+    /// Part of a command that ran, or one waiting for a spoken yes.
+    case acted
+    /// Pasted into a text field as dictation.
+    case typed
+    /// Not acted on and not typed. In the speech history, where "type it" can get it back.
+    case kept(KeptReason)
+    /// The person removed it ("scratch that", "cancel dictation"). Still in the history.
+    case discarded
+
+    /// Kept and discarded words are what the menu's Kept list shows.
+    public var isKept: Bool {
+        switch self {
+        case .kept, .discarded: return true
+        case .acted, .typed: return false
+        }
+    }
+}
+
+/// Why words were kept rather than acted on or typed.
+public enum KeptReason: String, Codable, Hashable, Sendable, CaseIterable {
+    /// Background speech (a video, someone else in the room).
+    case noise
+    /// Said, but not to Vanto.
+    case notForMe = "not_for_me"
+    case unclear
+    /// Left waiting more than `TranscriptBuffer.maxPendingAge`.
+    case stale
+    /// The action they asked for failed.
+    case failed
+    /// The router errored or timed out.
+    case error
+    /// No text field to type into.
+    case nowhereToType = "nowhere_to_type"
+    /// Focus moved to another app mid-dictation.
+    case movedAway = "moved_away"
+    /// The session ended with the words still waiting.
+    case sessionEnded = "session_ended"
+    /// "Never mind" after a dictation that was already a few seconds long.
+    case neverMind = "never_mind"
+}
+
+extension Disposition: Codable {
+    /// One flat string in the history file: "acted", "typed", "kept:stale", "discarded".
+    public var label: String {
+        switch self {
+        case .acted: return "acted"
+        case .typed: return "typed"
+        case .kept(let r): return "kept:\(r.rawValue)"
+        case .discarded: return "discarded"
+        }
+    }
+
+    public init?(label: String) {
+        switch label {
+        case "acted": self = .acted
+        case "typed": self = .typed
+        case "discarded": self = .discarded
+        default:
+            guard label.hasPrefix("kept:"), let r = KeptReason(rawValue: String(label.dropFirst(5))) else { return nil }
+            self = .kept(r)
+        }
+    }
+
+    public init(from decoder: Decoder) throws {
+        let s = try decoder.singleValueContainer().decode(String.self)
+        // An unknown reason from a newer build still reads as kept.
+        self = Disposition(label: s) ?? (s.hasPrefix("kept") ? .kept(.unclear) : .acted)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.singleValueContainer()
+        try c.encode(label)
+    }
+}
+
+/// One transcript buffer per session (Final review point 3), with the never-lose contract.
 ///
-/// Speech arrives as segments (one per voice-activity run). Segments before the cursor
-/// have been acted on; segments after it form the latest utterance the router sees.
+/// Speech arrives as segments (one per voice-activity run). A segment waits in `segments`
+/// until something decides what it was; it leaves only through `dispose(_:as:)`, which
+/// records the decision in `disposed` for the caller to collect and write to the speech
+/// history. The waiting segments form the latest utterance the router sees.
 public struct TranscriptBuffer: Sendable {
     public struct Segment: Equatable, Sendable {
         public let id: Int
@@ -13,13 +93,26 @@ public struct TranscriptBuffer: Sendable {
         public var raw: String?
     }
 
+    /// Segments that left the buffer together, and where they went.
+    public struct Disposed: Equatable, Sendable {
+        public let segments: [Segment]
+        public let disposition: Disposition
+        public let at: Date
+        public var text: String { segments.map(\.text).joined(separator: " ") }
+        public var raw: String? {
+            guard segments.contains(where: { $0.raw != nil }) else { return nil }
+            return segments.map { $0.raw ?? $0.text }.joined(separator: " ")
+        }
+    }
+
+    /// Segments still waiting for a disposition, oldest first.
     public private(set) var segments: [Segment] = []
-    /// Index of the first unconsumed segment.
-    public private(set) var cursor: Int = 0
+    /// Dispositions made since the caller last collected them (`takeDisposed`).
+    public private(set) var disposed: [Disposed] = []
     private var nextID = 0
-    /// Unconsumed speech older than this is dropped. Long enough for a thinking pause in
-    /// the middle of a dictated prompt.
-    public var maxUnconsumedAge: TimeInterval = 120
+    /// Waiting speech older than this is kept (`.kept(.stale)`). Long enough for a thinking
+    /// pause in the middle of a dictated prompt.
+    public var maxPendingAge: TimeInterval = 120
 
     public init() {}
 
@@ -33,46 +126,59 @@ public struct TranscriptBuffer: Sendable {
         return id
     }
 
-    /// The text after the cursor, segments joined by single spaces.
+    /// The waiting text, segments joined by single spaces.
     public var latest: String {
-        segments[cursor...].map(\.text).joined(separator: " ")
+        segments.map(\.text).joined(separator: " ")
     }
 
     /// `latest` as heard before vocabulary boosting, or nil when boosting changed nothing.
     public var latestRaw: String? {
-        let pending = segments[cursor...]
-        guard pending.contains(where: { $0.raw != nil }) else { return nil }
-        return pending.map { $0.raw ?? $0.text }.joined(separator: " ")
+        guard segments.contains(where: { $0.raw != nil }) else { return nil }
+        return segments.map { $0.raw ?? $0.text }.joined(separator: " ")
     }
 
-    public var latestSegmentIDs: [Int] { segments[cursor...].map(\.id) }
+    public var latestSegmentIDs: [Int] { segments.map(\.id) }
 
-    public var hasUnconsumed: Bool { cursor < segments.count }
+    public var hasPending: Bool { !segments.isEmpty }
 
-    /// Move the cursor past every segment a router reply covered (actions ran or `ignore`).
-    /// `wait_for_more` never calls this.
-    public mutating func consume(through segmentID: Int) {
-        guard let idx = segments.firstIndex(where: { $0.id == segmentID }) else { return }
-        cursor = max(cursor, idx + 1)
+    /// The only way out of the buffer. IDs that aren't waiting (already disposed, or never
+    /// had words) are ignored, so a segment can't get two dispositions.
+    public mutating func dispose(_ ids: [Int], as disposition: Disposition, at: Date = Date()) {
+        let wanted = Set(ids)
+        let leaving = segments.filter { wanted.contains($0.id) }
+        guard !leaving.isEmpty else { return }
+        segments.removeAll { wanted.contains($0.id) }
+        disposed.append(Disposed(segments: leaving, disposition: disposition, at: at))
     }
 
-    public mutating func consumeAll() { cursor = segments.count }
+    /// Every waiting segment up to and including `segmentID` (what one router reply covered).
+    public mutating func dispose(through segmentID: Int, as disposition: Disposition, at: Date = Date()) {
+        dispose(segments.filter { $0.id <= segmentID }.map(\.id), as: disposition, at: at)
+    }
 
-    /// Drop unconsumed segments that ended more than `maxUnconsumedAge` ago.
-    /// Returns true if anything was dropped.
+    public mutating func disposeAll(as disposition: Disposition, at: Date = Date()) {
+        dispose(latestSegmentIDs, as: disposition, at: at)
+    }
+
+    /// Keep waiting segments that ended more than `maxPendingAge` ago (`.kept(.stale)`):
+    /// out of the next request, but not lost. Returns true if any were kept.
     @discardableResult
-    public mutating func dropStale(now: Date = Date()) -> Bool {
-        var dropped = false
-        while cursor < segments.count, now.timeIntervalSince(segments[cursor].endedAt) > maxUnconsumedAge {
-            cursor += 1
-            dropped = true
-        }
-        return dropped
+    public mutating func keepStale(now: Date = Date()) -> Bool {
+        let old = segments.prefix { now.timeIntervalSince($0.endedAt) > maxPendingAge }.map(\.id)
+        dispose(old, as: .kept(.stale), at: now)
+        return !old.isEmpty
     }
 
-    public mutating func reset() {
-        segments.removeAll()
-        cursor = 0
+    /// Collect the dispositions made since the last call, oldest first.
+    public mutating func takeDisposed() -> [Disposed] {
+        defer { disposed.removeAll() }
+        return disposed
+    }
+
+    /// End of a session: whatever is still waiting is kept, never silently cleared.
+    /// Collect `disposed` afterwards.
+    public mutating func reset(at: Date = Date()) {
+        disposeAll(as: .kept(.sessionEnded), at: at)
     }
 }
 

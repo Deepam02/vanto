@@ -83,20 +83,24 @@ import Testing
 }
 
 @Suite struct TranscriptBufferTests {
-    @Test func cursorAndStaleDrop() {
+    @Test func disposeAndKeepStale() {
         var b = TranscriptBuffer()
         let now = Date()
         let a = b.append("open github", endedAt: now.addingTimeInterval(-40))
         #expect(b.latest == "open github")
-        b.consume(through: a)
-        #expect(!b.hasUnconsumed)
-        // A long thinking pause (35 s) keeps the words; only 2+ minutes drops them.
+        b.dispose(through: a, as: .acted)
+        #expect(!b.hasPending)
+        // A long thinking pause (35 s) keeps the words waiting; only 2+ minutes keeps them aside.
         b.append("ask claude code to", endedAt: now.addingTimeInterval(-35))
         b.append("um fix the tests", endedAt: now)
-        b.dropStale(now: now)
+        b.keepStale(now: now)
         #expect(b.latest == "ask claude code to um fix the tests")
-        b.dropStale(now: now.addingTimeInterval(100))
+        b.keepStale(now: now.addingTimeInterval(100))
         #expect(b.latest == "um fix the tests")
+        let out = b.takeDisposed()
+        #expect(out.map(\.disposition) == [.acted, .kept(.stale)])
+        #expect(out.last?.text == "ask claude code to")
+        #expect(b.takeDisposed().isEmpty)
     }
 }
 
