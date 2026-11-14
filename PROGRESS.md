@@ -227,3 +227,13 @@ Spec: docs/specs/never-lose-dictation.md; owner's decisions of 13 Nov in DECISIO
   - Unit tests: 115 pass. Router eval --repeat 3: 98.3% (395/402),
     dictate_keep 98.0%, other 98.3%, p50 first tool call 916 ms; flaky misses nov4-mkdir,
     nov9-youtube-then-video, nld-cc-can-you-prompt, nld-cc-refactor (no router code changed).
+
+- **Review fixes** (15 findings, DECISIONS 81–89): failed routes keep words (`kept(error)`);
+  run silence from segment end; trailing "cancel dictation" content discarded; "that was a
+  command" and "cancel dictation" erase first and report failure; named kept items recall
+  any age; router dictate keeps session_id, refuses plain shells and password prompts; run
+  pinned to one text box; dictated drafts expire after 20 s; "message to Priya saying…" and
+  "in the chat" aren't apps; media signal leaves Vanto out; session token stops runs pinned
+  across a session end; quit by any route ends the session; history start reads a bounded
+  tail. Unit tests: 121 pass. Router eval --repeat 1: 98.5% (132/134), dictate_keep 97.1%,
+  bar now ≥ 98% / groups ≥ 95%; misses nov4-mkdir, nld-cc-refactor (known flaky).

@@ -29,8 +29,8 @@ import Testing
             for d in done { for s in d.segments { written[s.id, default: 0] += 1 } }
         }
 
-        /// A router reply covering everything waiting. nil = an error or timeout: the words stay
-        /// for the next try (SessionController.keepWords).
+        /// A router reply covering everything waiting. nil = newer speech cancelled it: the words
+        /// stay and are routed again with the new ones.
         mutating func reply(_ r: ReplyOutcome?) {
             let ids = buffer.latestSegmentIDs
             guard let r, let last = ids.last else { return }
@@ -59,8 +59,9 @@ import Testing
 
     static func randomReply(_ rng: inout SeededRandom) -> ReplyOutcome? {
         var r = ReplyOutcome()
-        switch rng.next(9) {
-        case 0: return nil                                   // router error or timeout
+        switch rng.next(10) {
+        case 0: return nil                                   // cancelled by newer speech
+        case 9: r.errored = true                             // router error or timeout: kept(error)
         case 1: r.waited = true                              // wait_for_more
         case 2: r.acted = true; r.succeeded = true; r.outcomeLines = 1
         case 3: r.acted = true; r.failed = true; r.outcomeLines = 1
@@ -152,6 +153,25 @@ import Testing
         #expect(r.disposition == .kept(.noise))
         r = ReplyOutcome(); r.waited = true; r.held = true
         #expect(r.disposition == .acted)
+        r = ReplyOutcome(); r.errored = true
+        #expect(r.disposition == .kept(.error))
+    }
+
+    /// Review, 14 Nov: a long prompt timed out twice, then "switch to Chrome" was routed with it
+    /// and the prompt went to the history as acted. Now the failed route keeps it at once.
+    @Test func routerErrorKeepsTheWordsBeforeTheNextCommand() {
+        var s = Session()
+        s.hear("so the plan is to move the launch to next week because the flow isn't ready")
+        let prompt = s.buffer.latestSegmentIDs
+        var failed = ReplyOutcome(); failed.errored = true
+        s.reply(failed)
+        s.hear("switch to Chrome")
+        #expect(s.buffer.latest == "switch to Chrome")
+        var ran = ReplyOutcome(); ran.acted = true; ran.succeeded = true; ran.outcomeLines = 1
+        s.reply(ran)
+        s.end()
+        #expect(prompt.allSatisfy { s.written[$0] == 1 })
+        #expect(s.ledger.doubled.isEmpty && s.ledger.undisposed.isEmpty)
     }
 }
 

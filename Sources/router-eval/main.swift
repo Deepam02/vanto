@@ -2,8 +2,10 @@ import Foundation
 import VoiceCommandCore
 
 // router-eval: runs the golden set against the Claude API and prints accuracy and
-// p50/p90 time to first tool call. Acceptance gates on accuracy (≥ 90%); latency is
-// reported against the PRD's 600 ms goal but doesn't gate (Deepam: accuracy first).
+// p50/p90 time to first tool call. Acceptance gates on accuracy: ≥ 98% overall (LLM evals
+// are noisy, so not 100%; DECISIONS 69) and ≥ 95% in every named group, such as
+// dictate_keep (spec §7.2). Latency is reported against the PRD's 600 ms goal but doesn't
+// gate (Deepam: accuracy first).
 //
 // Usage: router-eval [--set path] [--filter substr] [--repeat N] [--verbose]
 // Needs ANTHROPIC_API_KEY in the environment (and ANTHROPIC_WORKSPACE_ID for keys that
@@ -154,7 +156,16 @@ print("time to first tool call: p50 \(p50.map { "\($0) ms" } ?? "n/a"), p90 \(p9
 print("full reply: p50 \(percentile(totals, 0.5).map { "\($0) ms" } ?? "n/a"), p90 \(percentile(totals, 0.9).map { "\($0) ms" } ?? "n/a")")
 print("cache read tokens: \(cacheReads)")
 if !failures.isEmpty { print("failed: \(failures.joined(separator: ", "))") }
-let ok = accuracy >= 90
-print(ok ? "M3 acceptance: PASS (accuracy ≥ 90%)" : "M3 acceptance: FAIL (accuracy below 90%)")
+let overallBar = 98.0, groupBar = 95.0
+let weakGroups = byGroup.filter { !$0.key.isEmpty && Double($0.value.passed) / Double($0.value.total) * 100 < groupBar }.keys.sorted()
+let ok = accuracy >= overallBar && weakGroups.isEmpty
+if ok {
+    print("acceptance: PASS (accuracy ≥ \(Int(overallBar))%, every group ≥ \(Int(groupBar))%)")
+} else {
+    var why: [String] = []
+    if accuracy < overallBar { why.append("accuracy below \(Int(overallBar))%") }
+    if !weakGroups.isEmpty { why.append("below \(Int(groupBar))% in \(weakGroups.joined(separator: ", "))") }
+    print("acceptance: FAIL (\(why.joined(separator: "; ")))")
+}
 if let p50, p50 > 600 { print("note: p50 time to first tool call \(p50) ms is above the PRD's 600 ms goal (informational)") }
 exit(ok ? 0 : 1)

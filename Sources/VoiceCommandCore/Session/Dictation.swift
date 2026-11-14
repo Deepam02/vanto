@@ -193,6 +193,21 @@ public enum Dictation {
 
     public static let neverMindWindow: TimeInterval = 3
 
+    /// Where a segment ending a run with a cancel phrase goes. The bare phrase is a command
+    /// that ran; words said before it ("…and the deck is ready, cancel dictation") were never
+    /// typed, so they're discarded with the run, or kept when the run's words are kept.
+    public static func cancelDisposition(content: String, effect: CancelEffect) -> Disposition {
+        guard !TextMatching.words(content).isEmpty else { return .acted }
+        return effect == .erase ? .discarded : .kept(.neverMind)
+    }
+
+    /// "Type the last one", "copy the one about the deck": names a kept item, so it is never
+    /// words to type, whatever is kept.
+    public static func namesKeptItem(_ segment: String) -> Bool {
+        let norm = TextMatching.normalized(segment)
+        return norm.range(of: "(?:^|\\s)(?:type|paste|copy) the (?:last one|one about|bit about)\\b", options: .regularExpression) != nil
+    }
+
     private static func startsWithI(_ s: String) -> Bool {
         s == "I" || s.hasPrefix("I ") || s.hasPrefix("I'") || s.hasPrefix("I’")
     }

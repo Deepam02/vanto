@@ -149,6 +149,32 @@ import Testing
         // Older than anything in memory: found by reading the whole file.
         #expect(h.kept(matching: "kept number 400")?.id == "e400")
     }
+
+    /// Review, 14 Nov: with fewer kept entries than the Kept window (the usual case for weeks),
+    /// the start read the whole file and decoded it over and over. Now it reads a bounded tail,
+    /// and the older kept words are still found off the main thread.
+    @Test func rareKeptWordsDontMakeTheStartReadEverything() async throws {
+        let url = Self.tempURL()
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let enc = JSONEncoder()
+        var data = Data()
+        let t0 = Date(timeIntervalSince1970: 1_790_000_000)
+        var i = 0
+        while UInt64(data.count) < SpeechHistory.loadBudget + 1_000_000 {
+            let kept = i == 0
+            let e = SpeechHistory.Entry(id: "e\(i)", at: t0 + Double(i), text: kept ? "the deck is ready for Priya" : "command number \(i)",
+                                        disposition: kept ? .kept(.notForMe) : .acted)
+            data.append(try enc.encode(e)); data.append(0x0A)
+            i += 1
+        }
+        try data.write(to: url)
+        let h = SpeechHistory(url: url)
+        #expect(h.recent(limit: 1).first?.id == "e\(i - 1)")
+        #expect(h.recent(limit: 1000).count == 500)
+        #expect(h.kept().isEmpty)                       // past the start's budget
+        #expect(await h.findKept(matching: "the deck")?.id == "e0")
+    }
 }
 
 @Suite struct TypingModeTests {
@@ -306,6 +332,18 @@ struct SeededRandom {
 
 @Suite struct DictationRunTests {
     let t0 = Date(timeIntervalSince1970: 1_800_000_000)
+
+    /// Review, 14 Nov: silence was counted from when the last segment started, so a 6 s segment
+    /// ended its own implicit run before it was added. The app now marks the segment's end.
+    @Test func silenceCountsFromWhenSpeechStopped() {
+        var run = DictationRun(start: .implicit, mode: .live, target: "Claude Code", at: t0)
+        run.heard(at: t0.addingTimeInterval(1))                 // speech starts
+        let segmentEnd = t0.addingTimeInterval(7)               // a 6 s segment
+        #expect(run.silenceEnds(now: segmentEnd.addingTimeInterval(0.5), speaking: false))   // the old bug
+        run.heard(at: segmentEnd)
+        #expect(!run.silenceEnds(now: segmentEnd.addingTimeInterval(1.4), speaking: false))
+        #expect(run.silenceEnds(now: segmentEnd.addingTimeInterval(DictationRun.implicitSilence + 0.1), speaking: false))
+    }
 
     /// Live typing, one step per segment, ends with the same text as one clean paste.
     @Test func liveStepsTypeWhatCleanGives() {

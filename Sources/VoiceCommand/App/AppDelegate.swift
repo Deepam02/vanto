@@ -253,10 +253,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func toggleSession() { session.toggle() }
     @objc private func toggleMute() { session.setMuted(!session.isMuted) }
     @objc private func openLogs() { NSWorkspace.shared.open(CommandLog.defaultURL.deletingLastPathComponent()) }
-    @objc private func quit() {
+    @objc private func quit() { NSApp.terminate(nil) }
+
+    /// Every way out (the menu's Quit, logout, restart, shutdown) ends the session first, so
+    /// words still waiting are kept in the speech history and the session record is written.
+    func applicationWillTerminate(_ notification: Notification) {
         session.end(reason: "quit")
         log.flush()
-        NSApp.terminate(nil)
     }
 
     @objc func showSettings() {

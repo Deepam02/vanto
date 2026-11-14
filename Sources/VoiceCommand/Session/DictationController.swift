@@ -41,6 +41,9 @@ final class DictationController {
     private var tail: Task<Void, Never>?
     private var pasteQueued = false
     private var endQueued = false
+    /// Bumped when the session ends: a queued step that awaited (pinning, typing) across the
+    /// end gives up instead of starting or typing into the next session.
+    private var epoch = 0
 
     init(executor: Executor, hud: HUDPanel) {
         self.executor = executor
@@ -64,14 +67,22 @@ final class DictationController {
 
     // MARK: Starting and feeding a run
 
-    /// Start a run in the place `app` names, or where the keyboard focus is. `first` is typed
-    /// as the mode says. If no place can be pinned, `first` is kept and nothing starts.
-    func start(_ start: Decision.Start, source: TypingMode.Source, app: String?, snap: DesktopSnapshot,
+    /// Start a run in the place `app` (or the router's `terminal` / `sessionID`) names, or
+    /// where the keyboard focus is. `first` is typed as the mode says. If no place can be
+    /// pinned, `first` is kept and nothing starts. `guessed`: nobody asked to dictate (the
+    /// router's `dictate`).
+    func start(_ start: Decision.Start, source: TypingMode.Source, app: String?, terminal: Bool = false,
+               sessionID: String? = nil, guessed: Bool = false, snap: DesktopSnapshot,
                mediaPlaying: Bool, first: DictationRun.Piece?) async -> Report {
         var report = Report(ok: false, message: "")
+        let session = epoch
         await serial { [self] in
+            guard epoch == session else { return endedBeforeStart(first, app: snap.frontmostApp?.name, report: &report) }
             if run != nil { await finishNow(.command) }
-            switch await executor.pinPlace(app: app, snap: snap) {
+            let pinned = await executor.pinPlace(app: app, terminal: terminal, sessionID: sessionID, guessed: guessed, snap: snap)
+            // The session ended while the place was pinned: no run, nothing typed.
+            guard epoch == session else { return endedBeforeStart(first, app: snap.frontmostApp?.name, report: &report) }
+            switch pinned {
             case .failure(let f):
                 if let first { keep([first], as: .kept(.nowhereToType), app: snap.frontmostApp?.name) }
                 report.message = f.message + (first == nil ? "" : " — your words are kept: click a text box and say “type it”")
@@ -92,6 +103,12 @@ final class DictationController {
         return report
     }
 
+    /// The session ended before the run could start: its first words are kept with the session's.
+    private func endedBeforeStart(_ first: DictationRun.Piece?, app: String?, report: inout Report) {
+        if let first { keep([first], as: .kept(.sessionEnded), app: app) }
+        report = Report(ok: false, message: "The session ended — your words are kept")
+    }
+
     /// More words for the run going: typed now when live, otherwise on the next pause.
     func add(_ piece: DictationRun.Piece, at: Date = Date()) async -> Report {
         guard run != nil else {
@@ -105,8 +122,9 @@ final class DictationController {
         return report
     }
 
-    /// Speech started: not a pause yet.
-    func heard() { run?.model.heard() }
+    /// Speech started, or a segment ended at `at`: not a pause yet, and silence counts from
+    /// when speech stopped, not from when it started.
+    func heard(at: Date = Date()) { run?.model.heard(at: at) }
 
     /// Every half second: paste on a pause, end a run on silence.
     func tick(now: Date, speaking: Bool) {
@@ -135,6 +153,7 @@ final class DictationController {
     /// waiting stays in the buffer, which keeps it (`kept(session_ended)`); loose words are
     /// kept here.
     func sessionEnded() {
+        epoch += 1
         tail?.cancel()
         tail = nil
         if var r = run {
@@ -159,9 +178,16 @@ final class DictationController {
             hud.model.badge = nil
             if erase {
                 keep(waiting, as: .discarded, app: r.place.appName)
+                let typed = r
                 let removed = r.model.removeAll()
                 if removed.chars > 0 {
-                    _ = await executor.eraseDictation(removed.chars, in: r.place)
+                    guard case .typed = await executor.eraseDictation(removed.chars, in: r.place) else {
+                        // Nothing was removed: the text is still there, so "scratch that" can still
+                        // find the run.
+                        lastRun = (typed, Date())
+                        report = Report(ok: false, message: "Couldn't remove it — \(r.place.appName) isn't in front")
+                        return
+                    }
                     onLoose(removed.spoken, .discarded, r.place.appName)
                 }
                 report.message = "Dictation cancelled"
@@ -185,14 +211,15 @@ final class DictationController {
             let waiting = r.model.takeWaiting()
             let removed = r.model.removeAll()
             let words = Dictation.join([removed.spoken] + waiting.map(\.text)).trimmingCharacters(in: .whitespaces)
-            // The waiting words are routed with the rest: in the buffer they're acted on now.
-            onDispose(waiting.flatMap(\.ids), .acted)
             if removed.chars > 0 {
+                // Erase first: if it fails, the run is untouched and its waiting words still wait.
                 guard case .typed = await executor.eraseDictation(removed.chars, in: r.place) else {
                     hud.model.show(.failure("Couldn't remove what I typed in \(r.place.appName)"), for: 3)
                     return
                 }
             }
+            // The waiting words are routed with the rest: in the buffer they're acted on now.
+            onDispose(waiting.flatMap(\.ids), .acted)
             run = nil; lastRun = nil
             hud.model.badge = nil
             spoken = words.isEmpty ? nil : words
@@ -221,7 +248,7 @@ final class DictationController {
     /// into the focused box. Loose words go to the history as typed or kept.
     func typeOnce(_ text: String, snap: DesktopSnapshot) async -> Report {
         await finish(.command)
-        var report = await start(.spoken, source: .local, app: nil, snap: snap, mediaPlaying: false, first: nil)
+        let report = await start(.spoken, source: .local, app: nil, snap: snap, mediaPlaying: false, first: nil)
         guard report.ok else {
             onLoose(text, .kept(.nowhereToType), snap.frontmostApp?.name)
             return report
@@ -291,7 +318,11 @@ final class DictationController {
             onDispose(ids, .kept(.noise))
             return Report(ok: true, message: "")
         }
-        switch await executor.typeDictation(mend.text, backspaces: mend.backspaces, into: r.place) {
+        let session = epoch
+        let result = await executor.typeDictation(mend.text, backspaces: mend.backspaces, into: r.place)
+        // The session ended meanwhile: its buffer already kept these words, and the run is gone.
+        guard epoch == session else { return Report(ok: false, message: "") }
+        switch result {
         case .typed:
             run?.model.didType(mend, pieces: pieces)
             onDispose(ids, .typed)
@@ -320,7 +351,12 @@ final class DictationController {
     @discardableResult
     private func finishNow(_ reason: EndReason) async -> Report {
         guard run != nil else { return Report(ok: true, message: "") }
-        let report = await typeWaiting()
+        var report = await typeWaiting()
+        // Words added while that step was typing are typed too, never left in the ended run.
+        while let r = run, !r.model.waiting.isEmpty {
+            let next = await typeWaiting()
+            if !next.message.isEmpty { report = next }
+        }
         // A failed step already ended the run and kept its words.
         if let r = run {
             // Implicit runs end quietly: the text is already typed.

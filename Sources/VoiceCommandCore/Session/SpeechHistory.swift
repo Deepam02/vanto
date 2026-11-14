@@ -129,6 +129,12 @@ public final class SpeechHistory: @unchecked Sendable {
         return (older.map { $0.hits > (recent?.hits ?? 0) } ?? false ? older : recent)?.entry
     }
 
+    /// `kept(matching:)` off the calling thread: the whole-file search can take a while on a
+    /// months-long history, so the voice path awaits it here instead of blocking the main actor.
+    public func findKept(matching query: String) async -> Entry? {
+        await Task.detached(priority: .userInitiated) { [self] in kept(matching: query) }.value
+    }
+
     /// Every entry in the file, oldest first. Reads the whole file: not for hot paths.
     public func all() -> [Entry] {
         lock.lock()
@@ -149,30 +155,42 @@ public final class SpeechHistory: @unchecked Sendable {
     }
 
     /// Read backwards from the end in chunks until there are enough recent and kept entries,
-    /// so a months-long history doesn't slow the app's start.
+    /// so a months-long history doesn't slow the app's start. Each chunk's whole lines are
+    /// decoded once; past `loadBudget` bytes it stops even with fewer kept entries (older ones
+    /// are still found by `findKept`, off the main thread).
     private func loadTail() {
         guard let handle = try? FileHandle(forReadingFrom: url) else { return }
         defer { try? handle.close() }
         guard let size = try? handle.seekToEnd(), size > 0 else { return }
         let chunk: UInt64 = 256 * 1024
         var offset = size
-        var tail = Data()
-        var entries: [Entry] = []
+        var carry = Data()            // the partial line at the start of the last chunk read
+        var batches: [[Entry]] = []   // newest batch first
+        var count = 0, keptCount = 0
         while offset > 0 {
             let start = offset > chunk ? offset - chunk : 0
             try? handle.seek(toOffset: start)
-            let piece = (try? handle.read(upToCount: Int(offset - start))) ?? Data()
-            tail = piece + tail
+            var piece = (try? handle.read(upToCount: Int(offset - start))) ?? Data()
+            piece.append(carry)
             offset = start
             // Decode only whole lines; a partial first line waits for the next chunk.
-            var usable = tail
-            if offset > 0, let nl = tail.firstIndex(of: 0x0A) { usable = tail[tail.index(after: nl)...] }
-            entries = Self.decodeLines(Data(usable))
-            let keptCount = entries.lazy.filter { $0.disposition.isKept }.count
-            if entries.count >= recentLimit && keptCount >= keptLimit { break }
+            carry = Data()
+            if offset > 0, let nl = piece.firstIndex(of: 0x0A) {
+                carry = Data(piece[..<nl])
+                piece = Data(piece[piece.index(after: nl)...])
+            }
+            let batch = Self.decodeLines(piece)
+            batches.append(batch)
+            count += batch.count
+            keptCount += batch.lazy.filter { $0.disposition.isKept }.count
+            if count >= recentLimit && (keptCount >= keptLimit || size - offset >= loadBudget) { break }
         }
-        for e in entries { remember(e) }
+        for batch in batches.reversed() { for e in batch { remember(e) } }
     }
+
+    /// How much of the file the start reads at most, once there are enough recent entries.
+    public static let loadBudget: UInt64 = 4 * 1024 * 1024
+    private var loadBudget: UInt64 { Self.loadBudget }
 
     static func decodeLines(_ data: Data) -> [Entry] {
         let decoder = JSONDecoder()

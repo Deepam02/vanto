@@ -305,3 +305,30 @@ option and noted it here. "Final review" refers to the PRD section that override
     With media playing, commands without a cue are kept as noise unless something was said
     to Vanto in the last 10 s (spec §5.7); the eval sets no recent speech, so that number is a
     worst case.
+81. **A failed route keeps its words at once** (`kept(error)`, `ReplyOutcome.errored`), replacing
+    #79's "errors and timeouts leave words waiting": waiting words were carried off as `acted`
+    by the next command, and "type it" couldn't find them. Newer speech cancelling a route
+    still leaves them waiting. Something that ran before the error is `acted`, never re-routed.
+82. **A run's silence counts from when speech stopped** (each segment's end), and a segment
+    still being decided holds it open, so a long segment can't end its own run before it's
+    added. Words added while the run's last step types are typed before it ends.
+83. **"Type the last one" / "the one about X" search kept words of any age**; a bare "type it"
+    still means the last 10 minutes (#75). They are never typed as content.
+84. **A run's place is one text box**, not the app: another note, channel or the search field
+    counts as moving away, and erasing ("scratch that", "cancel dictation") only backspaces in
+    the box that was typed into. Failed erases say so and keep the run for a retry.
+85. **The router's `dictate` / `start_dictation` honour `session_id` and the terminal app**, and a
+    guessed `dictate` never types into a plain shell; no run types at a password prompt.
+86. **Dictated text counts as an open draft for 20 s after its last words** (idle timeout, HUD,
+    the router's `draft_open`), so "send it" works right after a run but an old run doesn't
+    hold the mic on or make the router type later chatter.
+87. **"Media playing" means another process is running output** (Core Audio process list),
+    since Vanto's own echo cancellation keeps the output device running. Background speech is
+    still kept silently (spec §5.7): with the false signal gone, a HUD line per video sentence
+    would be noise.
+88. **router-eval passes at ≥ 98% overall and ≥ 95% in every named group** (DECISIONS 69, spec
+    §7.2); it used to pass at 90% and never checked dictate_keep.
+89. **The speech history's start reads at most ~4 MB of tail** (once it has 500 entries),
+    decoding each line once; older kept words are searched off the main actor. Quitting by
+    any route (logout, restart) ends the session, so waiting words are kept; a run that was
+    being pinned when the session ended never starts.

@@ -84,8 +84,10 @@ public struct IntentContext: Equatable, Sendable {
     public var typedRecently: Bool
     /// The last thing Vanto did was an action: "type that instead" applies.
     public var actedRecently: Bool
-    /// The speech history has kept words: "type it" / "copy it" refer to them.
+    /// The speech history has kept words from the last few minutes: "type it" / "copy it" refer to them.
     public var hasKept: Bool
+    /// The speech history has kept words of any age: "type the one about X" searches them.
+    public var keptEver: Bool
     /// An executor draft is open (Vanto typed it and is waiting for edits or "send").
     public var draftOpen: Bool
     /// The Mac is playing audio: speech without a command cue is probably the video.
@@ -99,11 +101,12 @@ public struct IntentContext: Equatable, Sendable {
 
     public init(focus: FocusKind = .none, holdFn: Bool = false, runActive: Bool = false, runTarget: String? = nil,
                 runEndsMidSentence: Bool = false, typedRecently: Bool = false, actedRecently: Bool = false,
-                hasKept: Bool = false, draftOpen: Bool = false, mediaPlaying: Bool = false,
+                hasKept: Bool = false, keptEver: Bool = false, draftOpen: Bool = false, mediaPlaying: Bool = false,
                 sinceSpokeToVanto: TimeInterval? = nil, vantoJustAsked: Bool = false, movedAwayFrom: String? = nil) {
         self.focus = focus; self.holdFn = holdFn; self.runActive = runActive; self.runTarget = runTarget
         self.runEndsMidSentence = runEndsMidSentence; self.typedRecently = typedRecently
-        self.actedRecently = actedRecently; self.hasKept = hasKept; self.draftOpen = draftOpen
+        self.actedRecently = actedRecently; self.hasKept = hasKept
+        self.keptEver = keptEver || hasKept; self.draftOpen = draftOpen
         self.mediaPlaying = mediaPlaying; self.sinceSpokeToVanto = sinceSpokeToVanto; self.vantoJustAsked = vantoJustAsked
         self.movedAwayFrom = movedAwayFrom
     }
@@ -193,7 +196,7 @@ public enum IntentGate {
         }
 
         // Recovery phrases, whole segment only.
-        if let r = Dictation.recovery(in: text), let fit = recoveryApplies(r, ctx) {
+        if let r = Dictation.recovery(in: text), let fit = recoveryApplies(r, ctx, namesItem: Dictation.namesKeptItem(text)) {
             return Decision(route: .recover(r), step: .recovery, reason: fit)
         }
 
@@ -265,15 +268,17 @@ public enum IntentGate {
     }
 
     /// Recovery phrases apply only when there's something to recover; otherwise they're
-    /// ordinary words ("copy it" with nothing kept is a copy command).
-    static func recoveryApplies(_ r: Dictation.Recovery, _ ctx: IntentContext) -> String? {
+    /// ordinary words ("copy it" with nothing kept is a copy command). "The one about X" and
+    /// "the last one" name a kept item, so they search kept words of any age (no expiry).
+    static func recoveryApplies(_ r: Dictation.Recovery, _ ctx: IntentContext, namesItem: Bool = false) -> String? {
         switch r {
         case .wasCommand, .scratchThat:
             return ctx.runActive || ctx.typedRecently ? "recovery after typing" : nil
         case .typeInstead:
             return ctx.actedRecently || ctx.hasKept ? "recovery after an action" : nil
-        case .typeKept, .copyKept:
-            return ctx.hasKept ? "kept words" : nil
+        case .typeKept(let about), .copyKept(let about):
+            if ctx.hasKept { return "kept words" }
+            return (about != nil || namesItem) && ctx.keptEver ? "older kept words" : nil
         case .listKept:
             return "kept words"
         }
@@ -432,9 +437,14 @@ public enum IntentGate {
         var rest = String(text[r.upperBound...]).trimmingCharacters(in: .whitespaces)
         let polite = head.range(of: "(can|could|would) you|please", options: ci) != nil
 
+        // "Type the last one", "paste the one about the deck": a kept item, never words to type.
+        if rest.range(of: "^the (?:last one|one about|bit about)\\b", options: ci) != nil { return nil }
         // A "saying" marker or a colon: everything after it is the text, verbatim.
         if let m = rest.range(of: "(\\bsaying\\b|\\bthat says\\b|\\bwhich says\\b|:)", options: ci) {
             let pre = String(rest[..<m.lowerBound])
+            // "Type a message to Priya saying…" names a person, not a place: the router's, like
+            // "type a message to Priya" without the marker.
+            if pre.range(of: "\\b(?:\(objectNouns))\\s+to\\s+\\S", options: ci) != nil { return nil }
             var body = String(rest[m.upperBound...])
             body = body.replacingOccurrences(of: "^[\\s,.:?]*(?:(?:that|like)\\b[\\s,.:?]*)?", with: "", options: ci)
             return ExplicitStart(text: body.trimmingCharacters(in: .whitespaces), target: targetIn(pre), verb: verb)
@@ -502,6 +512,13 @@ public enum IntentGate {
             t = String(t[last.upperBound...])
         }
         t = stripArticle(t.trimmingCharacters(in: CharacterSet.whitespaces.union(.punctuationCharacters)))
-        return t.isEmpty ? nil : t
+        // "In the chat", "in the box": the focused box, not an app called "chat".
+        return t.isEmpty || genericPlaces.contains(TextMatching.normalized(t)) ? nil : t
     }
+
+    /// Words that name the focused box rather than an app.
+    static let genericPlaces: Set<String> = [
+        "chat", "the chat", "chat box", "box", "text box", "textbox", "field", "text field", "input", "here", "this",
+        "it", "this box", "this field", "the box", "message box", "reply box", "thread", "conversation",
+    ]
 }

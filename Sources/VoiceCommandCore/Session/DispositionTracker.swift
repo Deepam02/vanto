@@ -22,14 +22,18 @@ public struct ReplyOutcome: Equatable, Sendable {
     public var kept: KeptReason?
     /// Lines the reply showed (a lone question means it only asked).
     public var outcomeLines = 0
+    /// The router errored or timed out (after its one retry) and nothing ran.
+    public var errored = false
 
     public init() {}
 
     /// Where the words go, or nil to leave them waiting: wait_for_more, so the next thing
     /// said is routed with them. Failed or kept words are kept, never dropped. Words a lone
     /// question was about are kept too (the answer completes them through asked_about), so an
-    /// unanswered "which app?" doesn't lose them.
+    /// unanswered "which app?" doesn't lose them. Words a route failed on are kept (error)
+    /// right away, so "type it" brings them back and a later command can't take them as acted.
     public var disposition: Disposition? {
+        if errored && !acted && !held && !dictated { return .kept(.error) }
         guard acted || kept != nil || held || ended || failed || dictated || !waited else { return nil }
         if asked && !held && !ended && outcomeLines == 1 { return .kept(.unclear) }
         if held || ended || succeeded { return .acted }

@@ -175,6 +175,46 @@ import Testing
         #expect(start("type that") == nil)
     }
 
+    /// Review, 14 Nov: "type a message to Priya saying…" pinned an app called "Priya", and
+    /// "in the chat" one called "chat".
+    @Test func sayingStartsNeverTakeAPersonOrTheChatAsAnApp() {
+        func start(_ s: String) -> IntentGate.ExplicitStart? { IntentGate.explicitStart(s) }
+        #expect(start("Type a message to Priya saying the deck is ready") == nil)
+        #expect(start("type a reply to John saying ok") == nil)
+        let chat = start("Type in the chat saying I'll be late")
+        #expect(chat?.target == nil)
+        #expect(chat?.text == "I'll be late")
+        #expect(start("Type in Slack saying I'll be late")?.target == "Slack")
+    }
+
+    /// Review, 14 Nov: with the newest kept item over 10 minutes old, "type the one about the
+    /// deck" typed those words literally. Named kept items search the whole history.
+    @Test func namedKeptItemsAreNeverTyped() {
+        let old = IntentContext(focus: .textField(app: "Slack"), keptEver: true)
+        #expect(IntentGate.decide("Type the one about the deck", old).route == .recover(.typeKept(about: "the deck")))
+        #expect(IntentGate.decide("type the last one", old).route == .recover(.typeKept(about: nil)))
+        #expect(IntentGate.decide("Copy the bit about Friday", old).route == .recover(.copyKept(about: "friday")))
+        // A bare "type it" still means only words kept in the last few minutes.
+        if case .recover = IntentGate.decide("Type it", old).route { Issue.record("old kept words typed by \"type it\"") }
+        // Nothing kept at all: never typed as content, and never a continuation of a run.
+        #expect(IntentGate.explicitStart("Type the one about the deck") == nil)
+        if case .dictate = IntentGate.decide("Type the one about the deck", IntentContext(focus: .textField(app: "Slack"))).route {
+            Issue.record("typed the request")
+        }
+        var run = old
+        run.runActive = true
+        #expect(IntentGate.decide("type the last one", run).route == .recover(.typeKept(about: nil)))
+    }
+
+    @Test func cancelPhraseContentIsDiscardedNotActed() {
+        #expect(Dictation.cancelDisposition(content: "", effect: .erase) == .acted)
+        #expect(Dictation.cancelDisposition(content: "and the deck is ready", effect: .erase) == .discarded)
+        #expect(Dictation.cancelDisposition(content: "and the deck is ready", effect: .keep) == .kept(.neverMind))
+        let (content, end) = Dictation.endCommand(in: "and the deck is ready, cancel dictation")
+        #expect(end == .cancel)
+        #expect(Dictation.cancelDisposition(content: content, effect: Dictation.cancelEffect(of: "and the deck is ready, cancel dictation", runAge: 60)) == .discarded)
+    }
+
     @Test func noteThatIsContentInAPrompt() {
         let said = "Note that the API changed last week"
         #expect(IntentGate.decide(said, IntentContext(focus: .textField(app: "Notes"))).route
