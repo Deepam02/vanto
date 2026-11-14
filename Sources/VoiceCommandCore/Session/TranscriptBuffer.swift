@@ -107,6 +107,9 @@ public struct TranscriptBuffer: Sendable {
 
     /// Segments still waiting for a disposition, oldest first.
     public private(set) var segments: [Segment] = []
+    /// Segments handed to a dictation run: out of the next utterance, but still waiting for
+    /// the run to say whether they were typed or kept.
+    public private(set) var claimed: [Segment] = []
     /// Dispositions made since the caller last collected them (`takeDisposed`).
     public private(set) var disposed: [Disposed] = []
     private var nextID = 0
@@ -139,19 +142,28 @@ public struct TranscriptBuffer: Sendable {
 
     public var latestSegmentIDs: [Int] { segments.map(\.id) }
 
-    public var hasPending: Bool { !segments.isEmpty }
+    public var hasPending: Bool { !segments.isEmpty || !claimed.isEmpty }
+
+    /// Hand waiting segments to a dictation run. They leave `latest` (the next utterance) but
+    /// still need a disposition: the run disposes them as typed or kept.
+    public mutating func claim(_ ids: [Int]) {
+        let wanted = Set(ids)
+        claimed += segments.filter { wanted.contains($0.id) }
+        segments.removeAll { wanted.contains($0.id) }
+    }
 
     /// The only way out of the buffer. IDs that aren't waiting (already disposed, or never
     /// had words) are ignored, so a segment can't get two dispositions.
     public mutating func dispose(_ ids: [Int], as disposition: Disposition, at: Date = Date()) {
         let wanted = Set(ids)
-        let leaving = segments.filter { wanted.contains($0.id) }
+        let leaving = (claimed + segments).filter { wanted.contains($0.id) }.sorted { $0.id < $1.id }
         guard !leaving.isEmpty else { return }
         segments.removeAll { wanted.contains($0.id) }
+        claimed.removeAll { wanted.contains($0.id) }
         disposed.append(Disposed(segments: leaving, disposition: disposition, at: at))
     }
 
-    /// Every waiting segment up to and including `segmentID` (what one router reply covered).
+    /// Every unclaimed waiting segment up to and including `segmentID` (what one router reply covered).
     public mutating func dispose(through segmentID: Int, as disposition: Disposition, at: Date = Date()) {
         dispose(segments.filter { $0.id <= segmentID }.map(\.id), as: disposition, at: at)
     }
@@ -175,10 +187,10 @@ public struct TranscriptBuffer: Sendable {
         return disposed
     }
 
-    /// End of a session: whatever is still waiting is kept, never silently cleared.
-    /// Collect `disposed` afterwards.
+    /// End of a session: whatever is still waiting, claimed or not, is kept, never silently
+    /// cleared. Collect `disposed` afterwards.
     public mutating func reset(at: Date = Date()) {
-        disposeAll(as: .kept(.sessionEnded), at: at)
+        dispose((claimed + segments).map(\.id), as: .kept(.sessionEnded), at: at)
     }
 }
 

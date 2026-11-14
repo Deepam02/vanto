@@ -260,3 +260,31 @@ option and noted it here. "Final review" refers to the PRD section that override
     kept(unclear), so an unanswered question loses nothing.
 69. **LLM evals pass at ≥ 98% overall; deterministic unit tests at 100%** (owner, 13 Nov).
     Router eval is sampled, so a 1–2% margin is noise, not a regression.
+70. **One dictation engine, `DictationController`** (spec §5.5). Hold Fn, spoken starts
+    ("type…", "dictate into Claude Code"), plain speech and the router's `dictate` and
+    `start_dictation` all go through it; the old `dictated` and `voiceDictation` paths and the
+    type_text stand-in are gone. A run is pinned to one place (a terminal session, a text box,
+    or an app whose box Accessibility can't see) and every step checks that place is still in
+    front before typing. The run's state (`DictationRun`) is pure and unit-tested in the core.
+71. **Words handed to a run are claimed, not consumed.** `TranscriptBuffer.claim` takes them
+    out of the next utterance; the run disposes them as typed when they land, or kept with the
+    reason (moved_away, nowhere_to_type) when they can't. A session that ends before a pause
+    paste keeps them (session_ended); the hotkey and "end the session" type them first.
+72. **Hold Fn no longer touches the clipboard** (loss path 9). A paste where no text box can be
+    seen, even after asking Electron apps for their tree, still pastes but is recorded as
+    kept(nowhere_to_type) and the HUD says it's in the Kept list. A password field is never
+    typed into; the words are kept.
+73. **Focus moving away pauses the run.** The next words start a new run only if a text box is
+    focused there, otherwise they're kept(moved_away) with "say 'type it' to put them here";
+    anything that reads like a command is decided as usual. A terminal whose sessions the
+    snapshot didn't read never counts as moved.
+74. **A command during a run ends the run first**: waiting words are typed, the text stays
+    unsent, then the router runs. The router is told the run's target (`dictation_run`), so a
+    follow-up it calls `dictate` starts again in the same place.
+75. **"Type it" refers to words kept in the last 10 minutes**; "the one about X" searches the
+    whole history. Recovery after an action ("type that instead") undoes it only when that
+    action left the undo entry on top, so an older action is never undone by mistake.
+76. **"Type what I say when I'm not giving a command" off**: implicit starts go to the router,
+    and a router `dictate` with no run going is kept(unclear). Spoken starts still work.
+77. **Speech that stops a continuous scroll** is the "stop" only if it's ≤ 4 words and says
+    "stop" or doesn't read like a command (loss path 7): "scroll up" now runs.

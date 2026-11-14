@@ -193,3 +193,20 @@ Spec: docs/specs/never-lose-dictation.md; owner's decisions of 13 Nov in DECISIO
   transcript via type_text as a stand-in until stage 3. Router eval: 99.3% (133/134),
   dictate_keep 100% (34/34), p50 first tool call 906 ms (bar ≥ 98%, DECISIONS 69).
 
+- **Stage 3, app wiring** (spec §5.5–5.8, §8): every utterance goes through `IntentGate` to
+  the one dictation engine, the router, or the speech history (DECISIONS 70–77).
+  - `DictationController`: pinned place, live or paste-on-pause per `TypingMode`, mending,
+    focus change pauses and keeps, ends on "send it"/"done", a command, the session or 8 s /
+    4 s of silence; typing failures kept with the reason.
+  - Recovery on the device: "that was a command" (removes the typing, routes the words),
+    "type that instead" (undo, then type), "scratch that", "type it" / "copy it" / "what did
+    you keep?", "never mind" (erases only a run under 3 s).
+  - Loss paths 1–9 of §1 closed: keep(reason); stale → kept; failed actions and failed typing
+    → kept; session end keeps (hotkey and "end the session" type pending words first); never
+    mind keeps old runs; mute words acted; scroll-stop routes real commands; questions keep
+    their words; hold Fn keeps instead of overwriting the clipboard.
+  - HUD: "Dictating into X — 'send it' to send" badge, kept notes (noise silent), the
+    implicit-typing tip three times. Menu bar: Kept submenu (last 10, click to copy).
+    Settings: "Type what I say when I'm not giving a command", "Clear speech history".
+  - Log records carry `intent`, `focusKind`, `mediaPlaying`, `disposition` (§5.8).
+  - Unit tests: 109 pass (claimed words, `DictationRun`, moved-away rule).

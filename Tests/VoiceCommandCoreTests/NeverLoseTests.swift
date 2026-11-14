@@ -26,7 +26,12 @@ import Testing
                     let all: [Disposition] = [.acted, .typed, .kept(.notForMe), .kept(.failed), .discarded]
                     if let last = b.latestSegmentIDs.last { b.dispose(through: last, as: all[rng.next(all.count)]) }
                 case 4:
-                    break   // wait_for_more, or a router error: the words stay
+                    // wait_for_more or a router error (the words stay), or handed to a dictation
+                    // run, which disposes them later as typed or kept.
+                    if rng.next(2) == 0, let first = b.latestSegmentIDs.first {
+                        b.claim([first])
+                        if rng.next(2) == 0 { b.dispose([first], as: rng.next(2) == 0 ? .typed : .kept(.movedAway)) }
+                    }
                 case 5:
                     b.keepStale(now: now)
                 default:
@@ -267,5 +272,140 @@ struct SeededRandom {
     mutating func next(_ upper: Int) -> Int {
         state = state &* 6364136223846793005 &+ 1442695040888963407
         return Int((state >> 33) % UInt64(max(upper, 1)))
+    }
+}
+
+@Suite struct ClaimTests {
+    @Test func claimedWordsLeaveTheUtteranceButNotTheBuffer() {
+        var b = TranscriptBuffer()
+        let a = b.append("So I think we need to", endedAt: Date(timeIntervalSince1970: 0))
+        b.append("switch to Chrome")
+        b.claim([a])
+        #expect(b.latest == "switch to Chrome")
+        #expect(b.hasPending)
+        // Not swept as stale: the run owns it.
+        let swept = b.keepStale(now: Date(timeIntervalSince1970: 10_000))
+        #expect(!swept)
+        // dispose(through:) covers only unclaimed words (one router reply).
+        b.dispose(through: 99, as: .acted)
+        #expect(b.takeDisposed().map(\.text) == ["switch to Chrome"])
+        b.dispose([a], as: .typed)
+        let out = b.takeDisposed()
+        #expect(out.map(\.disposition) == [.typed])
+        #expect(!b.hasPending)
+    }
+
+    @Test func sessionEndKeepsClaimedWords() {
+        var b = TranscriptBuffer()
+        let a = b.append("waiting for a pause")
+        b.claim([a])
+        b.reset()
+        #expect(b.takeDisposed().map(\.disposition) == [.kept(.sessionEnded)])
+    }
+}
+
+@Suite struct DictationRunTests {
+    let t0 = Date(timeIntervalSince1970: 1_800_000_000)
+
+    /// Live typing, one step per segment, ends with the same text as one clean paste.
+    @Test func liveStepsTypeWhatCleanGives() {
+        let segments = ["So basically I'm running a session and I think we need to.", "Improve the screens.", "Um.", "And the onboarding."]
+        var run = DictationRun(start: .implicit, mode: .live, target: "Claude Code", at: t0)
+        var field = ""
+        for (i, seg) in segments.enumerated() {
+            run.add(.init(text: seg, ids: [i]), at: t0.addingTimeInterval(Double(i)))
+            guard let (mend, pieces) = run.nextStep() else { continue }
+            field = String(field.dropLast(mend.backspaces)) + mend.text
+            if mend.text.isEmpty && mend.backspaces == 0 { run.didNotType(pieces) } else { run.didType(mend, pieces: pieces) }
+        }
+        #expect(field == Dictation.clean(segments))
+        #expect(run.typed == field)
+        #expect(run.waiting.isEmpty)
+    }
+
+    @Test func pasteOnPauseIsOneStep() {
+        var run = DictationRun(start: .implicit, mode: .onPause, target: "Slack", at: t0)
+        run.add(.init(text: "Hey Priya, the deck is ready, I'll walk you through it", ids: [1]), at: t0)
+        run.add(.init(text: "tomorrow.", ids: [2]), at: t0.addingTimeInterval(2))
+        #expect(!run.pasteDue(now: t0.addingTimeInterval(2.5), speaking: false))
+        #expect(!run.pasteDue(now: t0.addingTimeInterval(9), speaking: true))
+        #expect(run.pasteDue(now: t0.addingTimeInterval(3.3), speaking: false))
+        let (mend, pieces) = run.nextStep()!
+        #expect(mend.text == "Hey Priya, the deck is ready, I'll walk you through it tomorrow.")
+        #expect(pieces.flatMap(\.ids) == [1, 2])
+        run.didType(mend, pieces: pieces)
+        #expect(!run.pasteDue(now: t0.addingTimeInterval(10), speaking: false))
+    }
+
+    @Test func silenceEndsSpokenAndImplicitRunsDifferently() {
+        let implicit = DictationRun(start: .implicit, mode: .live, target: "Notes", at: t0)
+        let spoken = DictationRun(start: .spoken, mode: .onPause, target: "Notes", at: t0)
+        let held = DictationRun(start: .holdFn, mode: .onRelease, target: "Notes", at: t0)
+        #expect(implicit.silenceEnds(now: t0.addingTimeInterval(4.5), speaking: false))
+        #expect(!implicit.silenceEnds(now: t0.addingTimeInterval(4.5), speaking: true))
+        #expect(!spoken.silenceEnds(now: t0.addingTimeInterval(4.5), speaking: false))
+        #expect(spoken.silenceEnds(now: t0.addingTimeInterval(8.5), speaking: false))
+        #expect(!held.silenceEnds(now: t0.addingTimeInterval(60), speaking: false))
+    }
+
+    @Test func scratchThatPutsBackThePeriodItReplaced() {
+        var run = DictationRun(start: .implicit, mode: .live, target: "Claude Code", at: t0)
+        for (i, seg) in ["We need to.", "Improve the screens."].enumerated() {
+            run.add(.init(text: seg, ids: [i]))
+            let (mend, pieces) = run.nextStep()!
+            run.didType(mend, pieces: pieces)
+        }
+        #expect(run.typed == "We need to improve the screens.")
+        let chunk = run.removeLastChunk()!
+        #expect(chunk.text == " improve the screens.")
+        #expect(chunk.replaced == ".")
+        #expect(chunk.spoken == "Improve the screens.")
+        #expect(run.typed == "We need to.")
+        #expect(run.endsMidSentence)
+    }
+
+    @Test func thatWasACommandTakesBackEverything() {
+        var run = DictationRun(start: .implicit, mode: .live, target: "Slack", at: t0)
+        run.add(.init(text: "Switch to Chrome.", ids: [7]))
+        let (mend, pieces) = run.nextStep()!
+        run.didType(mend, pieces: pieces)
+        let out = run.removeAll()
+        #expect(out.chars == "Switch to Chrome.".count)
+        #expect(out.spoken == "Switch to Chrome.")
+        #expect(out.ids == [7])
+        #expect(run.typed.isEmpty && run.chunks.isEmpty)
+    }
+
+    @Test func aFieldWithTextGetsASpaceFirst() {
+        var run = DictationRun(start: .spoken, mode: .onPause, target: "Notes", at: t0, leadingSpace: true)
+        run.add(.init(text: "and one more thing."))
+        #expect(run.nextStep()!.mend.text == " And one more thing.")
+    }
+
+    @Test func failedPiecesLeaveTheRun() {
+        var run = DictationRun(start: .implicit, mode: .onPause, target: "Slack", at: t0)
+        run.add(.init(text: "one", ids: [1]))
+        run.add(.init(text: "two", ids: [2]))
+        let (_, pieces) = run.nextStep()!
+        run.add(.init(text: "three", ids: [3]))
+        run.didNotType(pieces)
+        #expect(run.waiting.map(\.ids) == [[3]])
+        #expect(run.takeWaiting().count == 1)
+        #expect(run.waiting.isEmpty)
+    }
+}
+
+@Suite struct MovedAwayTests {
+    @Test func nextWordsFollowTheFocus() {
+        let prose = "and that's why the onboarding needs fewer steps"
+        let field = IntentContext(focus: .textField(app: "Notes"), movedAwayFrom: "Claude Code")
+        let nothing = IntentContext(focus: .none, movedAwayFrom: "Claude Code")
+        #expect(IntentGate.decide(prose, field).route == .dictate(text: prose, target: nil, start: .implicit))
+        #expect(IntentGate.decide(prose, nothing).route == .keep(.movedAway))
+        // A command after moving is still a command.
+        #expect(IntentGate.decide("open Slack", nothing).route == .command(text: "open Slack"))
+        #expect(IntentGate.readsLikeCommand("scroll up"))
+        #expect(IntentGate.readsLikeCommand("okay can you open it"))
+        #expect(!IntentGate.readsLikeCommand("Store"))
     }
 }

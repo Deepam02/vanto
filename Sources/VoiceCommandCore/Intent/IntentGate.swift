@@ -67,7 +67,7 @@ extension TypingMode {
         "com.google.Chrome", "com.apple.Safari", "company.thebrowser.Browser", "org.mozilla.firefox",
         "com.brave.Browser", "com.microsoft.edgemac", "com.operasoftware.Opera",
     ]
-    static func isBrowser(_ bundleID: String?) -> Bool { bundleID.map(browserBundles.contains) ?? false }
+    public static func isBrowser(_ bundleID: String?) -> Bool { bundleID.map(browserBundles.contains) ?? false }
 }
 
 /// What the gate knows besides the words (spec §5.2).
@@ -94,15 +94,18 @@ public struct IntentContext: Equatable, Sendable {
     public var sinceSpokeToVanto: TimeInterval?
     /// Vanto's last reply was a question: a short answer answers it.
     public var vantoJustAsked: Bool
+    /// A run was going into this app, and focus just moved somewhere else (spec §5.5).
+    public var movedAwayFrom: String?
 
     public init(focus: FocusKind = .none, holdFn: Bool = false, runActive: Bool = false, runTarget: String? = nil,
                 runEndsMidSentence: Bool = false, typedRecently: Bool = false, actedRecently: Bool = false,
                 hasKept: Bool = false, draftOpen: Bool = false, mediaPlaying: Bool = false,
-                sinceSpokeToVanto: TimeInterval? = nil, vantoJustAsked: Bool = false) {
+                sinceSpokeToVanto: TimeInterval? = nil, vantoJustAsked: Bool = false, movedAwayFrom: String? = nil) {
         self.focus = focus; self.holdFn = holdFn; self.runActive = runActive; self.runTarget = runTarget
         self.runEndsMidSentence = runEndsMidSentence; self.typedRecently = typedRecently
         self.actedRecently = actedRecently; self.hasKept = hasKept; self.draftOpen = draftOpen
         self.mediaPlaying = mediaPlaying; self.sinceSpokeToVanto = sinceSpokeToVanto; self.vantoJustAsked = vantoJustAsked
+        self.movedAwayFrom = movedAwayFrom
     }
 }
 
@@ -140,6 +143,10 @@ public struct Decision: Equatable, Sendable {
     public var route: Route
     public var step: Step
     public var reason: String
+
+    public init(route: Route, step: Step, reason: String) {
+        self.route = route; self.step = step; self.reason = reason
+    }
 
     /// For `TypingMode`: dictation the device decided is typed live where that fits.
     public var source: TypingMode.Source {
@@ -201,6 +208,17 @@ public enum IntentGate {
             }
             return Decision(route: .dictate(text: text, target: ctx.runTarget, start: .continuing), step: .run,
                             reason: "continues the run (\(words.count) words)")
+        }
+
+        // The run's app lost focus mid-dictation: the next words start a new run only if a text
+        // box is focused here; otherwise they're kept. Anything that reads like a command or a
+        // start phrase goes through the usual rules.
+        if let from = ctx.movedAwayFrom, !readsLikeCommand(text) {
+            if ctx.focus.takesImplicitDictation {
+                return Decision(route: .dictate(text: text, target: nil, start: .implicit), step: .run,
+                                reason: "run moved from \(from) to \(ctx.focus.label)")
+            }
+            return Decision(route: .keep(.movedAway), step: .local, reason: "moved away from \(from), nothing to type into")
         }
 
         // 3. Explicit start, handled here so "enter dictation into Claude Code" just works.
@@ -331,6 +349,11 @@ public enum IntentGate {
     }
 
     static func hasAskMarker(_ words: [String]) -> Bool { containsPhrase(words, askMarkers) }
+
+    /// Starts like a command or asks for something ("scroll up", "can you…").
+    public static func readsLikeCommand(_ text: String) -> Bool {
+        startsWithCue(text) || hasAskMarker(TextMatching.words(text).map(\.norm))
+    }
     static func hasVantoMarker(_ words: [String]) -> Bool { containsPhrase(words, vantoMarkers) }
     static func mentionsScreen(_ words: [String]) -> Bool { words.contains(where: screenWords.contains) }
     static func isFirstPerson(_ words: [String]) -> Bool { words.contains(where: firstPerson.contains) }

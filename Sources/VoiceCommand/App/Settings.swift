@@ -27,6 +27,14 @@ final class AppSettings: ObservableObject {
     @Published var cleanUpDictation: Bool { didSet { d.set(cleanUpDictation, forKey: "cleanUpDictation") } }
     /// Words the speech model should know, one per line: `Word` or `Word: how I say it, …`.
     @Published var personalDictionary: String { didSet { d.set(personalDictionary, forKey: "personalDictionary") } }
+    /// Type plain speech into a focused text box without being asked (spec §8). Off: only the
+    /// router decides, and only when asked ("type…"); words not typed are still kept.
+    @Published var implicitDictation: Bool { didSet { d.set(implicitDictation, forKey: "implicitDictation") } }
+    /// How often the HUD has explained an implicit typing (shown three times, then never).
+    var implicitHintsShown: Int {
+        get { d.integer(forKey: "implicitHintsShown") }
+        set { d.set(newValue, forKey: "implicitHintsShown") }
+    }
     /// Only for API keys that aren't scoped to a workspace (sent as anthropic-workspace-id).
     @Published var workspaceID: String { didSet { d.set(workspaceID, forKey: "workspaceID") } }
 
@@ -36,6 +44,7 @@ final class AppSettings: ObservableObject {
         d.register(defaults: [
             "commitDelayMs": 450, "idleTimeoutSec": 20, "fnKeyEnabled": true,
             "useBuiltInMic": true, "thinkingPauses": true, "cancelMacAudio": true, "cleanUpDictation": true,
+            "implicitDictation": true,
         ])
         commitDelayMs = d.integer(forKey: "commitDelayMs")
         idleTimeoutSec = d.integer(forKey: "idleTimeoutSec")
@@ -44,6 +53,7 @@ final class AppSettings: ObservableObject {
         thinkingPauses = d.bool(forKey: "thinkingPauses")
         cancelMacAudio = d.bool(forKey: "cancelMacAudio")
         cleanUpDictation = d.bool(forKey: "cleanUpDictation")
+        implicitDictation = d.bool(forKey: "implicitDictation")
         personalDictionary = d.string(forKey: "personalDictionary") ?? ""
         workspaceID = d.string(forKey: "workspaceID") ?? ""
     }

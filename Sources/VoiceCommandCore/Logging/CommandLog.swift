@@ -32,6 +32,13 @@ public struct CommandRecord: Codable, Sendable {
     /// Speech end → segment delivered (voice detection plus transcription), for latency work.
     public var segmentLagMs: Int?
     public var transcribeMs: Int?
+    // Never lose dictation (spec §5.8)
+    /// Which rule decided and why: "local: certain dictation (assistant prompt (Claude Code), 31 words)".
+    public var intent: String?
+    public var focusKind: String?
+    public var mediaPlaying: Bool?
+    /// Where the words ended up: "acted", "typed", "kept:failed"…
+    public var disposition: String?
 
     public init(id: String = UUID().uuidString, sessionID: String, generation: Int, transcript: String) {
         self.id = id; self.sessionID = sessionID; self.generation = generation; self.transcript = transcript
