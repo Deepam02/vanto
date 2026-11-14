@@ -21,7 +21,7 @@ public struct CommandRecord: Codable, Sendable {
     public var tools: [String] = []
     public var decisions: [String] = []
     public var results: [String] = []
-    public var outcome: String = ""          // ok | failed | pending | waiting | ignored | error | cancelled
+    public var outcome: String = ""          // ok | failed | pending | waiting | kept | error | cancelled
     public var error: String?
     public var irreversible: Bool = false    // a submit or terminal command actually ran
     public var mismatchNotes: [String] = []

@@ -12,7 +12,13 @@ public enum VolumeAction: String, Codable, Sendable { case up, down, set, mute, 
 /// validate inputs, so every field is checked here before anything can run.
 public enum ToolCall: Equatable, Sendable {
     case waitForMore
-    case ignore
+    /// Not for Vanto and not to be typed (a video, someone in the room, unclear words). Nothing
+    /// runs; the words go to the speech history as kept, never dropped.
+    case keep(reason: KeptReason)
+    /// The person is dictating: the words themselves are the text. No payload, so Vanto types
+    /// its own transcript (nothing paraphrased, and a long prompt can't hit max_tokens).
+    /// `target` nil: the open draft if there is one, else the focused field.
+    case dictate(target: TypeTarget?, app: String?, sessionID: String?)
     case say(message: String)
     case endSession
     case confirmPending
@@ -53,7 +59,8 @@ public enum ToolCall: Equatable, Sendable {
     public var name: String {
         switch self {
         case .waitForMore: return "wait_for_more"
-        case .ignore: return "ignore"
+        case .keep: return "keep"
+        case .dictate: return "dictate"
         case .say: return "say"
         case .endSession: return "end_session"
         case .confirmPending: return "confirm_pending"
@@ -91,6 +98,10 @@ public enum ToolCall: Equatable, Sendable {
     public var summary: String {
         switch self {
         case .say(let m): return "say(\(m))"
+        case .keep(let r): return "keep(\(r.rawValue))"
+        case .dictate(let t, let a, let s):
+            let parts = [t?.rawValue, a.map { "app: \($0)" }, s.map { "session: \($0)" }].compactMap { $0 }
+            return "dictate(\(parts.joined(separator: ", ")))"
         case .openApp(let a): return "open_app(\(a))"
         case .focusWindow(let w): return "focus_window(\(w))"
         case .browserSwitchTab(let t): return "browser_switch_tab(\(t))"
@@ -165,7 +176,14 @@ public enum ToolCall: Equatable, Sendable {
 
         switch name {
         case "wait_for_more": return .waitForMore
-        case "ignore": return .ignore
+        case "keep":
+            // Only the reasons the router can give; the rest are Vanto's own.
+            let reason = try enumValue("reason", KeptReason.self, default: .unclear)
+            guard [.noise, .notForMe, .unclear].contains(reason) else { throw ParseError.invalidInput("keep.reason invalid") }
+            return .keep(reason: reason)
+        case "dictate":
+            let target: TypeTarget? = input["target"] == nil ? nil : try enumValue("target", TypeTarget.self)
+            return .dictate(target: target, app: optStr("app"), sessionID: optStr("session_id"))
         case "say": return .say(message: try str("message"))
         case "end_session": return .endSession
         case "confirm_pending": return .confirmPending

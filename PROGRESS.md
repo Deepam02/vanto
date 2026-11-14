@@ -186,4 +186,10 @@ Spec: docs/specs/never-lose-dictation.md; owner's decisions of 13 Nov in DECISIO
     "send this message" ends a dictation (DECISIONS 66).
   - Not yet wired: the gate, typing modes and recovery in the app (stage 3); router `dictate`
     and `keep` (stage 2). Unit tests: 97 pass.
+- **Stage 2, router** (spec §5.4): `dictate(target?)` and `keep(reason)` tools, prompt rules
+  for dictation vs. commands (focus, `dictation_run`, `media_playing` in session_state),
+  clarifying-question carry-over via `asked_about` (DECISIONS 67–68). Golden set: ignore →
+  keep, 34 new `dictate_keep` cases from logs and persona prose. App: `dictate` types the
+  transcript via type_text as a stand-in until stage 3. Router eval: 99.3% (133/134),
+  dictate_keep 100% (34/34), p50 first tool call 906 ms (bar ≥ 98%, DECISIONS 69).
 

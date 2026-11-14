@@ -221,4 +221,10 @@ public struct SessionHistory: Sendable {
         guard let last = entries.last, last.actions == ["say"], last.outcome.hasSuffix("?") else { return nil }
         return last.outcome
     }
+
+    /// What they said that the last question was about, so a short answer ("Claude Code")
+    /// completes it (spec §5.4: clarifying questions keep the content).
+    public var lastQuestionAbout: String? {
+        lastQuestion == nil ? nil : entries.last?.transcript
+    }
 }

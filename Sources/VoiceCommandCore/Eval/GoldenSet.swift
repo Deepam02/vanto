@@ -19,8 +19,15 @@ public struct GoldenCase: Codable {
     public var draft: RouterInputDraft?
     public var pending: String?
     public var lastQuestion: String?
+    /// The words the question was about (clarifying-question carry-over).
+    public var questionAbout: String?
     /// A look_again follow-up turn: what the request already did.
     public var alreadyDone: [String]?
+    /// A dictation run is going into this target.
+    public var dictationRun: String?
+    public var mediaPlaying: Bool?
+    /// Reported separately by router-eval (e.g. "dictate_keep" for the never-lose-dictation cases).
+    public var group: String?
     public var expect: Expectation
 
     public struct RouterInputDraft: Codable {
@@ -69,7 +76,11 @@ public struct GoldenCase: Codable {
             pending: pending,
             transcript: transcript,
             lastQuestion: lastQuestion,
-            alreadyDone: alreadyDone)
+            questionAbout: questionAbout,
+            alreadyDone: alreadyDone,
+            focus: FocusKind.from(snap),
+            dictationRun: dictationRun,
+            mediaPlaying: mediaPlaying ?? false)
     }
 }
 

@@ -544,13 +544,6 @@
      "selected": false
     }
    ],
-   "focused": {
-    "app": "Google Chrome",
-    "role": "AXTextArea",
-    "placeholder": "Leave a comment",
-    "editable": true,
-    "secure": false
-   },
    "secureInputOn": false,
    "frontControls": [
     "Home",
@@ -1005,13 +998,6 @@
      "visibleInWindow": true
     }
    ],
-   "focused": {
-    "app": "Google Chrome",
-    "role": "AXTextArea",
-    "placeholder": "Leave a comment",
-    "editable": true,
-    "secure": false
-   },
    "secureInputOn": false
   },
   "figma_web": {
@@ -1413,13 +1399,6 @@
      "selected": false
     }
    ],
-   "focused": {
-    "app": "Google Chrome",
-    "role": "AXTextArea",
-    "placeholder": "Leave a comment",
-    "editable": true,
-    "secure": false
-   },
    "secureInputOn": false,
    "frontControls": [
     "Hide sidebar",
@@ -1643,13 +1622,6 @@
      "visibleInWindow": false
     }
    ],
-   "focused": {
-    "app": "Google Chrome",
-    "role": "AXTextArea",
-    "placeholder": "Leave a comment",
-    "editable": true,
-    "secure": false
-   },
    "secureInputOn": false
   },
   "nov9_google_results": {
@@ -2257,13 +2229,6 @@
      "selected": false
     }
    ],
-   "focused": {
-    "app": "Google Chrome",
-    "role": "AXTextArea",
-    "placeholder": "Leave a comment",
-    "editable": true,
-    "secure": false
-   },
    "secureInputOn": false,
    "frontControls": [
     "Hide sidebar",
@@ -2282,6 +2247,1367 @@
     "Competitor website screenshots for redesign",
     "More options for Competitor website screenshots for redesign",
     "Context.dev credit balance"
+   ]
+  },
+  "slack_compose": {
+   "takenAt": 0,
+   "apps": [
+    {
+     "name": "Finder",
+     "bundleID": "com.apple.finder",
+     "pid": 401,
+     "frontmost": false
+    },
+    {
+     "name": "Google Chrome",
+     "bundleID": "com.google.Chrome",
+     "pid": 510,
+     "frontmost": false
+    },
+    {
+     "name": "Cursor",
+     "bundleID": "com.todesktop.230313mzl4w4u92",
+     "pid": 620,
+     "frontmost": false
+    },
+    {
+     "name": "Terminal",
+     "bundleID": "com.apple.Terminal",
+     "pid": 730,
+     "frontmost": false
+    },
+    {
+     "name": "Slack",
+     "bundleID": "com.tinyspeck.slackmacgap",
+     "pid": 840,
+     "frontmost": true
+    },
+    {
+     "name": "Claude",
+     "bundleID": "com.anthropic.claudefordesktop",
+     "pid": 950,
+     "frontmost": false
+    },
+    {
+     "name": "ChatGPT",
+     "bundleID": "com.openai.chat",
+     "pid": 960,
+     "frontmost": false
+    }
+   ],
+   "windows": [
+    {
+     "id": "w1",
+     "app": "Google Chrome",
+     "pid": 510,
+     "title": "Fix parser edge cases by deepam · Pull Request #482 · acme/app",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w2",
+     "app": "Cursor",
+     "pid": 620,
+     "title": "parser.ts — app",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w3",
+     "app": "Cursor",
+     "pid": 620,
+     "title": "README.md — docs",
+     "index": 1,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w4",
+     "app": "Terminal",
+     "pid": 730,
+     "title": "app — claude — 120×40",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w5",
+     "app": "Slack",
+     "pid": 840,
+     "title": "eng-team (Channel) - Acme - Slack",
+     "index": 0,
+     "minimized": false,
+     "focused": true
+    },
+    {
+     "id": "w6",
+     "app": "Claude",
+     "pid": 950,
+     "title": "Claude",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w7",
+     "app": "ChatGPT",
+     "pid": 960,
+     "title": "ChatGPT",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    }
+   ],
+   "tabs": [
+    {
+     "id": "chrome:1:101",
+     "windowID": 1,
+     "tabID": 101,
+     "index": 1,
+     "title": "Fix parser edge cases by deepam · Pull Request #482 · acme/app",
+     "url": "https://github.com/acme/app/pull/482",
+     "active": true,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:102",
+     "windowID": 1,
+     "tabID": 102,
+     "index": 2,
+     "title": "ENG-231 Parser crashes on empty input - Linear",
+     "url": "https://linear.app/acme/issue/ENG-231",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:103",
+     "windowID": 1,
+     "tabID": 103,
+     "index": 3,
+     "title": "Inbox (3) - deepam@acme.dev - Gmail",
+     "url": "https://mail.google.com/mail/u/0/#inbox",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:104",
+     "windowID": 1,
+     "tabID": 104,
+     "index": 4,
+     "title": "Acme App",
+     "url": "http://localhost:3000/",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:105",
+     "windowID": 1,
+     "tabID": 105,
+     "index": 5,
+     "title": "Swift Concurrency | Documentation",
+     "url": "https://developer.apple.com/documentation/swift/concurrency",
+     "active": false,
+     "frontWindow": true
+    }
+   ],
+   "terminals": [
+    {
+     "id": "terminal:ttys001",
+     "app": "terminal",
+     "nativeID": "/dev/ttys001",
+     "title": "app — claude",
+     "cwd": "~/code/app",
+     "running": "claude",
+     "selected": true
+    },
+    {
+     "id": "terminal:ttys002",
+     "app": "terminal",
+     "nativeID": "/dev/ttys002",
+     "title": "app — zsh",
+     "cwd": "~/code/app",
+     "selected": false
+    }
+   ],
+   "secureInputOn": false,
+   "frontControls": [
+    "Home",
+    "DMs",
+    "Activity",
+    "Files",
+    "User: Deepam Goyal",
+    "Threads",
+    "Huddles",
+    "Drafts & sent",
+    "Channels",
+    "Direct Messages",
+    "Team questions",
+    "Arjun Arora (active)",
+    "Sophearak Tha (active)",
+    "Deepam Goyal (you, active)",
+    "Send now",
+    "Attach",
+    "Emoji"
+   ],
+   "focused": {
+    "app": "Slack",
+    "role": "AXTextArea",
+    "placeholder": "Message #eng-team",
+    "editable": true,
+    "secure": false
+   }
+  },
+  "gmail_compose": {
+   "takenAt": 0,
+   "apps": [
+    {
+     "name": "Finder",
+     "bundleID": "com.apple.finder",
+     "pid": 401,
+     "frontmost": false
+    },
+    {
+     "name": "Google Chrome",
+     "bundleID": "com.google.Chrome",
+     "pid": 510,
+     "frontmost": true
+    },
+    {
+     "name": "Cursor",
+     "bundleID": "com.todesktop.230313mzl4w4u92",
+     "pid": 620,
+     "frontmost": false
+    },
+    {
+     "name": "Terminal",
+     "bundleID": "com.apple.Terminal",
+     "pid": 730,
+     "frontmost": false
+    },
+    {
+     "name": "Slack",
+     "bundleID": "com.tinyspeck.slackmacgap",
+     "pid": 840,
+     "frontmost": false
+    },
+    {
+     "name": "Claude",
+     "bundleID": "com.anthropic.claudefordesktop",
+     "pid": 950,
+     "frontmost": false
+    },
+    {
+     "name": "ChatGPT",
+     "bundleID": "com.openai.chat",
+     "pid": 960,
+     "frontmost": false
+    }
+   ],
+   "windows": [
+    {
+     "id": "w1",
+     "app": "Google Chrome",
+     "pid": 510,
+     "title": "New Message - deepam@acme.dev - Gmail",
+     "index": 0,
+     "minimized": false,
+     "focused": true
+    },
+    {
+     "id": "w2",
+     "app": "Cursor",
+     "pid": 620,
+     "title": "parser.ts — app",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w3",
+     "app": "Cursor",
+     "pid": 620,
+     "title": "README.md — docs",
+     "index": 1,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w4",
+     "app": "Terminal",
+     "pid": 730,
+     "title": "app — claude — 120×40",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w5",
+     "app": "Slack",
+     "pid": 840,
+     "title": "eng-team (Channel) - Acme - Slack",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w6",
+     "app": "Claude",
+     "pid": 950,
+     "title": "Claude",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w7",
+     "app": "ChatGPT",
+     "pid": 960,
+     "title": "ChatGPT",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    }
+   ],
+   "tabs": [
+    {
+     "id": "chrome:1:101",
+     "windowID": 1,
+     "tabID": 101,
+     "index": 1,
+     "title": "Fix parser edge cases by deepam · Pull Request #482 · acme/app",
+     "url": "https://github.com/acme/app/pull/482",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:102",
+     "windowID": 1,
+     "tabID": 102,
+     "index": 2,
+     "title": "ENG-231 Parser crashes on empty input - Linear",
+     "url": "https://linear.app/acme/issue/ENG-231",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:103",
+     "windowID": 1,
+     "tabID": 103,
+     "index": 3,
+     "title": "New Message - deepam@acme.dev - Gmail",
+     "url": "https://mail.google.com/mail/u/0/#inbox",
+     "active": true,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:104",
+     "windowID": 1,
+     "tabID": 104,
+     "index": 4,
+     "title": "Acme App",
+     "url": "http://localhost:3000/",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:105",
+     "windowID": 1,
+     "tabID": 105,
+     "index": 5,
+     "title": "Swift Concurrency | Documentation",
+     "url": "https://developer.apple.com/documentation/swift/concurrency",
+     "active": false,
+     "frontWindow": true
+    }
+   ],
+   "terminals": [
+    {
+     "id": "terminal:ttys001",
+     "app": "terminal",
+     "nativeID": "/dev/ttys001",
+     "title": "app — claude",
+     "cwd": "~/code/app",
+     "running": "claude",
+     "selected": true
+    },
+    {
+     "id": "terminal:ttys002",
+     "app": "terminal",
+     "nativeID": "/dev/ttys002",
+     "title": "app — zsh",
+     "cwd": "~/code/app",
+     "selected": false
+    }
+   ],
+   "focused": {
+    "app": "Google Chrome",
+    "role": "AXTextArea",
+    "label": "Message Body",
+    "editable": true,
+    "secure": false
+   },
+   "secureInputOn": false
+  },
+  "notes_front": {
+   "takenAt": 0,
+   "apps": [
+    {
+     "name": "Finder",
+     "bundleID": "com.apple.finder",
+     "pid": 401,
+     "frontmost": false
+    },
+    {
+     "name": "Google Chrome",
+     "bundleID": "com.google.Chrome",
+     "pid": 510,
+     "frontmost": false
+    },
+    {
+     "name": "Cursor",
+     "bundleID": "com.todesktop.230313mzl4w4u92",
+     "pid": 620,
+     "frontmost": false
+    },
+    {
+     "name": "Terminal",
+     "bundleID": "com.apple.Terminal",
+     "pid": 730,
+     "frontmost": false
+    },
+    {
+     "name": "Slack",
+     "bundleID": "com.tinyspeck.slackmacgap",
+     "pid": 840,
+     "frontmost": false
+    },
+    {
+     "name": "Claude",
+     "bundleID": "com.anthropic.claudefordesktop",
+     "pid": 950,
+     "frontmost": false
+    },
+    {
+     "name": "ChatGPT",
+     "bundleID": "com.openai.chat",
+     "pid": 960,
+     "frontmost": false
+    },
+    {
+     "name": "Notes",
+     "bundleID": "com.apple.Notes",
+     "pid": 980,
+     "frontmost": true
+    }
+   ],
+   "windows": [
+    {
+     "id": "w1",
+     "app": "Google Chrome",
+     "pid": 510,
+     "title": "Fix parser edge cases by deepam · Pull Request #482 · acme/app",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w2",
+     "app": "Cursor",
+     "pid": 620,
+     "title": "parser.ts — app",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w3",
+     "app": "Cursor",
+     "pid": 620,
+     "title": "README.md — docs",
+     "index": 1,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w4",
+     "app": "Terminal",
+     "pid": 730,
+     "title": "app — claude — 120×40",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w5",
+     "app": "Slack",
+     "pid": 840,
+     "title": "eng-team (Channel) - Acme - Slack",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w6",
+     "app": "Claude",
+     "pid": 950,
+     "title": "Claude",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w7",
+     "app": "ChatGPT",
+     "pid": 960,
+     "title": "ChatGPT",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w8",
+     "app": "Notes",
+     "pid": 980,
+     "title": "Notes",
+     "index": 0,
+     "minimized": false,
+     "focused": true
+    }
+   ],
+   "tabs": [
+    {
+     "id": "chrome:1:101",
+     "windowID": 1,
+     "tabID": 101,
+     "index": 1,
+     "title": "Fix parser edge cases by deepam · Pull Request #482 · acme/app",
+     "url": "https://github.com/acme/app/pull/482",
+     "active": true,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:102",
+     "windowID": 1,
+     "tabID": 102,
+     "index": 2,
+     "title": "ENG-231 Parser crashes on empty input - Linear",
+     "url": "https://linear.app/acme/issue/ENG-231",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:103",
+     "windowID": 1,
+     "tabID": 103,
+     "index": 3,
+     "title": "Inbox (3) - deepam@acme.dev - Gmail",
+     "url": "https://mail.google.com/mail/u/0/#inbox",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:104",
+     "windowID": 1,
+     "tabID": 104,
+     "index": 4,
+     "title": "Acme App",
+     "url": "http://localhost:3000/",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:105",
+     "windowID": 1,
+     "tabID": 105,
+     "index": 5,
+     "title": "Swift Concurrency | Documentation",
+     "url": "https://developer.apple.com/documentation/swift/concurrency",
+     "active": false,
+     "frontWindow": true
+    }
+   ],
+   "terminals": [
+    {
+     "id": "terminal:ttys001",
+     "app": "terminal",
+     "nativeID": "/dev/ttys001",
+     "title": "app — claude",
+     "cwd": "~/code/app",
+     "running": "claude",
+     "selected": true
+    },
+    {
+     "id": "terminal:ttys002",
+     "app": "terminal",
+     "nativeID": "/dev/ttys002",
+     "title": "app — zsh",
+     "cwd": "~/code/app",
+     "selected": false
+    }
+   ],
+   "focused": {
+    "app": "Notes",
+    "role": "AXTextArea",
+    "editable": true,
+    "secure": false
+   },
+   "secureInputOn": false
+  },
+  "finder_front": {
+   "takenAt": 0,
+   "apps": [
+    {
+     "name": "Finder",
+     "bundleID": "com.apple.finder",
+     "pid": 401,
+     "frontmost": true
+    },
+    {
+     "name": "Google Chrome",
+     "bundleID": "com.google.Chrome",
+     "pid": 510,
+     "frontmost": false
+    },
+    {
+     "name": "Cursor",
+     "bundleID": "com.todesktop.230313mzl4w4u92",
+     "pid": 620,
+     "frontmost": false
+    },
+    {
+     "name": "Terminal",
+     "bundleID": "com.apple.Terminal",
+     "pid": 730,
+     "frontmost": false
+    },
+    {
+     "name": "Slack",
+     "bundleID": "com.tinyspeck.slackmacgap",
+     "pid": 840,
+     "frontmost": false
+    },
+    {
+     "name": "Claude",
+     "bundleID": "com.anthropic.claudefordesktop",
+     "pid": 950,
+     "frontmost": false
+    },
+    {
+     "name": "ChatGPT",
+     "bundleID": "com.openai.chat",
+     "pid": 960,
+     "frontmost": false
+    }
+   ],
+   "windows": [
+    {
+     "id": "w1",
+     "app": "Google Chrome",
+     "pid": 510,
+     "title": "Fix parser edge cases by deepam · Pull Request #482 · acme/app",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w2",
+     "app": "Cursor",
+     "pid": 620,
+     "title": "parser.ts — app",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w3",
+     "app": "Cursor",
+     "pid": 620,
+     "title": "README.md — docs",
+     "index": 1,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w4",
+     "app": "Terminal",
+     "pid": 730,
+     "title": "app — claude — 120×40",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w5",
+     "app": "Slack",
+     "pid": 840,
+     "title": "eng-team (Channel) - Acme - Slack",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w6",
+     "app": "Claude",
+     "pid": 950,
+     "title": "Claude",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w7",
+     "app": "ChatGPT",
+     "pid": 960,
+     "title": "ChatGPT",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w8",
+     "app": "Finder",
+     "pid": 401,
+     "title": "Downloads",
+     "index": 0,
+     "minimized": false,
+     "focused": true
+    }
+   ],
+   "tabs": [
+    {
+     "id": "chrome:1:101",
+     "windowID": 1,
+     "tabID": 101,
+     "index": 1,
+     "title": "Fix parser edge cases by deepam · Pull Request #482 · acme/app",
+     "url": "https://github.com/acme/app/pull/482",
+     "active": true,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:102",
+     "windowID": 1,
+     "tabID": 102,
+     "index": 2,
+     "title": "ENG-231 Parser crashes on empty input - Linear",
+     "url": "https://linear.app/acme/issue/ENG-231",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:103",
+     "windowID": 1,
+     "tabID": 103,
+     "index": 3,
+     "title": "Inbox (3) - deepam@acme.dev - Gmail",
+     "url": "https://mail.google.com/mail/u/0/#inbox",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:104",
+     "windowID": 1,
+     "tabID": 104,
+     "index": 4,
+     "title": "Acme App",
+     "url": "http://localhost:3000/",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:105",
+     "windowID": 1,
+     "tabID": 105,
+     "index": 5,
+     "title": "Swift Concurrency | Documentation",
+     "url": "https://developer.apple.com/documentation/swift/concurrency",
+     "active": false,
+     "frontWindow": true
+    }
+   ],
+   "terminals": [
+    {
+     "id": "terminal:ttys001",
+     "app": "terminal",
+     "nativeID": "/dev/ttys001",
+     "title": "app — claude",
+     "cwd": "~/code/app",
+     "running": "claude",
+     "selected": true
+    },
+    {
+     "id": "terminal:ttys002",
+     "app": "terminal",
+     "nativeID": "/dev/ttys002",
+     "title": "app — zsh",
+     "cwd": "~/code/app",
+     "selected": false
+    }
+   ],
+   "secureInputOn": false
+  },
+  "claude_prompt": {
+   "takenAt": 0,
+   "apps": [
+    {
+     "name": "Finder",
+     "bundleID": "com.apple.finder",
+     "pid": 401,
+     "frontmost": false
+    },
+    {
+     "name": "Google Chrome",
+     "bundleID": "com.google.Chrome",
+     "pid": 510,
+     "frontmost": false
+    },
+    {
+     "name": "Cursor",
+     "bundleID": "com.todesktop.230313mzl4w4u92",
+     "pid": 620,
+     "frontmost": false
+    },
+    {
+     "name": "Terminal",
+     "bundleID": "com.apple.Terminal",
+     "pid": 730,
+     "frontmost": false
+    },
+    {
+     "name": "Slack",
+     "bundleID": "com.tinyspeck.slackmacgap",
+     "pid": 840,
+     "frontmost": false
+    },
+    {
+     "name": "Claude",
+     "bundleID": "com.anthropic.claudefordesktop",
+     "pid": 950,
+     "frontmost": true
+    },
+    {
+     "name": "ChatGPT",
+     "bundleID": "com.openai.chat",
+     "pid": 960,
+     "frontmost": false
+    },
+    {
+     "name": "Messages",
+     "bundleID": "com.apple.MobileSMS",
+     "pid": 970,
+     "frontmost": false
+    }
+   ],
+   "windows": [
+    {
+     "id": "w1",
+     "app": "Google Chrome",
+     "pid": 510,
+     "title": "Fix parser edge cases by deepam · Pull Request #482 · acme/app",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w2",
+     "app": "Cursor",
+     "pid": 620,
+     "title": "parser.ts — app",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w3",
+     "app": "Cursor",
+     "pid": 620,
+     "title": "README.md — docs",
+     "index": 1,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w4",
+     "app": "Terminal",
+     "pid": 730,
+     "title": "app — claude — 120×40",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w5",
+     "app": "Slack",
+     "pid": 840,
+     "title": "eng-team (Channel) - Acme - Slack",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w6",
+     "app": "Claude",
+     "pid": 950,
+     "title": "Claude",
+     "index": 0,
+     "minimized": false,
+     "focused": true
+    },
+    {
+     "id": "w7",
+     "app": "ChatGPT",
+     "pid": 960,
+     "title": "ChatGPT",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    }
+   ],
+   "tabs": [
+    {
+     "id": "chrome:1:101",
+     "windowID": 1,
+     "tabID": 101,
+     "index": 1,
+     "title": "Fix parser edge cases by deepam · Pull Request #482 · acme/app",
+     "url": "https://github.com/acme/app/pull/482",
+     "active": true,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:102",
+     "windowID": 1,
+     "tabID": 102,
+     "index": 2,
+     "title": "ENG-231 Parser crashes on empty input - Linear",
+     "url": "https://linear.app/acme/issue/ENG-231",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:103",
+     "windowID": 1,
+     "tabID": 103,
+     "index": 3,
+     "title": "Inbox (3) - deepam@acme.dev - Gmail",
+     "url": "https://mail.google.com/mail/u/0/#inbox",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:104",
+     "windowID": 1,
+     "tabID": 104,
+     "index": 4,
+     "title": "Acme App",
+     "url": "http://localhost:3000/",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:105",
+     "windowID": 1,
+     "tabID": 105,
+     "index": 5,
+     "title": "Swift Concurrency | Documentation",
+     "url": "https://developer.apple.com/documentation/swift/concurrency",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:110",
+     "windowID": 1,
+     "tabID": 110,
+     "index": 6,
+     "title": "Claude Code",
+     "url": "https://claude.ai/code",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:111",
+     "windowID": 1,
+     "tabID": 111,
+     "index": 7,
+     "title": "Blooio",
+     "url": "https://app.blooio.com/dashboard",
+     "active": false,
+     "frontWindow": true
+    }
+   ],
+   "terminals": [
+    {
+     "id": "terminal:ttys001",
+     "app": "terminal",
+     "nativeID": "/dev/ttys001",
+     "title": "app — claude",
+     "cwd": "~/code/app",
+     "running": "claude",
+     "selected": true
+    },
+    {
+     "id": "terminal:ttys002",
+     "app": "terminal",
+     "nativeID": "/dev/ttys002",
+     "title": "app — zsh",
+     "cwd": "~/code/app",
+     "selected": false
+    }
+   ],
+   "secureInputOn": false,
+   "frontControls": [
+    "Hide sidebar",
+    "Back",
+    "Forward",
+    "Chat and Cowork",
+    "Code",
+    "New",
+    "Customize",
+    "Projects",
+    "Artifacts",
+    "Scheduled",
+    "Recents",
+    "Search",
+    "Onboarding sidebar integration",
+    "Competitor website screenshots for redesign",
+    "More options for Competitor website screenshots for redesign",
+    "Context.dev credit balance"
+   ],
+   "focused": {
+    "app": "Claude",
+    "role": "AXTextArea",
+    "placeholder": "Reply to Claude...",
+    "editable": true,
+    "secure": false
+   }
+  },
+  "shell_front": {
+   "takenAt": 0,
+   "apps": [
+    {
+     "name": "Finder",
+     "bundleID": "com.apple.finder",
+     "pid": 401,
+     "frontmost": false
+    },
+    {
+     "name": "Google Chrome",
+     "bundleID": "com.google.Chrome",
+     "pid": 510,
+     "frontmost": false
+    },
+    {
+     "name": "Cursor",
+     "bundleID": "com.todesktop.230313mzl4w4u92",
+     "pid": 620,
+     "frontmost": false
+    },
+    {
+     "name": "Terminal",
+     "bundleID": "com.apple.Terminal",
+     "pid": 730,
+     "frontmost": true
+    },
+    {
+     "name": "Slack",
+     "bundleID": "com.tinyspeck.slackmacgap",
+     "pid": 840,
+     "frontmost": false
+    },
+    {
+     "name": "Claude",
+     "bundleID": "com.anthropic.claudefordesktop",
+     "pid": 950,
+     "frontmost": false
+    },
+    {
+     "name": "ChatGPT",
+     "bundleID": "com.openai.chat",
+     "pid": 960,
+     "frontmost": false
+    }
+   ],
+   "windows": [
+    {
+     "id": "w1",
+     "app": "Google Chrome",
+     "pid": 510,
+     "title": "Fix parser edge cases by deepam · Pull Request #482 · acme/app",
+     "index": 0,
+     "minimized": false,
+     "focused": true
+    },
+    {
+     "id": "w2",
+     "app": "Cursor",
+     "pid": 620,
+     "title": "parser.ts — app",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w3",
+     "app": "Cursor",
+     "pid": 620,
+     "title": "README.md — docs",
+     "index": 1,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w5",
+     "app": "Slack",
+     "pid": 840,
+     "title": "eng-team (Channel) - Acme - Slack",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w6",
+     "app": "Claude",
+     "pid": 950,
+     "title": "Claude",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w7",
+     "app": "ChatGPT",
+     "pid": 960,
+     "title": "ChatGPT",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w8",
+     "app": "Terminal",
+     "pid": 730,
+     "title": "Ana-core — ✳ Shopify Connect baseline",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    },
+    {
+     "id": "w9",
+     "app": "Terminal",
+     "pid": 730,
+     "title": "deepamgoyal — -zsh — 136×30",
+     "index": 1,
+     "minimized": false,
+     "focused": true
+    }
+   ],
+   "tabs": [
+    {
+     "id": "chrome:1:101",
+     "windowID": 1,
+     "tabID": 101,
+     "index": 1,
+     "title": "Fix parser edge cases by deepam · Pull Request #482 · acme/app",
+     "url": "https://github.com/acme/app/pull/482",
+     "active": true,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:102",
+     "windowID": 1,
+     "tabID": 102,
+     "index": 2,
+     "title": "ENG-231 Parser crashes on empty input - Linear",
+     "url": "https://linear.app/acme/issue/ENG-231",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:103",
+     "windowID": 1,
+     "tabID": 103,
+     "index": 3,
+     "title": "Inbox (3) - deepam@acme.dev - Gmail",
+     "url": "https://mail.google.com/mail/u/0/#inbox",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:104",
+     "windowID": 1,
+     "tabID": 104,
+     "index": 4,
+     "title": "Acme App",
+     "url": "http://localhost:3000/",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:105",
+     "windowID": 1,
+     "tabID": 105,
+     "index": 5,
+     "title": "Swift Concurrency | Documentation",
+     "url": "https://developer.apple.com/documentation/swift/concurrency",
+     "active": false,
+     "frontWindow": true
+    }
+   ],
+   "terminals": [
+    {
+     "id": "terminal:ttys003",
+     "app": "terminal",
+     "nativeID": "/dev/ttys003",
+     "title": "✳ Shopify Connect baseline",
+     "running": "claude",
+     "selected": false,
+     "windowTitle": "Ana-core — ✳ Shopify Connect baseline",
+     "visibleInWindow": true
+    },
+    {
+     "id": "terminal:ttys001",
+     "app": "terminal",
+     "nativeID": "/dev/ttys001",
+     "title": "-zsh",
+     "selected": true,
+     "windowTitle": "deepamgoyal — -zsh — 136×30",
+     "visibleInWindow": true
+    }
+   ],
+   "secureInputOn": false
+  },
+  "youtube_playing": {
+   "takenAt": 0,
+   "apps": [
+    {
+     "name": "Finder",
+     "bundleID": "com.apple.finder",
+     "pid": 401,
+     "frontmost": false
+    },
+    {
+     "name": "Google Chrome",
+     "bundleID": "com.google.Chrome",
+     "pid": 510,
+     "frontmost": true
+    },
+    {
+     "name": "Claude",
+     "bundleID": "com.anthropic.claudefordesktop",
+     "pid": 700,
+     "frontmost": false
+    },
+    {
+     "name": "Messages",
+     "bundleID": "com.apple.MobileSMS",
+     "pid": 720,
+     "frontmost": false
+    },
+    {
+     "name": "Terminal",
+     "bundleID": "com.apple.Terminal",
+     "pid": 730,
+     "frontmost": false
+    },
+    {
+     "name": "Slack",
+     "bundleID": "com.tinyspeck.slackmacgap",
+     "pid": 740,
+     "frontmost": false
+    }
+   ],
+   "windows": [
+    {
+     "id": "w1",
+     "app": "Google Chrome",
+     "pid": 510,
+     "title": "(13) Tu Hain Toh | Mr. & Mrs. Mahi | Rajkummar Rao - YouTube",
+     "index": 0,
+     "minimized": false,
+     "focused": true
+    },
+    {
+     "id": "w2",
+     "app": "Claude",
+     "pid": 700,
+     "title": "Claude",
+     "index": 0,
+     "minimized": false,
+     "focused": false
+    }
+   ],
+   "tabs": [
+    {
+     "id": "chrome:1:201",
+     "windowID": 1,
+     "tabID": 201,
+     "index": 1,
+     "title": "Netflix",
+     "url": "https://www.netflix.com/watch/81",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:202",
+     "windowID": 1,
+     "tabID": 202,
+     "index": 2,
+     "title": "(13) Tu Hain Toh | Mr. & Mrs. Mahi | Rajkummar Rao - YouTube",
+     "url": "https://www.youtube.com/watch?v=abc",
+     "active": true,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:203",
+     "windowID": 1,
+     "tabID": 203,
+     "index": 3,
+     "title": "Senorita Zindagi Na Milegi Dobara video - Google Search",
+     "url": "https://www.google.com/search?q=senorita",
+     "active": false,
+     "frontWindow": true
+    },
+    {
+     "id": "chrome:1:204",
+     "windowID": 1,
+     "tabID": 204,
+     "index": 4,
+     "title": "Home / X",
+     "url": "https://x.com/home",
+     "active": false,
+     "frontWindow": true
+    }
+   ],
+   "terminals": [
+    {
+     "id": "terminal:ttys003",
+     "app": "terminal",
+     "nativeID": "/dev/ttys003",
+     "title": "zsh",
+     "cwd": "/Users/deepam/code",
+     "selected": true
+    }
+   ],
+   "secureInputOn": false,
+   "frontControls": [
+    "Search",
+    "Home",
+    "Shorts",
+    "Subscriptions",
+    "You",
+    "Pause (k)",
+    "Next (SHIFT+n)",
+    "Mute (m)",
+    "Saheba by Ankur Tewari 1.2M views 3 years ago",
+    "Finding Her by Kushagra 10M views 1 year ago",
+    "I Am Done by Jonita Gandhi 4.5M views"
+   ],
+   "recentTabIDs": [
+    "chrome:1:202",
+    "chrome:1:203",
+    "chrome:1:201"
    ]
   }
  },
@@ -2929,23 +4255,38 @@
     "\"ask claude code why the build is failing\" → type_text(terminal, terminal:ttys001) → ok"
    ],
    "expect": {
-    "sequence": [
-     {
-      "tool": "type_text",
-      "args": {
-       "target": {
-        "eq": "terminal"
-       },
-       "session_id": {
-        "eq": "terminal:ttys001"
-       },
-       "payload": {
-        "words": [
-         "and also check the logs"
-        ]
+    "anyOf": [
+     [
+      {
+       "tool": "type_text",
+       "args": {
+        "target": {
+         "eq": "terminal"
+        },
+        "session_id": {
+         "eq": "terminal:ttys001"
+        },
+        "payload": {
+         "words": [
+          "and also check the logs"
+         ]
+        }
        }
       }
-     }
+     ],
+     [
+      {
+       "tool": "dictate",
+       "args": {
+        "target": {
+         "absentOr": "terminal"
+        },
+        "session_id": {
+         "absentOr": "terminal:ttys001"
+        }
+       }
+      }
+     ]
     ],
     "forbid": [
      "submit"
@@ -3117,8 +4458,12 @@
    "expect": {
     "sequence": [
      {
-      "tool": "ignore"
+      "tool": "keep"
      }
+    ],
+    "forbid": [
+     "dictate",
+     "type_text"
     ]
    }
   },
@@ -3696,7 +5041,12 @@
    "expect": {
     "sequence": [
      {
-      "tool": "ignore"
+      "tool": "keep",
+      "args": {
+       "reason": {
+        "eq": "noise"
+       }
+      }
      }
     ]
    }
@@ -4295,6 +5645,672 @@
        }
       }
      }
+    ]
+   }
+  },
+  {
+   "id": "nld-cc-long-prompt-317",
+   "group": "dictate_keep",
+   "transcript": "So basically the thing which I need to convey is that uh I am currently running a session. I think we need to improve it like we need to plan out a few features like we we need to do some research and think what features are there. One way is to go around it by adding on features which are missing in my daily use case. That's fine but I don't think that will result in a Products because right now we are stitching features on top of each other. Instead, we should build a robust architecture, robust Products that it works with any and all use cases. I think we are lacking in that. We are still very wipe coding it to. You know. To fix a smaller issue, but we are not taking a look at the bigger picture.",
+   "fixture": "two_terminals",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "dictate"
+     }
+    ],
+    "forbid": [
+     "submit"
+    ]
+   }
+  },
+  {
+   "id": "nld-cc-any-person-322",
+   "group": "dictate_keep",
+   "transcript": "At the end of the day, I think we have to build a Products which is for any person, not a technical guy, but maybe even non-technical persons like PMs or everyday users, like marketing people or maybe editors, like it should work for any and all category of people. That's how we will grow it into a different.",
+   "fixture": "two_terminals",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "dictate"
+     }
+    ],
+    "forbid": [
+     "submit"
+    ]
+   }
+  },
+  {
+   "id": "nld-cc-run-followup-323",
+   "group": "dictate_keep",
+   "transcript": "That's how we will grow it into a big business.",
+   "fixture": "two_terminals",
+   "dictationRun": "Claude Code",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "dictate"
+     }
+    ],
+    "forbid": [
+     "submit"
+    ]
+   }
+  },
+  {
+   "id": "nld-cc-i-want-you-457",
+   "group": "dictate_keep",
+   "transcript": "I want you to work on Uh I want you to work on the branding for Vanto.",
+   "fixture": "two_terminals",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "dictate"
+     }
+    ],
+    "forbid": [
+     "submit"
+    ]
+   }
+  },
+  {
+   "id": "nld-cc-refactor",
+   "group": "dictate_keep",
+   "transcript": "We need to refactor the auth middleware so that every handler checks the session token before it reads the request body.",
+   "fixture": "two_terminals",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "dictate"
+     }
+    ],
+    "forbid": [
+     "submit"
+    ]
+   }
+  },
+  {
+   "id": "nld-cc-bug-report",
+   "group": "dictate_keep",
+   "transcript": "So the bug is that when I paste a long prompt the app freezes for a second, my guess is the tokenizer runs on the main thread.",
+   "fixture": "two_terminals",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "dictate"
+     }
+    ],
+    "forbid": [
+     "submit"
+    ]
+   }
+  },
+  {
+   "id": "nld-cc-can-you-prompt",
+   "group": "dictate_keep",
+   "transcript": "Can you look at why the tests in the parser module are failing and fix them without changing the public API?",
+   "fixture": "two_terminals",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "dictate"
+     }
+    ],
+    "forbid": [
+     "submit"
+    ]
+   }
+  },
+  {
+   "id": "nld-cc-run-more",
+   "group": "dictate_keep",
+   "transcript": "and also make sure the error messages make sense for non technical users",
+   "fixture": "two_terminals",
+   "dictationRun": "Claude Code",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "dictate"
+     }
+    ],
+    "forbid": [
+     "submit"
+    ]
+   }
+  },
+  {
+   "id": "nld-claude-branding-496",
+   "group": "dictate_keep",
+   "transcript": "No, these are weird, like I don't like the Brain. I really like the branding in the first one. Uh first signal one, like the color scheme and everything. Also this accent color is not good, the logo is not good. Try to find something else You don't have to stick with the V.",
+   "fixture": "claude_prompt",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "dictate"
+     }
+    ],
+    "forbid": [
+     "submit"
+    ]
+   }
+  },
+  {
+   "id": "nld-claude-pricing",
+   "group": "dictate_keep",
+   "transcript": "Honestly I'm not sure the new pricing page works, it feels cluttered and I would cut the comparison table entirely.",
+   "fixture": "claude_prompt",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "dictate"
+     }
+    ],
+    "forbid": [
+     "submit"
+    ]
+   }
+  },
+  {
+   "id": "nld-claude-cover-letter",
+   "group": "dictate_keep",
+   "transcript": "Can you help me write a cover letter for a product manager role at a fintech startup, keep it under two hundred words.",
+   "fixture": "claude_prompt",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "dictate"
+     }
+    ],
+    "forbid": [
+     "submit"
+    ]
+   }
+  },
+  {
+   "id": "nld-slack-priya",
+   "group": "dictate_keep",
+   "transcript": "Hey Priya, the deck is ready and I added the numbers from last week, so I'll walk you through it tomorrow morning.",
+   "fixture": "slack_compose",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "dictate"
+     }
+    ],
+    "forbid": [
+     "submit"
+    ]
+   }
+  },
+  {
+   "id": "nld-slack-update",
+   "group": "dictate_keep",
+   "transcript": "Hey team, quick update from my side, the migration finished last night and we haven't seen any errors in the logs since then.",
+   "fixture": "slack_compose",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "dictate"
+     }
+    ],
+    "forbid": [
+     "submit"
+    ]
+   }
+  },
+  {
+   "id": "nld-slack-lunch",
+   "group": "dictate_keep",
+   "transcript": "Hey Arjun, are we still on for lunch on Friday? I was thinking we could try the new place near the office.",
+   "fixture": "slack_compose",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "dictate"
+     }
+    ],
+    "forbid": [
+     "submit"
+    ]
+   }
+  },
+  {
+   "id": "nld-slack-can-you-send-me",
+   "group": "dictate_keep",
+   "transcript": "Can you send me the deck before the call tomorrow? I want to go through the numbers once.",
+   "fixture": "slack_compose",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "dictate"
+     }
+    ],
+    "forbid": [
+     "submit"
+    ]
+   }
+  },
+  {
+   "id": "nld-slack-switch-chrome",
+   "group": "dictate_keep",
+   "transcript": "switch to chrome",
+   "fixture": "slack_compose",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "open_app",
+      "args": {
+       "app": {
+        "words": [
+         "Google Chrome",
+         "Chrome"
+        ]
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "nld-slack-run-switch",
+   "group": "dictate_keep",
+   "transcript": "Switch to Chrome.",
+   "fixture": "slack_compose",
+   "dictationRun": "Slack",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "open_app",
+      "args": {
+       "app": {
+        "words": [
+         "Google Chrome",
+         "Chrome"
+        ]
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "nld-gmail-contract",
+   "group": "dictate_keep",
+   "transcript": "Hi John, thanks for sending the contract over. I've gone through it and I have a couple of questions about the payment terms.",
+   "fixture": "gmail_compose",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "dictate"
+     }
+    ],
+    "forbid": [
+     "submit"
+    ]
+   }
+  },
+  {
+   "id": "nld-gmail-dear-sarah",
+   "group": "dictate_keep",
+   "transcript": "Dear Sarah, I'm writing to follow up on our conversation last week about the partnership and the timeline we discussed.",
+   "fixture": "gmail_compose",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "dictate"
+     }
+    ],
+    "forbid": [
+     "submit"
+    ]
+   }
+  },
+  {
+   "id": "nld-gmail-close-the-deal",
+   "group": "dictate_keep",
+   "transcript": "And that's why I think we should close the deal by Friday, let me know if you have any questions.",
+   "fixture": "gmail_compose",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "dictate"
+     }
+    ],
+    "forbid": [
+     "submit",
+     "browser_close_tab",
+     "menu_command"
+    ]
+   }
+  },
+  {
+   "id": "nld-notes-meeting",
+   "group": "dictate_keep",
+   "transcript": "Meeting notes: we agreed that marketing owns the launch email, and I will send the final copy to legal by Wednesday.",
+   "fixture": "notes_front",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "dictate"
+     }
+    ],
+    "forbid": [
+     "submit"
+    ]
+   }
+  },
+  {
+   "id": "nld-notes-weekend",
+   "group": "dictate_keep",
+   "transcript": "My plan for the weekend is to finish the chapter on pricing and then start outlining the section about our first customers.",
+   "fixture": "notes_front",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "dictate"
+     }
+    ],
+    "forbid": [
+     "submit"
+    ]
+   }
+  },
+  {
+   "id": "nld-finder-prose",
+   "group": "dictate_keep",
+   "transcript": "Just wanted to say the demo went really well today and the client asked us for a proposal by the end of next week.",
+   "fixture": "finder_front",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "keep"
+     }
+    ],
+    "forbid": [
+     "dictate",
+     "type_text",
+     "terminal_run"
+    ]
+   }
+  },
+  {
+   "id": "nld-finder-any-person-322",
+   "group": "dictate_keep",
+   "transcript": "At the end of the day, I think we have to build a Products which is for any person, not a technical guy, but maybe even non-technical persons like PMs or everyday users, like marketing people or maybe editors, like it should work for any and all category of people. That's how we will grow it into a different.",
+   "fixture": "finder_front",
+   "expect": {
+    "anyOf": [
+     [
+      {
+       "tool": "keep"
+      }
+     ],
+     [
+      {
+       "tool": "wait_for_more"
+      }
+     ]
+    ],
+    "forbid": [
+     "dictate",
+     "type_text",
+     "terminal_run"
+    ]
+   }
+  },
+  {
+   "id": "nld-finder-garbled",
+   "group": "dictate_keep",
+   "transcript": "Store, Arik Bandojao.",
+   "fixture": "finder_front",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "keep"
+     }
+    ],
+    "forbid": [
+     "dictate",
+     "type_text",
+     "terminal_run"
+    ]
+   }
+  },
+  {
+   "id": "nld-shell-prose",
+   "group": "dictate_keep",
+   "transcript": "So the bug is that when I paste a long prompt the app freezes for a second, my guess is the tokenizer runs on the main thread.",
+   "fixture": "shell_front",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "keep"
+     }
+    ],
+    "forbid": [
+     "dictate",
+     "type_text",
+     "terminal_run"
+    ]
+   }
+  },
+  {
+   "id": "nld-media-dune-299",
+   "group": "dictate_keep",
+   "transcript": "Welcome to Aratus. YouTube the Imperial Ecologist. Thank you for the still seats. They are Fremen make",
+   "fixture": "youtube_playing",
+   "mediaPlaying": true,
+   "expect": {
+    "sequence": [
+     {
+      "tool": "keep",
+      "args": {
+       "reason": {
+        "eq": "noise"
+       }
+      }
+     }
+    ],
+    "forbid": [
+     "dictate",
+     "type_text",
+     "terminal_run"
+    ]
+   }
+  },
+  {
+   "id": "nld-media-dialogue",
+   "group": "dictate_keep",
+   "transcript": "I must not fear. Fear is the mind-killer. Fear is the little death that brings total obliteration.",
+   "fixture": "youtube_playing",
+   "mediaPlaying": true,
+   "expect": {
+    "sequence": [
+     {
+      "tool": "keep",
+      "args": {
+       "reason": {
+        "eq": "noise"
+       }
+      }
+     }
+    ],
+    "forbid": [
+     "dictate",
+     "type_text",
+     "terminal_run"
+    ]
+   }
+  },
+  {
+   "id": "nld-media-pause-command",
+   "group": "dictate_keep",
+   "transcript": "pause the video",
+   "fixture": "youtube_playing",
+   "mediaPlaying": true,
+   "expect": {
+    "anyOf": [
+     [
+      {
+       "tool": "click_element",
+       "args": {
+        "name": {
+         "contains": "Pause"
+        }
+       }
+      }
+     ],
+     [
+      {
+       "tool": "press_keys",
+       "args": {
+        "keys": {
+         "oneOf": [
+          "k",
+          "space"
+         ]
+        }
+       }
+      }
+     ]
+    ]
+   }
+  },
+  {
+   "id": "nld-ask-dictate-into",
+   "group": "dictate_keep",
+   "transcript": "Claude Code.",
+   "history": [
+    "\"Can you enter dictation?\" → say → Which app should I dictate into?"
+   ],
+   "lastQuestion": "Which app should I dictate into?",
+   "questionAbout": "Can you enter dictation?",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "start_dictation",
+      "args": {
+       "target": {
+        "eq": "terminal"
+       },
+       "session_id": {
+        "eq": "terminal:ttys001"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "nld-ask-which-assistant",
+   "group": "dictate_keep",
+   "transcript": "Cursor",
+   "history": [
+    "\"ask it why the build is failing\" → say → Which app should I ask: Claude Code, Cursor or ChatGPT?"
+   ],
+   "lastQuestion": "Which app should I ask: Claude Code, Cursor or ChatGPT?",
+   "questionAbout": "ask it why the build is failing",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "type_text",
+      "args": {
+       "target": {
+        "eq": "chat_box"
+       },
+       "app": {
+        "eq": "Cursor"
+       },
+       "payload": {
+        "words": [
+         "why the build is failing"
+        ]
+       }
+      }
+     }
+    ],
+    "forbid": [
+     "submit"
+    ]
+   }
+  },
+  {
+   "id": "nld-ask-which-tab",
+   "group": "dictate_keep",
+   "transcript": "Linear.",
+   "history": [
+    "\"Can you switch tabs?\" → say → Which tab? Name a tab, like \"the GitHub tab\" or \"Gmail\"."
+   ],
+   "lastQuestion": "Which tab? Name a tab, like \"the GitHub tab\" or \"Gmail\".",
+   "questionAbout": "Can you switch tabs?",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "browser_switch_tab",
+      "args": {
+       "tab_id": {
+        "eq": "chrome:1:102"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "nld-ask-folder-name",
+   "group": "dictate_keep",
+   "transcript": "demo",
+   "history": [
+    "\"create a new directory\" → say → What should the folder be called?"
+   ],
+   "lastQuestion": "What should the folder be called?",
+   "questionAbout": "create a new directory",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "terminal_run",
+      "args": {
+       "command": {
+        "contains": "mkdir demo"
+       },
+       "session_id": {
+        "eq": "terminal:ttys002"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "nld-ask-type-where",
+   "group": "dictate_keep",
+   "transcript": "In Slack.",
+   "history": [
+    "\"type the deck is ready\" → say → Where should I type it: Slack or the comment box on this page?"
+   ],
+   "lastQuestion": "Where should I type it: Slack or the comment box on this page?",
+   "questionAbout": "type the deck is ready",
+   "expect": {
+    "sequence": [
+     {
+      "tool": "type_text",
+      "args": {
+       "target": {
+        "eq": "chat_box"
+       },
+       "app": {
+        "eq": "Slack"
+       },
+       "payload": {
+        "words": [
+         "the deck is ready"
+        ]
+       }
+      }
+     }
+    ],
+    "forbid": [
+     "submit"
     ]
    }
   }

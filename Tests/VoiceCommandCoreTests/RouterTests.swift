@@ -6,7 +6,8 @@ import Testing
     @Test func finalReviewToolList() {
         let names = Set(ToolSchemas.names)
         #expect(names.count == ToolSchemas.names.count, "duplicate tool names")
-        for added in ["scroll", "newline", "clear_typed", "ignore"] { #expect(names.contains(added)) }
+        for added in ["scroll", "newline", "clear_typed", "keep", "dictate"] { #expect(names.contains(added)) }
+        #expect(!names.contains("ignore"), "ignore became keep: words are never dropped")
         for removed in ["arrange_window", "minimize_window", "close_window", "type_into", "send_prompt", "terminal_type", "list_windows"] {
             #expect(!names.contains(removed))
         }
@@ -51,6 +52,44 @@ import Testing
         #expect(throws: ToolCall.ParseError.self) { try ToolCall.parse(name: "terminal_run", inputJSON: #"{"session_id":"s","command":"ls"}"#) }
         #expect(throws: ToolCall.ParseError.self) { try ToolCall.parse(name: "type_text", inputJSON: #"{"target":"focused","payload":"hi"#) }
         #expect(throws: ToolCall.ParseError.self) { try ToolCall.parse(name: "arrange_window", inputJSON: "{}") }
+    }
+
+    /// keep takes only the router's three reasons; dictate has no payload.
+    @Test func keepAndDictate() throws {
+        #expect(try ToolCall.parse(name: "keep", inputJSON: #"{"reason":"noise"}"#) == .keep(reason: .noise))
+        #expect(try ToolCall.parse(name: "keep", inputJSON: #"{"reason":"not_for_me"}"#) == .keep(reason: .notForMe))
+        #expect(try ToolCall.parse(name: "keep", inputJSON: "{}") == .keep(reason: .unclear))
+        #expect(throws: ToolCall.ParseError.self) { try ToolCall.parse(name: "keep", inputJSON: #"{"reason":"stale"}"#) }
+        #expect(throws: ToolCall.ParseError.self) { try ToolCall.parse(name: "ignore", inputJSON: "{}") }
+        #expect(try ToolCall.parse(name: "dictate", inputJSON: "{}") == .dictate(target: nil, app: nil, sessionID: nil))
+        #expect(try ToolCall.parse(name: "dictate", inputJSON: #"{"target":"terminal","session_id":"terminal:ttys001","payload":"x"}"#)
+                == .dictate(target: .terminal, app: nil, sessionID: "terminal:ttys001"))
+        #expect(throws: ToolCall.ParseError.self) { try ToolCall.parse(name: "dictate", inputJSON: #"{"target":"draft"}"#) }
+        #expect(ToolCall.keep(reason: .noise).summary == "keep(noise)")
+        #expect(ToolCall.dictate(target: nil, app: "Slack", sessionID: nil).summary == "dictate(app: Slack)")
+    }
+
+    /// The router sees focus, the run, media and what a question was about.
+    @Test func sessionStateForDictation() {
+        var h = SessionHistory()
+        h.add(.init(transcript: "Enter into dictation Code.", actions: ["say"], outcome: "Which app should I dictate into?"))
+        let msg = RouterPrompt.userMessage(RouterInput(
+            history: h.render(), snapshot: DesktopSnapshot(), transcript: "Claude Code",
+            lastQuestion: h.lastQuestion, questionAbout: h.lastQuestionAbout,
+            focus: .assistantPrompt(app: "Claude Code"), dictationRun: "Claude Code", mediaPlaying: true))
+        #expect(msg.contains("focus: assistant prompt (Claude Code)"))
+        #expect(msg.contains("dictation_run: typing into Claude Code (not sent)"))
+        #expect(msg.contains("media_playing: yes"))
+        #expect(msg.contains("you_just_asked: \"Which app should I dictate into?\""))
+        #expect(msg.contains("asked_about: \"Enter into dictation Code.\""))
+
+        let plain = RouterPrompt.userMessage(RouterInput(history: "", snapshot: DesktopSnapshot(), transcript: "hi"))
+        #expect(plain.contains("dictation_run: none"))
+        #expect(!plain.contains("media_playing") && !plain.contains("asked_about") && !plain.contains("focus:"))
+
+        // An answer that wasn't a question has nothing to carry.
+        h.add(.init(transcript: "open slack", actions: ["open_app(Slack) → ok"], outcome: "Opened Slack"))
+        #expect(h.lastQuestionAbout == nil)
     }
 }
 

@@ -563,15 +563,20 @@ final class SessionController {
         let snap = await snapshots.current(since: lastSpeechStart)
         guard generation == gen, !Task.isCancelled else { restore(previousState); return }
 
+        // The router sees where typed text would land, so plain prose can be dictation (spec §5.4).
+        // Voice dictation collects its own segments, so a run never reaches the router yet.
         var input = RouterInput(history: history.render(), snapshot: snap, draft: executor.draftForRouter,
                                 pending: pending.map { "\($0.call.summary) — waiting for a spoken yes" }, transcript: transcript,
-                                lastQuestion: history.lastQuestion)
+                                lastQuestion: history.lastQuestion, questionAbout: history.lastQuestionAbout,
+                                focus: FocusKind.from(snap), mediaPlaying: AudioCapture.outputIsPlaying())
         var policy = ActionPolicy.ReplyEvaluator(context: PolicyContext(
             transcript: transcript, snapshot: snap, draftOpen: executor.draft != nil,
             draftText: executor.draft?.typedText ?? "", hasPending: pending != nil, pendingSummary: pending?.call.summary))
 
         var outcomeLines: [String] = []
-        var acted = false, waited = false, ignored = false, ended = false, anyFailed = false, anyHeld = false, anySucceeded = false
+        var acted = false, waited = false, ended = false, anyFailed = false, anyHeld = false, anySucceeded = false
+        var kept: KeptReason?
+        var asked = false
         var stopExecuting = false
         var lookAgain = false
 
@@ -612,7 +617,8 @@ final class SessionController {
                         let r = await handleCall(call, policy: &policy, record: &record, generation: gen)
                         switch r {
                         case .waited: waited = true
-                        case .ignored: ignored = true
+                        case .kept(let reason): kept = reason
+                        case .asked(let question): acted = true; anySucceeded = true; asked = true; outcomeLines.append(question)
                         case .acted(let ok, let msg): acted = true; if ok { anySucceeded = true } else { anyFailed = true }; outcomeLines.append(msg)
                         case .held(let msg): anyHeld = true; outcomeLines.append(msg); stopExecuting = true
                         case .ended: ended = true; stopExecuting = true
@@ -733,12 +739,15 @@ final class SessionController {
         }
 
         // Segmentation (Final review 3): a reply that did something disposes of its words;
-        // wait_for_more leaves them waiting. Failed or ignored words are kept, never dropped.
-        if acted || ignored || anyHeld || ended || anyFailed || !waited {
+        // wait_for_more leaves them waiting. Failed or kept words are kept, never dropped. Words a
+        // question was about are kept too (the answer completes them through asked_about), so an
+        // unanswered "which app?" doesn't lose them.
+        if acted || kept != nil || anyHeld || ended || anyFailed || !waited {
             let disposition: Disposition
-            if anyHeld || ended || anySucceeded { disposition = .acted }
+            if asked && !anyHeld && !ended && outcomeLines.count == 1 { disposition = .kept(.unclear) }
+            else if anyHeld || ended || anySucceeded { disposition = .acted }
             else if anyFailed { disposition = .kept(.failed) }
-            else if ignored { disposition = .kept(.notForMe) }
+            else if let kept { disposition = .kept(kept) }
             else { disposition = .acted }
             buffer.dispose(through: segmentIDs.last ?? -1, as: disposition)
             recordDisposed()
@@ -750,7 +759,7 @@ final class SessionController {
             lastActedRecordID = record.id
         }
         record.actionDoneAt = Date().timeIntervalSince1970
-        record.outcome = anyHeld ? "pending" : (acted ? (anyFailed ? "failed" : "ok") : (waited ? "waiting" : (ignored ? "ignored" : (anyFailed ? "rejected" : "ok"))))
+        record.outcome = anyHeld ? "pending" : (acted ? (anyFailed ? "failed" : "ok") : (waited ? "waiting" : (kept != nil ? "kept" : (anyFailed ? "rejected" : "ok"))))
         record.results = outcomeLines
         refreshLiveText()
 
@@ -797,7 +806,11 @@ final class SessionController {
     }
 
     private enum CallResult {
-        case waited, ignored, ended, stale, lookAgain, skipped
+        case waited, ended, stale, lookAgain, skipped
+        /// Not acted on and not typed: into the speech history.
+        case kept(KeptReason)
+        /// `say` asking a question: the words wait for the answer.
+        case asked(String)
         case acted(ok: Bool, String)
         case held(String)
         case rejected(String)
@@ -809,12 +822,12 @@ final class SessionController {
         case .waitForMore:
             record.decisions.append("wait_for_more")
             return .waited
-        case .ignore:
-            record.decisions.append("ignore")
-            return .ignored
+        case .keep(let reason):
+            record.decisions.append(call.summary)
+            return .kept(reason)
         case .say(let message):
             record.decisions.append("say")
-            return .acted(ok: true, message)
+            return message.hasSuffix("?") ? .asked(message) : .acted(ok: true, message)
         case .endSession:
             record.decisions.append("end_session")
             return .ended
@@ -825,6 +838,16 @@ final class SessionController {
             break
         }
 
+        var call = call
+        if case .dictate(let target, let app, let sid) = call {
+            // Stage 2 stand-in until the dictation engine (spec §5.5): type the routed words
+            // as the person said them, into the named target, the open draft or the focused field.
+            record.decisions.append(call.summary)
+            var t = target ?? .focused
+            var session = sid
+            if target == nil, let d = executor.draft, case .terminal(let s) = d.target { t = .terminal; session = s.id }
+            call = .typeText(target: t, app: app, sessionID: session, payload: record.transcript)
+        }
         let decision = policy.next(call)
         switch decision {
         case .reject(let msg):

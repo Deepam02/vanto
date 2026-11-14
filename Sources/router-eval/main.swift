@@ -98,6 +98,8 @@ var ttfts: [Int] = []
 var totals: [Int] = []
 var cacheReads = 0
 var failures: [String] = []
+/// Pass/total per case group ("" for the cases without one), reported separately.
+var byGroup: [String: (passed: Int, total: Int)] = [:]
 
 for round in 0..<opts.repeatCount {
     for c in cases {
@@ -115,6 +117,9 @@ for round in 0..<opts.repeatCount {
         var verdict = Grader.grade(c, calls: r.calls, fixtures: set.fixtures)
         if let e = r.error { verdict.pass = false; verdict.reasons.insert("error: \(e)", at: 0) }
         if verdict.pass { passed += 1 }
+        let g = c.group ?? ""
+        byGroup[g, default: (0, 0)].total += 1
+        if verdict.pass { byGroup[g, default: (0, 0)].passed += 1 }
         let calls = r.calls.map { call -> String in
             let parsed = (try? ToolCall.parse(name: call.name, input: call.input))?.summary ?? call.name + "(unparseable)"
             return parsed
@@ -140,6 +145,11 @@ let accuracy = total == 0 ? 0 : Double(passed) / Double(total) * 100
 let p50 = percentile(ttfts, 0.5), p90 = percentile(ttfts, 0.9)
 print("")
 print(String(format: "accuracy: %.1f%% (%d/%d)", accuracy, passed, total))
+if byGroup.count > 1 {
+    for (g, r) in byGroup.sorted(by: { $0.key < $1.key }) {
+        print(String(format: "  %@: %.1f%% (%d/%d)", g.isEmpty ? "other cases" : g, Double(r.passed) / Double(r.total) * 100, r.passed, r.total))
+    }
+}
 print("time to first tool call: p50 \(p50.map { "\($0) ms" } ?? "n/a"), p90 \(p90.map { "\($0) ms" } ?? "n/a")")
 print("full reply: p50 \(percentile(totals, 0.5).map { "\($0) ms" } ?? "n/a"), p90 \(percentile(totals, 0.9).map { "\($0) ms" } ?? "n/a")")
 print("cache read tokens: \(cacheReads)")

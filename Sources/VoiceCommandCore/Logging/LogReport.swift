@@ -32,7 +32,7 @@ public enum LogReport {
         return sorted[idx]
     }
 
-    /// Commands that did something (not wait_for_more / ignore / router errors).
+    /// Commands that did something (not wait_for_more / keep / router errors).
     static func acted(_ s: Summary) -> [CommandRecord] {
         s.commands.filter { ["ok", "failed", "pending", "rejected"].contains($0.outcome) }
     }

@@ -251,3 +251,12 @@ option and noted it here. "Final review" refers to the PRD section that override
     only with words kept (otherwise it's an ordinary copy). "Never mind" erases a run under
     3 s old; an older run's words are kept. "Cancel dictation" always erases (discarded, still
     in the history).
+67. **Router `dictate` has no payload; `ignore` became `keep(reason)`.** Vanto types its own
+    transcript, so nothing is paraphrased and a long prompt can't hit max_tokens. `keep` takes
+    only noise / not_for_me / unclear; the words go to the speech history, never dropped.
+    `type_text` stays for text after an instruction ("ask claude code…", "type…").
+68. **A clarifying question keeps the words it was about.** `asked_about` carries them to the
+    next turn, so "Claude Code" completes "enter dictation into code". Until answered they are
+    kept(unclear), so an unanswered question loses nothing.
+69. **LLM evals pass at ≥ 98% overall; deterministic unit tests at 100%** (owner, 13 Nov).
+    Router eval is sampled, so a 1–2% margin is noise, not a regression.
