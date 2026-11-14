@@ -13,6 +13,7 @@ let package = Package(
         .executable(name: "VoiceCommand", targets: ["VoiceCommand"]),
         .executable(name: "router-eval", targets: ["router-eval"]),
         .executable(name: "log-report", targets: ["log-report"]),
+        .executable(name: "intent-eval", targets: ["intent-eval"]),
     ],
     dependencies: [
         .package(url: "https://github.com/FluidInference/FluidAudio.git", exact: "0.18.2"),
@@ -41,6 +42,11 @@ let package = Package(
         ),
         .executableTarget(
             name: "log-report",
+            dependencies: ["VoiceCommandCore"],
+            swiftSettings: [.swiftLanguageMode(.v5)]
+        ),
+        .executableTarget(
+            name: "intent-eval",
             dependencies: ["VoiceCommandCore"],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),

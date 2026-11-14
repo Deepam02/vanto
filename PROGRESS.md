@@ -210,3 +210,20 @@ Spec: docs/specs/never-lose-dictation.md; owner's decisions of 13 Nov in DECISIO
     Settings: "Type what I say when I'm not giving a command", "Clear speech history".
   - Log records carry `intent`, `focusKind`, `mediaPlaying`, `disposition` (§5.8).
   - Unit tests: 109 pass (claimed words, `DictationRun`, moved-away rule).
+- **Stage 4, logging, eval, invariants, docs** (spec §5.8, §7; DECISIONS 78–80).
+  - Logs: per-segment `disposition` lines, `segments` on command records, `wordsLost` on
+    session records. log-report adds words lost (must be 0), false dictation ("that was a
+    command" per typed dictation, and per 50 commands), false command ("type that instead"),
+    kept items later typed or copied back. Old log lines still parse.
+  - `swift run intent-eval` (new target; `IntentEval` in the core): 525 labelled utterances
+    (464 logged + 61 persona). Hard rule holds in all four contexts. Slack box: commands
+    precision 99.7%, recall 67.7%; dictation precision 94.1%, recall 68.1% (same in a Claude
+    Code prompt); the rest goes to the router.
+  - Session invariant fuzz (`ReplyOutcome`, `DispositionLedger`, both used by the app); replay
+    of 3–4 Nov row 75 (kept, "type it" finds it) added to the existing 321–323, 314–315,
+    296–298 and 151 replays.
+  - README: just talking, typing modes, recovery phrases, speech history, the Settings toggle,
+    intent-eval.
+  - Unit tests: 115 pass. Router eval --repeat 3: 98.3% (395/402),
+    dictate_keep 98.0%, other 98.3%, p50 first tool call 916 ms; flaky misses nov4-mkdir,
+    nov9-youtube-then-video, nld-cc-can-you-prompt, nld-cc-refactor (no router code changed).

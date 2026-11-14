@@ -288,3 +288,20 @@ option and noted it here. "Final review" refers to the PRD section that override
     and a router `dictate` with no run going is kept(unclear). Spoken starts still work.
 77. **Speech that stops a continuous scroll** is the "stop" only if it's ≤ 4 words and says
     "stop" or doesn't read like a command (loss path 7): "scroll up" now runs.
+78. **Words lost is measured two ways, both must be 0.** Each disposition is logged per segment
+    (`kind: disposition`), and each command record lists the segments it covered (`segments`):
+    a routed segment with no disposition line is lost. In the app, `DispositionLedger` notes
+    every segment heard and every disposition written to the history; anything heard but never
+    written is counted on the session record (`wordsLost`) and logged. Logs from before 13 Nov
+    have no segments and are left out of the measure, not counted as lost.
+79. **The router-reply disposition rule moved to the core** (`ReplyOutcome.disposition`), so the
+    session invariant test (spec §7.1) fuzzes the rule the app uses: random speech, gate
+    decisions, replies (errors and timeouts leave words waiting), runs, focus changes, stale
+    sweeps and session ends. Every segment heard gets exactly one disposition.
+80. **intent-eval tries every utterance in four places** (a Slack box, a Claude Code prompt,
+    nothing focused, media playing), because logged speech has no recorded focus. It fails on
+    any command typed, any dictation as a certain command, or any background speech typed.
+    Recall isn't gated: what the gate isn't sure about goes to the router, which is the design.
+    With media playing, commands without a cue are kept as noise unless something was said
+    to Vanto in the last 10 s (spec §5.7); the eval sets no recent speech, so that number is a
+    worst case.

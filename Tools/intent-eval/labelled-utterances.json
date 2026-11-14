@@ -2485,6 +2485,146 @@
    "id": "persona-33",
    "text": "I would like you to find the email from Priya about the deck and open it in a new window for me.",
    "label": "command"
+  },
+  {
+   "id": "persona-34",
+   "text": "Hi Maya, thanks for the intro to the Stripe team. I'd love to set up a call next week, does Tuesday or Wednesday afternoon work for you?",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-35",
+   "text": "Following up on my last email, I wanted to check whether you had a chance to review the revised quote, we can hold the price until the end of the month.",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-36",
+   "text": "Hey, I just pushed the fix for the login bug, can someone from QA give it a quick pass before we merge it into main?",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-37",
+   "text": "Sounds good, I'll take the onboarding tickets this sprint and pair with Ravi on the billing ones.",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-38",
+   "text": "Lol yes, I saw that too, I think the new design is way cleaner than the old one.",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-39",
+   "text": "Running about ten minutes late, start without me and I'll catch up on the notes.",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-40",
+   "text": "Ideas for the blog post: why voice beats typing for long prompts, the three mistakes we made with our first router, and what we learned from a week of logs.",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-41",
+   "text": "Groceries for the week, eggs, spinach, oat milk, two kinds of cheese, and something for Sunday dinner, maybe salmon.",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-42",
+   "text": "Note to self, ask the accountant whether the laptop counts as a business expense and send her the invoices before Friday.",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-43",
+   "text": "Look at the transcript buffer and make sure that every segment gets exactly one disposition, then write a fuzz test that tries random sequences of segments and session ends.",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-44",
+   "text": "I'm seeing a crash when the microphone changes in the middle of a session, can you find where we handle the device change and add a guard so it ends the session cleanly?",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-45",
+   "text": "Please rename the dictation controller's run property to current run and update every call site, and don't touch the tests yet, I'll do those myself.",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-46",
+   "text": "Write a short README section that explains how the speech history works, where the file lives, and how to clear it from settings.",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-47",
+   "text": "Explain why the router sometimes picks type text instead of terminal run when Claude Code is focused, I think it's the prompt rule about sessions.",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-48",
+   "text": "We spent most of the retro on the release process, and the main takeaway was that nobody owns the changelog, so I'm going to propose a rotation.",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-49",
+   "text": "Okay so my take is that we should charge per seat for teams and keep the solo plan flat, otherwise the pricing page gets confusing fast.",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-50",
+   "text": "Happy birthday Ana! Hope you have an amazing day and that the cake is better than last year's.",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-51",
+   "text": "Open Notes.",
+   "label": "command"
+  },
+  {
+   "id": "persona-52",
+   "text": "Switch to the terminal running Claude.",
+   "label": "command"
+  },
+  {
+   "id": "persona-53",
+   "text": "Scroll to the top of the page.",
+   "label": "command"
+  },
+  {
+   "id": "persona-54",
+   "text": "Go to my inbox in Gmail.",
+   "label": "command"
+  },
+  {
+   "id": "persona-55",
+   "text": "Pause the music.",
+   "label": "command"
+  },
+  {
+   "id": "persona-56",
+   "text": "Can you open the Linear tab?",
+   "label": "command"
+  },
+  {
+   "id": "persona-57",
+   "text": "Close all the other tabs.",
+   "label": "command"
+  },
+  {
+   "id": "persona-58",
+   "text": "Send it.",
+   "label": "command"
+  },
+  {
+   "id": "persona-59",
+   "text": "Make the window full screen.",
+   "label": "command"
+  },
+  {
+   "id": "persona-60",
+   "text": "Open Slack and tell Priya the deck is ready and that I'll walk her through it tomorrow morning before standup.",
+   "label": "mixed"
+  },
+  {
+   "id": "persona-61",
+   "text": "And now, the weather for the weekend: sunshine across most of the country with a chance of showers in the north.",
+   "label": "background"
   }
  ]
 }

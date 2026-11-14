@@ -33,6 +33,8 @@ final class SessionController {
     private var sessionID = ""
     private var startedAt = Date()
     private var buffer = TranscriptBuffer()
+    /// Every segment heard this session and the dispositions written for it (invariant I1).
+    private var ledger = DispositionLedger()
     /// Where every disposed segment is written (never-lose-dictation §3).
     private let speechHistory: SpeechHistory
     /// The one dictation engine (spec §5.5): hold Fn, spoken starts, plain speech, router `dictate`.
@@ -127,7 +129,7 @@ final class SessionController {
         sessionID = UUID().uuidString
         startedAt = Date()
         lastActivity = Date()
-        buffer.reset(); partial = ""
+        buffer.reset(); recordDisposed(); ledger.reset(); partial = ""
         hud.model.liveText = ""; hud.model.pendingPrompt = nil; hud.model.draftPreview = nil; hud.model.flash = nil
         hud.setVisible(true)
         state = .warming
@@ -182,14 +184,17 @@ final class SessionController {
         var record = CommandRecord(sessionID: sessionID, generation: 0, transcript: Dictation.join(pieces.map(\.text)))
         record.tools = ["dictation"]
         record.intent = "local: hold Fn"
+        record.segments = pieces.flatMap(\.ids)
         record.decisions = ["dictate (hold Fn, on release) → \(report.message)"]
         record.results = [report.message]
         record.outcome = pieces.isEmpty ? "ignored" : (report.typedAny ? "ok" : (report.ok ? "kept" : "failed"))
         record.disposition = pieces.isEmpty ? nil : (report.typedAny ? "typed" : "kept:nowhere_to_type")
         record.actionDoneAt = Date().timeIntervalSince1970
         log.append(record)
+        recordDisposed()
         var session = SessionRecord(sessionID: sessionID, startedAt: startedAt, endedAt: Date(), endReason: "dictation")
         session.echoCancel = echoCancel
+        session.wordsLost = wordsLost()
         log.append(session)
 
         state = .idle
@@ -235,7 +240,7 @@ final class SessionController {
         sessionID = UUID().uuidString
         startedAt = Date()
         lastActivity = Date()
-        buffer.reset(); recordDisposed(); history.reset(); partial = ""; pending = nil; holdActive = false; muted = false
+        buffer.reset(); recordDisposed(); ledger.reset(); history.reset(); partial = ""; pending = nil; holdActive = false; muted = false
         lastActedAt = nil; lastActedTranscript = nil; lastActionUndoDepth = nil; lastSpokeToVantoAt = nil
         timeoutRetried.removeAll()
         snapshots.preferredShellID = nil
@@ -332,6 +337,7 @@ final class SessionController {
         executor.endSession()
         var session = SessionRecord(sessionID: sessionID, startedAt: startedAt, endedAt: Date(), endReason: reason)
         session.echoCancel = echoCancel
+        session.wordsLost = wordsLost()
         log.append(session)
 
         state = .idle
@@ -436,7 +442,7 @@ final class SessionController {
                 // Short speech was the "stop" (often heard as "Store"): acted on, and in the history
                 // like any other. A short real command ("scroll up") is decided as usual (loss path 7).
                 if w.count <= 4 && (w.contains("stop") || !IntentGate.readsLikeCommand(said)) {
-                    buffer.dispose([buffer.append(said, endedAt: endedAt)], as: .acted)
+                    buffer.dispose([hear(said, endedAt: endedAt)], as: .acted)
                     recordDisposed()
                     if state == .speaking { state = pending != nil ? .pending : .listening }
                     hud.model.mode = modeForIdle()
@@ -451,7 +457,7 @@ final class SessionController {
                 }
                 return
             }
-            buffer.append(text.isEmpty ? live : text, endedAt: endedAt, raw: text.isEmpty ? nil : raw)
+            hear(text.isEmpty ? live : text, endedAt: endedAt, raw: text.isEmpty ? nil : raw)
             if buffer.keepStale() { recordDisposed() }
             refreshLiveText()
             if state == .speaking { state = pending != nil ? .pending : .listening }
@@ -474,7 +480,7 @@ final class SessionController {
             partial = ""
             let words = text.isEmpty ? live : text
             // In the buffer (and claimed), so a cut-short hold is kept, never lost.
-            let id = buffer.append(words, endedAt: endedAt, raw: text.isEmpty ? nil : raw)
+            let id = hear(words, endedAt: endedAt, raw: text.isEmpty ? nil : raw)
             buffer.claim([id])
             if !words.trimmingCharacters(in: .whitespaces).isEmpty { held.append(.init(text: words, ids: [id])) }
         case .failure(let message):
@@ -541,6 +547,7 @@ final class SessionController {
             record.tools = ["end_session"]
             record.decisions = ["end_session (local)"]
             record.intent = "local: end the session"
+            record.segments = buffer.latestSegmentIDs
             record.outcome = "ok"
             record.actionDoneAt = Date().timeIntervalSince1970
             // The last segment ended the session; anything before it ("Henderson.") is kept.
@@ -620,6 +627,7 @@ final class SessionController {
         record.intent = decision.logLine
         record.focusKind = focus.label
         record.mediaPlaying = media
+        record.segments = segmentIDs
 
         switch decision.route {
         case .router, .command:
@@ -775,7 +783,7 @@ final class SessionController {
             record.outcome = "ok"
             record.actionDoneAt = Date().timeIntervalSince1970
             log.append(record)
-            let id = buffer.append(words)
+            let id = hear(words)
             await route(transcript: words, segmentIDs: [id], generation: gen, intent: nil, focus: FocusKind.from(snap),
                         mediaPlaying: AudioCapture.outputIsPlaying(), dictationRun: nil)
             return
@@ -853,6 +861,7 @@ final class SessionController {
         var record = CommandRecord(sessionID: sessionID, generation: gen, transcript: transcript)
         record.rawTranscript = raw
         record.intent = intent?.logLine ?? "local: that was a command"
+        record.segments = segmentIDs
         record.focusKind = focus.label
         record.mediaPlaying = mediaPlaying
         record.liveTranscript = hud.model.liveText
@@ -1044,17 +1053,13 @@ final class SessionController {
         }
 
         // Segmentation (Final review 3): a reply that did something disposes of its words;
-        // wait_for_more leaves them waiting. Failed or kept words are kept, never dropped. Words a
-        // question was about are kept too (the answer completes them through asked_about), so an
-        // unanswered "which app?" doesn't lose them. Words handed to the dictation engine are
-        // claimed, so it disposes them (typed or kept) itself.
-        if acted || kept != nil || anyHeld || ended || anyFailed || dictated || !waited {
-            let disposition: Disposition
-            if asked && !anyHeld && !ended && outcomeLines.count == 1 { disposition = .kept(.unclear) }
-            else if anyHeld || ended || anySucceeded { disposition = .acted }
-            else if anyFailed { disposition = .kept(.failed) }
-            else if let kept { disposition = .kept(kept) }
-            else { disposition = .acted }
+        // wait_for_more leaves them waiting (ReplyOutcome.disposition has the rules). Words handed
+        // to the dictation engine are claimed, so it disposes them (typed or kept) itself.
+        var reply = ReplyOutcome()
+        reply.acted = acted; reply.waited = waited; reply.ended = ended; reply.failed = anyFailed
+        reply.held = anyHeld; reply.succeeded = anySucceeded; reply.dictated = dictated; reply.asked = asked
+        reply.kept = kept; reply.outcomeLines = outcomeLines.count
+        if let disposition = reply.disposition {
             buffer.dispose(through: segmentIDs.last ?? -1, as: disposition)
             recordDisposed()
             record.disposition = dictated && !acted ? "typed" : disposition.label
@@ -1108,11 +1113,33 @@ final class SessionController {
         hud.model.show(.failure("\(failure). Your words are kept: keep talking, or say “type it”"), for: 3)
     }
 
-    /// Write the buffer's dispositions to the speech history.
+    /// Into the buffer, and noted in the ledger so a segment that never gets a disposition shows up
+    /// as words lost.
+    @discardableResult
+    private func hear(_ text: String, endedAt: Date = Date(), raw: String? = nil) -> Int {
+        let id = buffer.append(text, endedAt: endedAt, raw: raw)
+        ledger.note(buffer)
+        return id
+    }
+
+    /// Write the buffer's dispositions to the speech history, and to the log (per segment) for
+    /// log-report's "words lost".
     private func recordDisposed() {
         let done = buffer.takeDisposed()
         guard !done.isEmpty else { return }
+        ledger.record(done)
         speechHistory.append(done, sessionID: sessionID, app: snapshots.snapshot.frontmostApp?.name)
+        for d in done {
+            log.append(DispositionRecord(sessionID: sessionID, segments: d.segments.map(\.id), disposition: d.disposition.label, at: d.at))
+        }
+    }
+
+    /// Segments heard this session that never got a disposition (must be 0), for the session record.
+    private func wordsLost() -> Int {
+        ledger.note(buffer)
+        let lost = ledger.undisposed.count + ledger.doubled.count
+        if lost > 0 { NSLog("VoiceCommand: words lost — undisposed \(ledger.undisposed), doubled \(ledger.doubled)") }
+        return lost
     }
 
     private func finish(_ record: CommandRecord, previousState: State, gen: Int) {
