@@ -136,7 +136,7 @@ public struct DesktopSnapshot: Codable, Equatable, Sendable {
     public static let maxTitle = 60
     public static let maxTabs = 40
 
-    static func clip(_ s: String, _ n: Int = maxTitle) -> String {
+    public static func clip(_ s: String, _ n: Int = maxTitle) -> String {
         let flat = s.replacingOccurrences(of: "\n", with: " ").replacingOccurrences(of: "\"", with: "'")
         return flat.count <= n ? flat : String(flat.prefix(n - 1)) + "…"
     }

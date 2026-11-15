@@ -1,4 +1,5 @@
 import AppKit
+import Carbon.HIToolbox
 import VoiceCommandCore
 
 enum UndoAction {
@@ -38,6 +39,9 @@ final class Executor {
         var typedChars: Int = 0
         var lastInsertAt = Date()
         var hint: AppHint?
+        /// Typed by a dictation run, not composed by the router: follow-up prose continues it
+        /// rather than editing it.
+        var byDictation = false
 
         var targetDescription: String {
             switch target {
@@ -91,9 +95,22 @@ final class Executor {
         undoStack.removeAll()
     }
 
+    /// The draft the router is told about. Text a dictation run typed counts only for a short
+    /// while after its last words ("send it" just after a run), so an old run doesn't make the
+    /// router type later chatter (the run itself is told separately, as `dictation_run`).
     var draftForRouter: RouterInput.Draft? {
-        draft.map { RouterInput.Draft(app: $0.appName, target: $0.targetDescription, typedText: $0.typedText) }
+        guard let d = composedOrFreshDraft else { return nil }
+        return RouterInput.Draft(app: d.appName, target: d.targetDescription, typedText: d.typedText)
     }
+
+    /// The open draft, unless it's text a dictation run typed more than `dictatedDraftGrace` ago.
+    var composedOrFreshDraft: Draft? {
+        guard let d = draft else { return nil }
+        if d.byDictation && Date().timeIntervalSince(d.lastInsertAt) > Self.dictatedDraftGrace { return nil }
+        return d
+    }
+
+    static let dictatedDraftGrace: TimeInterval = 20
 
     /// Execute one action tool. Control tools (wait, ignore, say, end, confirm, cancel)
     /// are handled by the session controller.
@@ -180,21 +197,248 @@ final class Executor {
 
     // MARK: Typing
 
+    var undoDepth: Int { undoStack.count }
+
+    /// How a hold-Fn paste went.
+    enum HeldPaste {
+        /// Pasted into a text box Accessibility could see (or a terminal).
+        case typed(String)
+        /// Pasted, but no text box could be seen there (Electron apps often hide theirs).
+        case unsure(String)
+        case secure
+    }
+
     /// Hold-Fn dictation: paste into whatever has focus, like any dictation tool, but never
     /// into a password field. Electron apps (Slack, Cursor's chat) often don't report an
-    /// editable field, so when none is detected it still pastes and also leaves the text on
-    /// the clipboard: if the paste went nowhere, nothing is lost.
-    func dictate(_ text: String) async -> ExecOutcome {
-        let focused = AX.focusedElement()
-        if let focused, AX.isSecure(focused) { return .fail("That's a password field — not typing") }
+    /// editable field until asked, so it asks once before deciding it couldn't see one.
+    /// The clipboard is left alone (spec §1, loss path 9): words that may not have landed
+    /// are kept in the speech history instead.
+    func pasteHeld(_ text: String) async -> HeldPaste {
+        if let f = AX.focusedElement(), AX.isSecure(f) { return .secure }
         let front = NSWorkspace.shared.frontmostApplication
         let name = front?.localizedName ?? "the front app"
-        let terminals = [TerminalSessions.terminalBundleID, TerminalSessions.itermBundleID, TerminalSessions.ghosttyBundleID]
-        let sure = terminals.contains(front?.bundleIdentifier ?? "") || focused.map { AX.isEditable($0) } == true
+        var sure = Self.terminalBundles.contains(front?.bundleIdentifier ?? "") || AX.focusedElement().map { AX.isEditable($0) } == true
+        if !sure, let front {
+            await UIAdapter.exposeTree(front)
+            sure = AX.focusedElement().map { AX.isEditable($0) } == true
+        }
         await PasteService.paste(text)
-        if sure { return .ok("Typed into \(name)", undo: nil) }
-        PasteService.copy(text)
-        return .ok("Typed into \(name), and copied in case it didn't land", undo: nil)
+        return sure ? .typed(name) : .unsure(name)
+    }
+
+    static let terminalBundles: Set<String> = [TerminalSessions.terminalBundleID, TerminalSessions.itermBundleID, TerminalSessions.ghosttyBundleID]
+
+    // MARK: Dictation runs (spec §5.5)
+
+    /// Where a dictation run types, pinned when it starts.
+    struct Place {
+        let target: Draft.Target
+        let appName: String
+        /// Equal to `placeKey(_:)` while this place is in front.
+        let key: String
+    }
+
+    enum PinFailure: Error {
+        case secure, nowhere(String)
+        var message: String {
+            switch self {
+            case .secure: return "That's a password field — not typing"
+            case .nowhere(let why): return why
+            }
+        }
+    }
+
+    enum DictationTyped { case typed, movedAway, failed(String) }
+
+    /// Where typing would land right now: the selected terminal session, or the focused text
+    /// box in the front app (the app alone when none is focused). Nil when it can't be told (a
+    /// terminal whose sessions the snapshot didn't read).
+    func placeKey(_ snap: DesktopSnapshot) -> String? {
+        guard let front = NSWorkspace.shared.frontmostApplication else { return nil }
+        if let s = frontTerminal(snap, front) { return "terminal:\(s.id)" }
+        if Self.terminalBundles.contains(front.bundleIdentifier ?? "") { return nil }
+        let pid = front.processIdentifier
+        if let el = try? TextInputResolver.focusedEditable(in: pid) { return Self.elementKey(pid, el) }
+        return "app:\(pid)"
+    }
+
+    /// One text box: another box in the same app (another note, channel or the search field)
+    /// is another place, so a run never types or backspaces there (I4).
+    static func elementKey(_ pid: pid_t, _ element: AXUIElement) -> String { "app:\(pid):\(CFHash(element))" }
+
+    private func frontTerminal(_ snap: DesktopSnapshot, _ front: NSRunningApplication) -> DesktopSnapshot.TerminalSession? {
+        guard let b = front.bundleIdentifier, Self.terminalBundles.contains(b) else { return nil }
+        return snap.terminals.first { $0.selected && TerminalAdapter.bundleID($0.app) == b }
+    }
+
+    private func terminalPlace(_ s: DesktopSnapshot.TerminalSession) -> Place {
+        let name = s.running == "claude" ? "Claude Code" : (s.running == "codex" ? "Codex" : TerminalAdapter.appName(s.app))
+        return Place(target: .terminal(s), appName: name, key: "terminal:\(s.id)")
+    }
+
+    /// May a run type into this terminal session? Never at a password prompt; and a run nobody
+    /// asked for (the router's guess) only into a coding assistant, never a plain shell, where
+    /// "send it" would run the prose as a command.
+    private func terminalAllowed(_ s: DesktopSnapshot.TerminalSession, guessed: Bool, snap: DesktopSnapshot) -> PinFailure? {
+        if snap.secureInputOn || IsSecureEventInputEnabled() { return .secure }
+        if guessed, !["claude", "codex"].contains(s.running ?? "") {
+            return .nowhere("\(TerminalAdapter.appName(s.app)) is a plain shell — not typing there")
+        }
+        return nil
+    }
+
+    /// Pin where a run types: the terminal session or app it named (brought to the front), the
+    /// open draft when it's in front, or the focused text box. `terminal` and `sessionID` come
+    /// from the router (`target: terminal`, `session_id`); `guessed` means nobody asked to
+    /// dictate (the router's `dictate`), so a plain shell is refused.
+    func pinPlace(app: String?, terminal: Bool = false, sessionID: String? = nil, guessed: Bool = false,
+                  snap: DesktopSnapshot) async -> Result<Place, PinFailure> {
+        let front = NSWorkspace.shared.frontmostApplication
+        if let sid = sessionID, let s = snap.terminals.first(where: { $0.id == sid }) {
+            return await pinTerminal(s, named: app ?? s.title, guessed: guessed, snap: snap)
+        }
+        let q = app?.lowercased() ?? ""
+        if terminal || ["claude code", "codex", "terminal", "iterm", "ghostty", "shell"].contains(where: q.contains) {
+            if app == nil, let f = front, let s = frontTerminal(snap, f) {
+                return await pinTerminal(s, named: TerminalAdapter.appName(s.app), guessed: guessed, snap: snap)
+            }
+            let wants = q.contains("codex") ? "codex" : (q.contains("claude") ? "claude" : nil)
+            let inApp = ["iterm", "ghostty"].first(where: q.contains)
+            let candidates = snap.terminals.filter {
+                (wants == nil || $0.running == wants) && (inApp == nil || TerminalAdapter.appName($0.app).lowercased().contains(inApp!))
+            }
+            // The front app's visible session first, then any visible one.
+            let inFrontApp = candidates.first { $0.selected && TerminalAdapter.bundleID($0.app) == front?.bundleIdentifier }
+            guard let s = inFrontApp ?? candidates.first(where: \.selected) ?? candidates.first else {
+                return .failure(.nowhere("No \(app ?? "terminal") session is open"))
+            }
+            return await pinTerminal(s, named: app ?? "the terminal", guessed: guessed, snap: snap)
+        }
+        if let app {
+            do {
+                var t = try await TextInputResolver.resolveChatBox(appQuery: app, hints: hints, snapshot: snap)
+                // Pin the box that ended up focused (the search may find a wrapper around it), so
+                // the run's place matches where typing lands.
+                if let f = try? TextInputResolver.focusedEditable(in: t.pid) {
+                    t = TextInputResolver.Target(pid: t.pid, element: f, appName: t.appName, bundleID: t.bundleID)
+                }
+                return .success(Place(target: .element(t), appName: t.appName, key: Self.elementKey(t.pid, t.element)))
+            } catch {
+                return .failure(.nowhere("Couldn't find a text box in \(app)"))
+            }
+        }
+        guard let front else { return .failure(.nowhere("No app in front")) }
+        if let d = draft, let here = placeKey(snap), here == key(of: d.target) {
+            if case .terminal(let s) = d.target, let no = terminalAllowed(s, guessed: guessed, snap: snap) { return .failure(no) }
+            return .success(Place(target: d.target, appName: d.appName, key: here))
+        }
+        if let s = frontTerminal(snap, front) {
+            if let no = terminalAllowed(s, guessed: guessed, snap: snap) { return .failure(no) }
+            return .success(terminalPlace(s))
+        }
+        if let f = AX.focusedElement(), AX.isSecure(f) { return .failure(.secure) }
+        let pid = front.processIdentifier
+        let name = front.localizedName ?? "?"
+        var el = try? TextInputResolver.focusedEditable(in: pid)
+        if el == nil {
+            // Electron apps hide their text boxes until asked (4 Nov, Claude desktop).
+            await UIAdapter.exposeTree(front)
+            el = try? TextInputResolver.focusedEditable(in: pid)
+        }
+        if let el {
+            let t = TextInputResolver.Target(pid: pid, element: el, appName: name, bundleID: front.bundleIdentifier)
+            return .success(Place(target: .element(t), appName: name, key: Self.elementKey(pid, el)))
+        }
+        // An app known to have a text box that Accessibility can't see (Claude): paste blind.
+        if hints.hint(bundleID: front.bundleIdentifier) ?? hints.hint(named: name) != nil {
+            return .success(Place(target: .blind(pid: pid), appName: name, key: "app:\(pid)"))
+        }
+        return .failure(.nowhere("No text box is focused in \(name)"))
+    }
+
+    /// Bring a terminal session up and pin it, if a run may type there.
+    private func pinTerminal(_ s: DesktopSnapshot.TerminalSession, named: String, guessed: Bool,
+                             snap: DesktopSnapshot) async -> Result<Place, PinFailure> {
+        if let no = terminalAllowed(s, guessed: guessed, snap: snap) { return .failure(no) }
+        guard case .ok = await TerminalAdapter.focus(s) else { return .failure(.nowhere("Couldn't bring up \(named)")) }
+        return .success(terminalPlace(s))
+    }
+
+    private func key(of target: Draft.Target) -> String {
+        switch target {
+        case .terminal(let s): return "terminal:\(s.id)"
+        case .element(let t): return Self.elementKey(t.pid, t.element)
+        case .blind(let pid): return "app:\(pid)"
+        }
+    }
+
+    /// Is the run's place still where typing lands?
+    private func inFront(_ place: Place) async -> Bool {
+        switch place.target {
+        case .terminal(let s): return await TerminalAdapter.isFront(s)
+        case .element(let t):
+            // The same text box, not just some box in the same app.
+            guard AppWindowAdapter.frontmostPID() == t.pid,
+                  let focused = try? TextInputResolver.focusedEditable(in: t.pid) else { return false }
+            return CFEqual(focused, t.element)
+        case .blind(let pid): return AppWindowAdapter.frontmostPID() == pid
+        }
+    }
+
+    /// One step of a run: backspace `backspaces` characters the run typed itself, then type
+    /// `text` exactly (no separator added: the run adds its own). Checks first that the place
+    /// is still in front, so words never land somewhere else.
+    func typeDictation(_ text: String, backspaces: Int = 0, into place: Place) async -> DictationTyped {
+        snapshots.markDirty()
+        guard await inFront(place) else { return .movedAway }
+        if backspaces > 0 { KeyPresser.backspace(backspaces) }
+        if !text.isEmpty {
+            switch place.target {
+            case .terminal(let s):
+                // A password prompt (sudo) turns on secure input: never type words there.
+                if IsSecureEventInputEnabled() { return .failed("That's a password prompt — not typing") }
+                let r = await TerminalAdapter.type(s, text)
+                guard r.succeeded else { return .failed(r.message) }
+            case .element, .blind:
+                if let f = AX.focusedElement(), AX.isSecure(f) { return .failed("That's a password field — not typing") }
+                await PasteService.paste(text)
+            }
+        }
+        if let d = draft, key(of: d.target) == place.key {
+            draft!.typedText = String(d.typedText.dropLast(backspaces)) + text
+            draft!.typedChars = max(0, d.typedChars - backspaces) + text.count
+        } else {
+            draft = Draft(target: place.target, appName: place.appName, typedText: text, typedChars: text.count,
+                          hint: hints.hint(named: place.appName))
+        }
+        draft!.byDictation = true
+        draft!.lastInsertAt = Date()
+        if !text.isEmpty {
+            undoStack.append(.deleteTyped(chars: text.count))
+            if undoStack.count > 20 { undoStack.removeFirst() }
+        }
+        return .typed
+    }
+
+    /// Text in the field just before a run types there doesn't end in a space: the run's first
+    /// words need one.
+    func needsLeadingSpace(_ place: Place) -> Bool {
+        if let d = draft, key(of: d.target) == place.key { return !(d.typedText.last?.isWhitespace ?? true) }
+        if case .element(let t) = place.target, let v = AX.string(t.element, kAXValueAttribute), let last = v.last {
+            return !last.isWhitespace
+        }
+        return false
+    }
+
+    /// Remove what a run typed: backspace `chars`, then type `restoring` back (the period a
+    /// removed chunk had replaced).
+    func eraseDictation(_ chars: Int, restoring: String = "", in place: Place) async -> DictationTyped {
+        guard chars > 0 || !restoring.isEmpty else { return .typed }
+        let r = await typeDictation(restoring, backspaces: chars, into: place)
+        if case .typed = r, !restoring.isEmpty || chars > 0 {
+            undoStack.removeAll { if case .deleteTyped = $0 { return true }; return false }
+        }
+        return r
     }
 
     /// The Mac's output volume (Standard Additions, no permission needed).

@@ -33,6 +33,12 @@ final class SessionController {
     private var sessionID = ""
     private var startedAt = Date()
     private var buffer = TranscriptBuffer()
+    /// Every segment heard this session and the dispositions written for it (invariant I1).
+    private var ledger = DispositionLedger()
+    /// Where every disposed segment is written (never-lose-dictation §3).
+    private let speechHistory: SpeechHistory
+    /// The one dictation engine (spec §5.5): hold Fn, spoken starts, plain speech, router `dictate`.
+    private let dictation: DictationController
     private var history = SessionHistory()
     private var partial = ""
     private var generation = 0
@@ -44,18 +50,31 @@ final class SessionController {
     private var muted = false
     private var pending: (call: ToolCall, prompt: String, recordID: String)?
     private var lastActedRecordID: String?
+    /// When the last command did something, and the undo depth it left (so "type that
+    /// instead" undoes that action, never an older one).
+    private var lastActedAt: Date?
+    private var lastActedTranscript: String?
+    private var lastActionUndoDepth: Int?
+    /// When something last went to the router as a command (media rule, spec §5.7).
+    private var lastSpokeToVantoAt: Date?
+    /// The record of the last dictation, for "that was a command" corrections.
+    private var lastDictationRecordID: String?
     private var routeTask: Task<Void, Never>?
     private var scheduledRoute: Task<Void, Never>?
+    /// A segment came in and hasn't been decided yet (this generation): a run doesn't end on
+    /// silence while its next words are on their way to it.
+    private var undecidedGeneration: Int?
     private var ticker: Timer?
     private var observers: [NSObjectProtocol] = []
     private var unloadTimer: Timer?
     // Hold-Fn dictation: a session that only types what was said, no routing.
     private var dictationOnly = false
-    private var dictated: [String] = []
-    /// Dictation started by voice inside a command session ("write a message, wait for me"):
-    /// speech is collected, not routed, until "send it", "done" or a long silence.
-    private var voiceDictation: (target: TypeTarget, app: String?, sessionID: String?, chunks: [String], lastSpeech: Date)?
-    private static let voiceDictationSilence: TimeInterval = 8
+    /// What was said while Fn is held, claimed from the buffer until release.
+    private var held: [DictationRun.Piece] = []
+    /// "That was a command" / "type that instead" refer to things done this recently.
+    private static let recentWindow: TimeInterval = 60
+    /// "Type it" refers to words kept this recently (the history itself has no expiry).
+    private static let keptRecallWindow: TimeInterval = 600
     /// Echo cancellation was on for this session's mic (logged; it adds latency).
     private var echoCancel = false
     // Latency of the last speech segment, copied into the next command record.
@@ -67,9 +86,20 @@ final class SessionController {
     private var lastSegmentLagMs: Int?
     private var lastTranscribeMs: Int?
 
-    init(speech: SpeechEngine, snapshots: SnapshotBuilder, executor: Executor, client: ClaudeClient, hud: HUDPanel, log: CommandLog) {
+    init(speech: SpeechEngine, snapshots: SnapshotBuilder, executor: Executor, client: ClaudeClient, hud: HUDPanel, log: CommandLog,
+         speechHistory: SpeechHistory) {
         self.speech = speech; self.snapshots = snapshots; self.executor = executor
-        self.client = client; self.hud = hud; self.log = log
+        self.client = client; self.hud = hud; self.log = log; self.speechHistory = speechHistory
+        dictation = DictationController(executor: executor, hud: hud)
+        dictation.onDispose = { [weak self] ids, d in
+            guard let self else { return }
+            self.buffer.dispose(ids, as: d)
+            self.recordDisposed()
+        }
+        dictation.onLoose = { [weak self] text, d, app in
+            guard let self else { return }
+            self.speechHistory.append(.init(text: text, disposition: d, sessionID: self.sessionID, app: app))
+        }
         speech.onEvent = { [weak self] e in self?.handle(e) }
         speech.capture.onDeviceChange = { [weak self] in
             guard let self, self.isActive else { return }
@@ -81,7 +111,13 @@ final class SessionController {
 
     func toggle() {
         if dictationOnly { return }   // releasing Fn ends dictation
-        if isActive { end(reason: "hotkey") } else { start() }
+        guard isActive else { start(); return }
+        // Words waiting for a pause are typed before the session ends.
+        if dictation.hasWaiting {
+            Task { await dictation.finish(.sessionEnd); end(reason: "hotkey") }
+        } else {
+            end(reason: "hotkey")
+        }
     }
 
     // MARK: Dictation (hold Fn)
@@ -92,11 +128,11 @@ final class SessionController {
         guard state == .idle else { return }   // a command session already owns the mic
         unloadTimer?.invalidate()
         dictationOnly = true
-        dictated = []
+        held = []
         sessionID = UUID().uuidString
         startedAt = Date()
         lastActivity = Date()
-        buffer.reset(); partial = ""
+        buffer.reset(); recordDisposed(); ledger.reset(); partial = ""
         hud.model.liveText = ""; hud.model.pendingPrompt = nil; hud.model.draftPreview = nil; hud.model.flash = nil
         hud.setVisible(true)
         state = .warming
@@ -143,27 +179,33 @@ final class SessionController {
         state = .executing
         hud.model.mode = .thinking
         await speech.finishListening()
-        let text = settings.cleanUpDictation ? Dictation.clean(dictated) : Dictation.join(dictated)
+        let pieces = held
         dictationOnly = false
-        dictated = []
+        held = []
 
-        var record = CommandRecord(sessionID: sessionID, generation: 0, transcript: text)
+        let report = await dictation.typeHeld(pieces)
+        var record = CommandRecord(sessionID: sessionID, generation: 0, transcript: Dictation.join(pieces.map(\.text)))
         record.tools = ["dictation"]
-        let outcome: ExecOutcome = text.isEmpty ? .fail("Didn't hear anything") : await executor.dictate(text)
-        record.decisions = ["dictate → \(outcome.succeeded ? "ok" : "failed: \(outcome.message)")"]
-        record.results = [outcome.message]
-        record.outcome = text.isEmpty ? "ignored" : (outcome.succeeded ? "ok" : "failed")
+        record.intent = "local: hold Fn"
+        record.segments = pieces.flatMap(\.ids)
+        record.decisions = ["dictate (hold Fn, on release) → \(report.message)"]
+        record.results = [report.message]
+        record.outcome = pieces.isEmpty ? "ignored" : (report.typedAny ? "ok" : (report.ok ? "kept" : "failed"))
+        record.disposition = pieces.isEmpty ? nil : (report.typedAny ? "typed" : "kept:nowhere_to_type")
         record.actionDoneAt = Date().timeIntervalSince1970
         log.append(record)
+        recordDisposed()
         var session = SessionRecord(sessionID: sessionID, startedAt: startedAt, endedAt: Date(), endReason: "dictation")
         session.echoCancel = echoCancel
+        session.wordsLost = wordsLost()
         log.append(session)
 
         state = .idle
         hud.model.liveText = ""
         hud.model.mode = .listening
-        hud.model.show(outcome.succeeded ? .success(outcome.message) : .failure(outcome.message), for: 1.6)
-        hideHUDSoon(after: 1.7)
+        hud.model.show(report.typedAny ? .success(report.message) : (report.ok ? .info(report.message) : .failure(report.message)),
+                       for: report.typedAny ? 1.6 : 3.5)
+        hideHUDSoon(after: report.typedAny ? 1.7 : 3.6)
         scheduleUnload()
     }
 
@@ -201,8 +243,8 @@ final class SessionController {
         sessionID = UUID().uuidString
         startedAt = Date()
         lastActivity = Date()
-        buffer.reset(); history.reset(); partial = ""; pending = nil; holdActive = false; muted = false
-        voiceDictation = nil
+        buffer.reset(); recordDisposed(); ledger.reset(); history.reset(); partial = ""; pending = nil; holdActive = false; muted = false
+        lastActedAt = nil; lastActedTranscript = nil; lastActionUndoDepth = nil; lastSpokeToVantoAt = nil
         timeoutRetried.removeAll()
         snapshots.preferredShellID = nil
         hud.model.liveText = ""; hud.model.pendingPrompt = nil; hud.model.draftPreview = nil; hud.model.flash = nil
@@ -265,21 +307,18 @@ final class SessionController {
         guard state != .idle else { return }
         generation += 1
         routeTask?.cancel(); scheduledRoute?.cancel()
-        routeTask = nil; scheduledRoute = nil
+        routeTask = nil; scheduledRoute = nil; undecidedGeneration = nil
         speech.stopListening()
         ticker?.invalidate(); ticker = nil
         observers.forEach { NSWorkspace.shared.notificationCenter.removeObserver($0); DistributedNotificationCenter.default().removeObserver($0) }
         observers.removeAll()
         var message = message
         if dictationOnly {
-            // Cut short (mic changed, models failed): never lose what was said.
+            // Cut short (mic changed, models failed): never lose what was said. The held words
+            // are claimed in the buffer, which keeps them below (kept(session_ended)).
             dictationOnly = false
-            let text = Dictation.join(dictated)
-            dictated = []
-            if !text.isEmpty {
-                PasteService.copy(text)
-                message = (message ?? "Dictation stopped") + " — your words are on the clipboard"
-            }
+            if !held.isEmpty { message = (message ?? "Dictation stopped") + " — your words are in the menu bar's Kept list" }
+            held = []
         } else {
             snapshots.endLive()
         }
@@ -292,16 +331,16 @@ final class SessionController {
             log.append(CorrectionRecord(commandID: p.recordID, sessionID: sessionID, how: "cancel_pending"))
         }
         pending = nil
-        if voiceDictation != nil {
-            // Ended mid-dictation: keep the words on the clipboard.
-            let text = Dictation.join(voiceDictation!.chunks)
-            voiceDictation = nil
-            if !text.isEmpty { PasteService.copy(text); notes.append("dictation copied to the clipboard") }
-        }
+        // A run's typed text stays, unsent; words it hadn't typed yet are kept.
+        if dictation.hasWaiting { notes.append("your last words are kept") }
+        dictation.sessionEnded()
+        buffer.reset()
+        recordDisposed()
         executor.abandonPretyped()
         executor.endSession()
         var session = SessionRecord(sessionID: sessionID, startedAt: startedAt, endedAt: Date(), endReason: reason)
         session.echoCancel = echoCancel
+        session.wordsLost = wordsLost()
         log.append(session)
 
         state = .idle
@@ -324,7 +363,7 @@ final class SessionController {
             hud.model.mode = .muted
         } else {
             state = .listening
-            hud.model.mode = executor.draft != nil ? .drafting : .listening
+            hud.model.mode = executor.composedOrFreshDraft != nil ? .drafting : .listening
             lastActivity = Date()
         }
     }
@@ -352,17 +391,19 @@ final class SessionController {
             end(reason: "10 minute cap", message: "Session ended after 10 minutes")
             return
         }
-        if buffer.dropStale(now: now) { refreshLiveText() }
-        if let v = voiceDictation, state != .speaking, now.timeIntervalSince(v.lastSpeech) > Self.voiceDictationSilence {
-            Task { await finishVoiceDictation(send: false, reason: "silence") }
-        }
-        // Idle time only; suspended while a draft is open, an action is pending, or after "hold on".
-        let suspended = executor.draft != nil || pending != nil || holdActive || voiceDictation != nil ||
+        if buffer.keepStale(now: now) { recordDisposed(); refreshLiveText() }
+        dictation.tick(now: now, speaking: isSpeaking || undecidedGeneration == generation)
+        // Idle time only; suspended while a draft is open (text a run typed only just after it),
+        // an action is pending, or after "hold on".
+        let suspended = executor.composedOrFreshDraft != nil || pending != nil || holdActive || dictation.isRunning ||
             state == .routing || state == .executing || state == .speaking
         if !suspended && !muted && now.timeIntervalSince(lastActivity) > Double(settings.idleTimeoutSec) {
             end(reason: "idle")
         }
     }
+
+    /// Between the start of speech and the segment it becomes.
+    private var isSpeaking: Bool { lastSpeechStart > (lastSpeechEnd ?? .distantPast) }
 
     // MARK: Speech events
 
@@ -385,8 +426,8 @@ final class SessionController {
             scheduledRoute?.cancel()
             if state == .routing { routeTask?.cancel() }
             if !muted && state != .executing && state != .pending { state = .speaking }
-            if !muted { hud.model.mode = voiceDictation != nil ? .dictating : .speaking }
-            voiceDictation?.lastSpeech = Date()
+            if !muted { hud.model.mode = dictation.isRunning ? .dictating : .speaking }
+            dictation.heard()
 
         case .partial(let text):
             partial = text
@@ -396,22 +437,25 @@ final class SessionController {
             lastActivity = Date()
             partial = ""
             lastSpeechEnd = endedAt
+            // Silence ends a run from when speech stopped, not when it started (a 6 s segment
+            // must not end its own run before it's added).
+            dictation.heard(at: endedAt)
             lastSegmentLagMs = Int(Date().timeIntervalSince(endedAt) * 1000)
             lastTranscribeMs = transcribeMs
             if speechStoppedScroll {
                 speechStoppedScroll = false
                 let said = text.isEmpty ? live : text
-                if TextMatching.words(said).count <= 4 {
+                let w = TextMatching.words(said).map(\.norm)
+                // Short speech was the "stop" (often heard as "Store"): acted on, and in the history
+                // like any other. A short real command ("scroll up") is decided as usual (loss path 7).
+                if w.count <= 4 && (w.contains("stop") || !IntentGate.readsLikeCommand(said)) {
+                    buffer.dispose([hear(said, endedAt: endedAt)], as: .acted)
+                    recordDisposed()
                     if state == .speaking { state = pending != nil ? .pending : .listening }
                     hud.model.mode = modeForIdle()
                     hud.model.show(.info("Stopped scrolling"), for: 1.2)
                     return
                 }
-            }
-            if voiceDictation != nil && !muted {
-                if state == .speaking { state = pending != nil ? .pending : .listening }
-                voiceDictationSegment(text.isEmpty ? live : text)
-                return
             }
             if muted {
                 if TextMatching.contains(text, anyOf: ["resume", "resume listening", "start listening", "unpause"]) {
@@ -420,9 +464,8 @@ final class SessionController {
                 }
                 return
             }
-            let id = buffer.append(text.isEmpty ? live : text, endedAt: endedAt, raw: text.isEmpty ? nil : raw)
-            _ = id
-            buffer.dropStale()
+            hear(text.isEmpty ? live : text, endedAt: endedAt, raw: text.isEmpty ? nil : raw)
+            if buffer.keepStale() { recordDisposed() }
             refreshLiveText()
             if state == .speaking { state = pending != nil ? .pending : .listening }
             hud.model.mode = modeForIdle()
@@ -439,16 +482,19 @@ final class SessionController {
             lastActivity = Date()
         case .partial(let text):
             partial = text
-        case .segment(let text, let live, _, _, _, _):
+        case .segment(let text, let live, let raw, _, let endedAt, _):
             lastActivity = Date()
             partial = ""
             let words = text.isEmpty ? live : text
-            if !words.isEmpty { dictated.append(words) }
+            // In the buffer (and claimed), so a cut-short hold is kept, never lost.
+            let id = hear(words, endedAt: endedAt, raw: text.isEmpty ? nil : raw)
+            buffer.claim([id])
+            if !words.trimmingCharacters(in: .whitespaces).isEmpty { held.append(.init(text: words, ids: [id])) }
         case .failure(let message):
             hud.model.show(.failure(message))
             return
         }
-        hud.model.liveText = ([Dictation.join(dictated), partial].filter { !$0.isEmpty }).joined(separator: " ")
+        hud.model.liveText = ([Dictation.join(held.map(\.text)), partial].filter { !$0.isEmpty }).joined(separator: " ")
     }
 
     private func refreshLiveText() {
@@ -458,9 +504,9 @@ final class SessionController {
 
     private func modeForIdle() -> HUDModel.Mode {
         if muted { return .muted }
-        if voiceDictation != nil { return .dictating }
+        if dictation.isRunning { return .dictating }
         if pending != nil { return .pending }
-        if executor.draft != nil { return .drafting }
+        if executor.composedOrFreshDraft != nil { return .drafting }
         return .listening
     }
 
@@ -488,6 +534,7 @@ final class SessionController {
         var commitMs = settings.commitDelayMs
         if TextMatching.words(buffer.latest).count > Self.longUtteranceWords { commitMs += Self.longUtteranceExtraMs }
         let delay = max(0, Double(commitMs) / 1000 - Date().timeIntervalSince(speechEnd))
+        undecidedGeneration = gen
         scheduledRoute = Task { [weak self] in
             if delay > 0 { try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000)) }
             guard let self, !Task.isCancelled, self.generation == gen else { return }
@@ -507,41 +554,333 @@ final class SessionController {
             record.speechEndAt = lastSpeechEnd?.timeIntervalSince1970
             record.tools = ["end_session"]
             record.decisions = ["end_session (local)"]
+            record.intent = "local: end the session"
+            record.segments = buffer.latestSegmentIDs
             record.outcome = "ok"
             record.actionDoneAt = Date().timeIntervalSince1970
-            buffer.consumeAll()
+            // The last segment ended the session; anything before it ("Henderson.") is kept.
+            let ids = buffer.latestSegmentIDs
+            buffer.dispose(Array(ids.dropLast()), as: .kept(.unclear))
+            buffer.disposeAll(as: .acted)
+            recordDisposed()
             log.append(record)
-            end(reason: "spoken")
+            // A run's waiting words are typed first; its text stays, unsent.
+            Task { await dictation.finish(.sessionEnd); end(reason: "spoken") }
             return
         }
-        // Spoken mute is local: no round trip needed.
+        // Spoken mute is local: no round trip needed. Its words are acted on, and in the history.
         if TextMatching.contains(transcript, anyOf: Self.mutePhrases) && words.count <= 5 {
-            buffer.consumeAll()
+            buffer.disposeAll(as: .acted)
+            recordDisposed()
             refreshLiveText()
             setMuted(true)
             return
         }
-        // Thinking pauses: trailing filler/connectors always wait, without a router call.
-        if settings.thinkingPauses, let last = words.last, Self.trailingWaitWords.contains(last) {
-            hud.model.mode = modeForIdle()
-            return
-        }
-        if Self.holdPhrases.contains(where: { TextMatching.normalized(transcript).hasSuffix($0) }) { holdActive = true }
 
         let segmentIDs = buffer.latestSegmentIDs
         let raw = buffer.latestRaw
         routeTask?.cancel()
         routeTask = Task { [weak self] in
-            await self?.route(transcript: transcript, raw: raw, segmentIDs: segmentIDs, generation: gen)
+            await self?.decide(transcript: transcript, raw: raw, segmentIDs: segmentIDs, generation: gen)
         }
     }
 
-    private func route(transcript: String, raw: String? = nil, segmentIDs: [Int], generation gen: Int) async {
+    // MARK: The intent gate (spec §5.3)
+
+    /// What the gate knows besides the words.
+    private func intentContext(focus: FocusKind, mediaPlaying: Bool, movedAwayFrom: String?) -> IntentContext {
+        let now = Date()
+        let run = dictation.run
+        return IntentContext(
+            focus: focus, runActive: run != nil, runTarget: run?.place.appName,
+            runEndsMidSentence: run?.model.endsMidSentence ?? false,
+            typedRecently: dictation.typedRecently,
+            actedRecently: lastActedAt.map { now.timeIntervalSince($0) < Self.recentWindow } ?? false,
+            hasKept: speechHistory.lastKept.map { now.timeIntervalSince($0.date) < Self.keptRecallWindow } ?? false,
+            keptEver: speechHistory.lastKept != nil,
+            draftOpen: executor.draft.map { !$0.byDictation } ?? false,
+            mediaPlaying: mediaPlaying,
+            sinceSpokeToVanto: lastSpokeToVantoAt.map { now.timeIntervalSince($0) },
+            vantoJustAsked: history.lastQuestion != nil,
+            movedAwayFrom: movedAwayFrom)
+    }
+
+    /// Every finished utterance goes through the gate: dictation, the router, or kept. Nothing
+    /// leaves the buffer without a disposition.
+    private func decide(transcript: String, raw: String?, segmentIDs: [Int], generation gen: Int) async {
+        defer { if undecidedGeneration == gen { undecidedGeneration = nil } }
+        let snap = await snapshots.current(since: lastSpeechStart)
+        guard generation == gen, !Task.isCancelled else { return }
+        let media = AudioCapture.outputIsPlaying()
+        let focus = FocusKind.from(snap)
+
+        // The run's place isn't in front any more: the run pauses (spec §5.5). Its waiting words
+        // can't be typed there, so they're kept (moved away).
+        var movedFrom: String?
+        if let r = dictation.run, let here = executor.placeKey(snap), here != r.place.key {
+            movedFrom = r.place.appName
+            await dictation.finish(.movedAway)
+            guard generation == gen, !Task.isCancelled else { return }
+        }
+
+        var decision = IntentGate.decide(transcript, intentContext(focus: focus, mediaPlaying: media, movedAwayFrom: movedFrom))
+        if !settings.implicitDictation, case .dictate(_, _, .implicit) = decision.route {
+            // Settings: typing unasked is off. The router decides, as before (spec §8).
+            decision = Decision(route: .router, step: .router, reason: decision.reason + "; typing unasked is off")
+        }
+        var record = CommandRecord(sessionID: sessionID, generation: gen, transcript: transcript)
+        record.rawTranscript = raw
+        record.speechEndAt = lastSpeechEnd?.timeIntervalSince1970
+        record.transcriptFinalAt = Date().timeIntervalSince1970
+        record.segmentLagMs = lastSegmentLagMs
+        record.transcribeMs = lastTranscribeMs
+        record.intent = decision.logLine
+        record.focusKind = focus.label
+        record.mediaPlaying = media
+        record.segments = segmentIDs
+
+        switch decision.route {
+        case .router, .command:
+            let words = TextMatching.words(transcript).map(\.norm)
+            // Thinking pauses: trailing filler/connectors always wait, without a router call.
+            if settings.thinkingPauses, !dictation.isRunning, let last = words.last, Self.trailingWaitWords.contains(last) {
+                hud.model.mode = modeForIdle()
+                return
+            }
+            if Self.holdPhrases.contains(where: { TextMatching.normalized(transcript).hasSuffix($0) }) { holdActive = true }
+            // A command ends the run: its typed text stays, unsent (spec §5.5).
+            let runTarget = dictation.run?.place.appName
+            if runTarget != nil {
+                await dictation.finish(.command)
+                guard generation == gen, !Task.isCancelled else { return }
+            }
+            var text = transcript
+            if case .command(let t) = decision.route { text = t }
+            await route(transcript: text, raw: raw, segmentIDs: segmentIDs, generation: gen, intent: decision,
+                        focus: focus, mediaPlaying: media, dictationRun: runTarget)
+
+        case .dictate(let text, let target, let start):
+            await dictateLocally(text: text, target: target, start: start, decision: decision, segmentIDs: segmentIDs,
+                                 snap: snap, mediaPlaying: media, record: &record)
+
+        case .keep(let reason):
+            keep(segmentIDs, as: reason, from: movedFrom, record: &record)
+
+        case .endRun(let content, let end):
+            await endRun(content: content, end: end, transcript: transcript, segmentIDs: segmentIDs, record: &record)
+
+        case .recover(let r):
+            await recover(r, segmentIDs: segmentIDs, snap: snap, record: &record, generation: gen)
+        }
+    }
+
+    /// Plain speech, a spoken start or more words for the run: to the dictation engine.
+    private func dictateLocally(text: String, target: String?, start: Decision.Start, decision: Decision, segmentIDs: [Int],
+                                snap: DesktopSnapshot, mediaPlaying: Bool, record: inout CommandRecord) async {
+        record.tools = ["dictation"]
+        let piece = DictationRun.Piece(text: text, ids: segmentIDs)
+        let empty = TextMatching.words(text).isEmpty
+        if !empty { buffer.claim(segmentIDs) }
+        refreshLiveText()
+        let report: DictationController.Report
+        if start == .continuing, dictation.isRunning {
+            report = await dictation.add(piece, at: lastSpeechEnd ?? Date())
+        } else {
+            report = await dictation.start(start, source: decision.source, app: target, snap: snap,
+                                           mediaPlaying: mediaPlaying, first: empty ? nil : piece)
+            // "Enter dictation into Claude Code": the start phrase itself was a command.
+            if empty { buffer.dispose(segmentIDs, as: report.ok ? .acted : .kept(.nowhereToType)); recordDisposed() }
+            if !report.ok { hud.model.show(.failure(report.message), for: 3.5) }
+            else if empty { hud.model.show(.success(report.message + " — say “send it” or “done” when you're finished"), for: 2.5) }
+        }
+        record.decisions = ["dictation (\(start.rawValue), \(dictation.run?.model.mode.rawValue ?? "-")) → \(report.message)"]
+        record.outcome = report.ok ? "ok" : "kept"
+        record.disposition = empty ? (report.ok ? "acted" : "kept:nowhere_to_type") : (report.typedAny ? "typed" : (report.ok ? "waiting" : "kept"))
+        record.actionDoneAt = Date().timeIntervalSince1970
+        log.append(record)
+        lastDictationRecordID = record.id
+        if start == .implicit, report.ok { showImplicitHint() }
+        finishLocal()
+    }
+
+    /// The first three times plain speech is typed, say why and how to undo it (spec §8).
+    private func showImplicitHint() {
+        guard settings.implicitHintsShown < 3 else { return }
+        settings.implicitHintsShown += 1
+        hud.model.showNote("I typed that because a text box was focused — say “that was a command” if it wasn't.")
+    }
+
+    /// Words that are neither a command nor typed: into the speech history. Background noise
+    /// is kept silently; everything else gets a HUD line.
+    private func keep(_ ids: [Int], as reason: KeptReason, from movedFrom: String?, record: inout CommandRecord) {
+        buffer.dispose(ids, as: .kept(reason))
+        recordDisposed()
+        record.outcome = "kept"
+        record.disposition = Disposition.kept(reason).label
+        record.actionDoneAt = Date().timeIntervalSince1970
+        log.append(record)
+        refreshLiveText()
+        switch reason {
+        case .noise: break
+        case .movedAway:
+            hud.model.show(.info("You moved away from \(movedFrom ?? "where I was typing") — your words are kept: say “type it” to put them here"), for: 3.5)
+        default:
+            hud.model.show(.info("Kept your words — click a text box and say “type it”, or “copy it”"), for: 3)
+        }
+        finishLocal()
+    }
+
+    /// "Send it", "done", "cancel dictation" / "never mind" at the end of a run.
+    private func endRun(content: String, end: Dictation.End, transcript: String, segmentIDs: [Int], record: inout CommandRecord) async {
+        record.tools = ["dictation"]
+        switch end {
+        case .send, .done:
+            if !TextMatching.words(content).isEmpty {
+                buffer.claim(segmentIDs)
+                _ = await dictation.add(DictationRun.Piece(text: content, ids: segmentIDs), at: lastSpeechEnd ?? Date())
+            } else {
+                buffer.dispose(segmentIDs, as: .acted)
+                recordDisposed()
+            }
+            let report = await dictation.finish(end == .send ? .send : .done)
+            record.decisions = ["dictation ended (\(end)) → \(report.message.isEmpty ? "ok" : report.message)"]
+            if end == .send, report.ok {
+                state = .executing
+                hud.model.mode = .executing
+                let out = await executor.execute(.submit(app: nil, sendPhrase: "send it"))
+                record.decisions.append("submit → \(out.succeeded ? "ok" : "failed: \(out.message)")")
+                record.irreversible = out.succeeded
+                record.outcome = out.succeeded ? "ok" : "failed"
+                record.results = [out.message]
+                hud.model.show(out.succeeded ? .success(out.message) : .failure(out.message), for: 2.5)
+            } else {
+                record.outcome = report.ok ? "ok" : "failed"
+                hud.model.show(report.ok ? .info("Done — not sent. Say “send” to send") : .failure(report.message), for: 2.5)
+            }
+            dictation.forgetLastRun()
+        case .cancel:
+            let age = Date().timeIntervalSince(dictation.run?.model.startedAt ?? Date())
+            let effect = Dictation.cancelEffect(of: transcript, runAge: age)
+            // Words said before the phrase were never typed: discarded (or kept) with the run.
+            buffer.dispose(segmentIDs, as: Dictation.cancelDisposition(content: content, effect: effect))
+            recordDisposed()
+            let report = await dictation.cancel(erase: effect == .erase)
+            record.decisions = ["dictation \(effect == .erase ? "cancelled, erased" : "stopped, words kept") → \(report.message)"]
+            record.outcome = report.ok ? "ok" : "failed"
+            hud.model.show(.info(report.message), for: 2)
+        }
+        record.actionDoneAt = Date().timeIntervalSince1970
+        log.append(record)
+        finishLocal()
+    }
+
+    /// Recovery phrases, handled here with no router call (spec §5.6).
+    private func recover(_ r: Dictation.Recovery, segmentIDs: [Int], snap: DesktopSnapshot, record: inout CommandRecord,
+                         generation gen: Int) async {
+        // The recovery phrase itself is a command that ran.
+        buffer.dispose(segmentIDs, as: .acted)
+        recordDisposed()
+        record.tools = ["recovery"]
+        var flash: HUDModel.Flash
+        switch r {
+        case .wasCommand:
+            // I4: remove exactly what was typed, then route those words as a command.
+            guard let words = await dictation.takeBackForCommand() else {
+                flash = .failure("Nothing typed to take back")
+                break
+            }
+            if let id = lastDictationRecordID { log.append(CorrectionRecord(commandID: id, sessionID: sessionID, how: "was_command")) }
+            record.decisions = ["that was a command → removed what was typed, routing it"]
+            record.outcome = "ok"
+            record.actionDoneAt = Date().timeIntervalSince1970
+            log.append(record)
+            let id = hear(words)
+            await route(transcript: words, segmentIDs: [id], generation: gen, intent: nil, focus: FocusKind.from(snap),
+                        mediaPlaying: AudioCapture.outputIsPlaying(), dictationRun: nil)
+            return
+        case .typeInstead:
+            // I5: undo the action if it can be undone, then type its words.
+            var words: String?
+            if let at = lastActedAt, Date().timeIntervalSince(at) < Self.recentWindow, let last = lastActedTranscript {
+                words = last
+                if let depth = lastActionUndoDepth, depth == executor.undoDepth {
+                    let out = await executor.execute(.undoLast)
+                    record.decisions.append("undo → \(out.succeeded ? "ok" : "failed: \(out.message)")")
+                }
+                if let id = lastActedRecordID { log.append(CorrectionRecord(commandID: id, sessionID: sessionID, how: "type_instead")) }
+                lastActedAt = nil; lastActedTranscript = nil; lastActionUndoDepth = nil
+            } else {
+                words = speechHistory.lastKept?.text
+            }
+            guard let words else { flash = .failure("Nothing to type"); break }
+            let report = await dictation.typeOnce(words, snap: await snapshots.refresh())
+            record.decisions.append("type instead → \(report.message)")
+            flash = report.ok ? .success(report.message) : .failure(report.message)
+        case .scratchThat:
+            let report = await dictation.scratch()
+            record.decisions = ["scratch that → \(report.message)"]
+            flash = report.ok ? .info(report.message) : .failure(report.message)
+        case .typeKept(let about):
+            guard let entry = await keptEntry(about: about) else {
+                flash = .failure(about == nil ? "Nothing kept" : "Couldn't find kept words about “\(about!)”")
+                break
+            }
+            let report = await dictation.typeOnce(entry.text, snap: snap)
+            record.decisions = ["type kept → \(report.message)"]
+            flash = report.ok ? .success(report.message) : .failure(report.message)
+        case .copyKept(let about):
+            guard let entry = await keptEntry(about: about) else {
+                flash = .failure("Nothing kept to copy")
+                break
+            }
+            PasteService.copy(entry.text)
+            record.decisions = ["copy kept"]
+            flash = .success("Copied “\(DesktopSnapshot.clip(entry.text, 50))”")
+        case .listKept:
+            let kept = speechHistory.kept(limit: 10)
+            record.decisions = ["list kept (\(kept.count))"]
+            if kept.isEmpty {
+                flash = .info("Nothing kept")
+            } else {
+                hud.model.showCard(HelpCard(title: "Kept", subtitle: "Say “type the last one”, “copy the one about …”, or pick one from the menu bar",
+                                            sections: [.init(title: "Newest first", items: kept.map { DesktopSnapshot.clip($0.text, 70) })]))
+                flash = .info("Here's what I kept")
+            }
+        }
+        record.outcome = record.outcome.isEmpty ? "ok" : record.outcome
+        record.actionDoneAt = Date().timeIntervalSince1970
+        log.append(record)
+        hud.model.show(flash, for: 2.5)
+        finishLocal()
+    }
+
+    /// "The one about X" (the whole history, searched off the main actor), or the newest kept words.
+    private func keptEntry(about: String?) async -> SpeechHistory.Entry? {
+        guard let about else { return speechHistory.lastKept }
+        return await speechHistory.findKept(matching: about)
+    }
+
+    /// After a local decision: back to listening, HUD in step.
+    private func finishLocal() {
+        guard isActive else { return }
+        if state == .routing || state == .executing { state = muted ? .muted : (pending != nil ? .pending : .listening) }
+        hud.model.mode = modeForIdle()
+        hud.model.draftPreview = executor.draft.map { $0.typedText.isEmpty ? "(empty)" : $0.typedText }
+        refreshLiveText()
+    }
+
+    private func route(transcript: String, raw: String? = nil, segmentIDs: [Int], generation gen: Int, intent: Decision?,
+                       focus: FocusKind, mediaPlaying: Bool, dictationRun: String?) async {
         let previousState = state
         state = .routing
         hud.model.mode = .thinking
+        let undoDepthBefore = executor.undoDepth
         var record = CommandRecord(sessionID: sessionID, generation: gen, transcript: transcript)
         record.rawTranscript = raw
+        record.intent = intent?.logLine ?? "local: that was a command"
+        record.segments = segmentIDs
+        record.focusKind = focus.label
+        record.mediaPlaying = mediaPlaying
         record.liveTranscript = hud.model.liveText
         record.speechEndAt = lastSpeechEnd?.timeIntervalSince1970
         record.transcriptFinalAt = Date().timeIntervalSince1970
@@ -552,15 +891,21 @@ final class SessionController {
         let snap = await snapshots.current(since: lastSpeechStart)
         guard generation == gen, !Task.isCancelled else { restore(previousState); return }
 
+        // The router sees where typed text would land, so plain prose can be dictation (spec §5.4),
+        // and the run that was going, so a follow-up can continue it.
         var input = RouterInput(history: history.render(), snapshot: snap, draft: executor.draftForRouter,
                                 pending: pending.map { "\($0.call.summary) — waiting for a spoken yes" }, transcript: transcript,
-                                lastQuestion: history.lastQuestion)
+                                lastQuestion: history.lastQuestion, questionAbout: history.lastQuestionAbout,
+                                focus: FocusKind.from(snap), dictationRun: dictationRun, mediaPlaying: mediaPlaying)
         var policy = ActionPolicy.ReplyEvaluator(context: PolicyContext(
             transcript: transcript, snapshot: snap, draftOpen: executor.draft != nil,
             draftText: executor.draft?.typedText ?? "", hasPending: pending != nil, pendingSummary: pending?.call.summary))
 
         var outcomeLines: [String] = []
-        var acted = false, waited = false, ignored = false, ended = false, anyFailed = false, anyHeld = false
+        var acted = false, waited = false, ended = false, anyFailed = false, anyHeld = false, anySucceeded = false
+        var dictated = false
+        var kept: KeptReason?
+        var asked = false
         var stopExecuting = false
         var lookAgain = false
 
@@ -598,11 +943,14 @@ final class SessionController {
                         anyFailed = true
                         outcomeLines.append("Couldn't understand the \(name) request")
                     case .success(let call):
-                        let r = await handleCall(call, policy: &policy, record: &record, generation: gen)
+                        let r = await handleCall(call, policy: &policy, record: &record, generation: gen,
+                                                 segmentIDs: segmentIDs, mediaPlaying: mediaPlaying)
                         switch r {
                         case .waited: waited = true
-                        case .ignored: ignored = true
-                        case .acted(let ok, let msg): acted = true; if !ok { anyFailed = true }; outcomeLines.append(msg)
+                        case .dictated(let ok, let msg): dictated = true; if !ok { anyFailed = true }; outcomeLines.append(msg)
+                        case .kept(let reason): kept = reason
+                        case .asked(let question): acted = true; anySucceeded = true; asked = true; outcomeLines.append(question)
+                        case .acted(let ok, let msg): acted = true; if ok { anySucceeded = true } else { anyFailed = true }; outcomeLines.append(msg)
                         case .held(let msg): anyHeld = true; outcomeLines.append(msg); stopExecuting = true
                         case .ended: ended = true; stopExecuting = true
                         case .rejected(let msg): anyFailed = true; outcomeLines.append(msg)
@@ -660,7 +1008,7 @@ final class SessionController {
                 return
             } else if generation == gen && !stopExecuting && !acted {
                 record.outcome = "error"; record.error = RouterError.timeout.description + diagnostics()
-                keepWords(after: RouterError.timeout.hudMessage)
+                keepWords(segmentIDs, record: &record, acted: false, dictated: dictated, after: RouterError.timeout.hudMessage)
             } else {
                 record.outcome = "cancelled"
                 // Newer speech came in after something already ran. The words are routed again
@@ -674,14 +1022,13 @@ final class SessionController {
             return
         } catch let e as RouterError {
             record.outcome = "error"; record.error = e.description + diagnostics()
-            // Never auto-retry an action, and never drop the words: they stay in the buffer
-            // and the next thing said is routed together with them.
-            keepWords(after: e.hudMessage)
+            // Never auto-retry an action, and never drop the words: they're kept (error).
+            keepWords(segmentIDs, record: &record, acted: acted, dictated: dictated, after: e.hudMessage)
             finish(record, previousState: previousState, gen: gen)
             return
         } catch {
             record.outcome = "error"; record.error = "\(error)" + diagnostics()
-            keepWords(after: "Router error — nothing ran")
+            keepWords(segmentIDs, record: &record, acted: acted, dictated: dictated, after: "Router error — nothing ran")
             finish(record, previousState: previousState, gen: gen)
             return
         }
@@ -721,9 +1068,31 @@ final class SessionController {
             }
         }
 
-        // Segmentation (Final review 3): actions or ignore move the cursor; wait_for_more doesn't.
-        if acted || ignored || anyHeld || ended || anyFailed || !waited {
-            buffer.consume(through: segmentIDs.last ?? -1)
+        // Segmentation (Final review 3): a reply that did something disposes of its words;
+        // wait_for_more leaves them waiting (ReplyOutcome.disposition has the rules). Words handed
+        // to the dictation engine are claimed, so it disposes them (typed or kept) itself.
+        var reply = ReplyOutcome()
+        reply.acted = acted; reply.waited = waited; reply.ended = ended; reply.failed = anyFailed
+        reply.held = anyHeld; reply.succeeded = anySucceeded; reply.dictated = dictated; reply.asked = asked
+        reply.kept = kept; reply.outcomeLines = outcomeLines.count
+        if let disposition = reply.disposition {
+            buffer.dispose(through: segmentIDs.last ?? -1, as: disposition)
+            recordDisposed()
+            record.disposition = dictated && !acted ? "typed" : disposition.label
+        }
+        if dictated {
+            // Recorded for the router's context ("dictation just happened"), but not an action:
+            // "type that instead" and "undo" don't refer to it.
+            history.add(.init(transcript: transcript, actions: ["dictate"], outcome: outcomeLines.last ?? "typed"))
+            lastDictationRecordID = record.id
+        }
+        if acted || anyHeld {
+            // A command ran: the last run is no longer what "scratch that" means.
+            lastActedAt = Date()
+            lastSpokeToVantoAt = Date()
+            lastActedTranscript = transcript
+            lastActionUndoDepth = executor.undoDepth > undoDepthBefore ? executor.undoDepth : nil
+            dictation.forgetLastRun()
         }
         // Everything that did something, failed or was refused goes in the history, so "not this
         // one" and "that was wrong" have something to refer to.
@@ -732,7 +1101,7 @@ final class SessionController {
             lastActedRecordID = record.id
         }
         record.actionDoneAt = Date().timeIntervalSince1970
-        record.outcome = anyHeld ? "pending" : (acted ? (anyFailed ? "failed" : "ok") : (waited ? "waiting" : (ignored ? "ignored" : (anyFailed ? "rejected" : "ok"))))
+        record.outcome = anyHeld ? "pending" : ((acted || dictated) ? (anyFailed ? "failed" : "ok") : (waited ? "waiting" : (kept != nil ? "kept" : (anyFailed ? "rejected" : "ok"))))
         record.results = outcomeLines
         refreshLiveText()
 
@@ -741,7 +1110,7 @@ final class SessionController {
                 // Prompt stays on screen until approved or cancelled.
             } else if anyFailed {
                 hud.model.show(.failure(last), for: 3)
-            } else if acted {
+            } else if acted || dictated {
                 // Longer answers ("what can I do here") stay up long enough to read.
                 hud.model.show(.success(last), for: max(1.8, Double(last.count) / 16))
             }
@@ -754,10 +1123,53 @@ final class SessionController {
         if state == .routing { state = pending != nil ? .pending : (previous == .speaking ? .speaking : .listening) }
     }
 
-    /// A route failed: say so, but keep the words for the next try (3 Nov: a long prompt
-    /// was thrown away on "Didn't catch that").
-    private func keepWords(after failure: String) {
-        hud.model.show(.failure("\(failure). Your words are kept: keep talking, or say “type it”"), for: 3)
+    /// A route failed: say so, and keep the words (3 Nov: a long prompt was thrown away on
+    /// "Didn't catch that"). They're kept (error) at once, so "type it" brings them back and the
+    /// next command can't carry them off as acted (spec §3). Words a dictate call already
+    /// claimed are the engine's.
+    private func keepWords(_ segmentIDs: [Int], record: inout CommandRecord, acted: Bool, dictated: Bool, after failure: String) {
+        var reply = ReplyOutcome()
+        reply.errored = true
+        // Something already ran before the error: those words were acted on, never re-routed.
+        reply.acted = acted; reply.dictated = dictated
+        let d = reply.disposition ?? .kept(.error)
+        if let last = segmentIDs.last {
+            buffer.dispose(through: last, as: d)
+            recordDisposed()
+            record.disposition = d.label
+        }
+        refreshLiveText()
+        let kept = d.isKept ? ". Your words are kept: say “type it” to type them, or say it again" : ""
+        hud.model.show(.failure(failure + kept), for: 3)
+    }
+
+    /// Into the buffer, and noted in the ledger so a segment that never gets a disposition shows up
+    /// as words lost.
+    @discardableResult
+    private func hear(_ text: String, endedAt: Date = Date(), raw: String? = nil) -> Int {
+        let id = buffer.append(text, endedAt: endedAt, raw: raw)
+        ledger.note(buffer)
+        return id
+    }
+
+    /// Write the buffer's dispositions to the speech history, and to the log (per segment) for
+    /// log-report's "words lost".
+    private func recordDisposed() {
+        let done = buffer.takeDisposed()
+        guard !done.isEmpty else { return }
+        ledger.record(done)
+        speechHistory.append(done, sessionID: sessionID, app: snapshots.snapshot.frontmostApp?.name)
+        for d in done {
+            log.append(DispositionRecord(sessionID: sessionID, segments: d.segments.map(\.id), disposition: d.disposition.label, at: d.at))
+        }
+    }
+
+    /// Segments heard this session that never got a disposition (must be 0), for the session record.
+    private func wordsLost() -> Int {
+        ledger.note(buffer)
+        let lost = ledger.undisposed.count + ledger.doubled.count
+        if lost > 0 { NSLog("VoiceCommand: words lost — undisposed \(ledger.undisposed), doubled \(ledger.doubled)") }
+        return lost
     }
 
     private func finish(_ record: CommandRecord, previousState: State, gen: Int) {
@@ -772,24 +1184,53 @@ final class SessionController {
     }
 
     private enum CallResult {
-        case waited, ignored, ended, stale, lookAgain, skipped
+        case waited, ended, stale, lookAgain, skipped
+        /// Not acted on and not typed: into the speech history.
+        case kept(KeptReason)
+        /// Handed to the dictation engine, which types it or keeps it.
+        case dictated(ok: Bool, String)
+        /// `say` asking a question: the words wait for the answer.
+        case asked(String)
         case acted(ok: Bool, String)
         case held(String)
         case rejected(String)
     }
 
     /// Apply policy, then execute or hold one call.
-    private func handleCall(_ call: ToolCall, policy: inout ActionPolicy.ReplyEvaluator, record: inout CommandRecord, generation gen: Int) async -> CallResult {
+    private func handleCall(_ call: ToolCall, policy: inout ActionPolicy.ReplyEvaluator, record: inout CommandRecord, generation gen: Int,
+                            segmentIDs: [Int], mediaPlaying: Bool) async -> CallResult {
         switch call {
+        case .dictate(let target, let app, let sessionID):
+            record.decisions.append(call.summary)
+            // Settings: typing unasked is off, so the words are kept instead (spec §8).
+            guard settings.implicitDictation || dictation.isRunning else {
+                record.decisions.append("dictate → kept: typing unasked is off")
+                return .kept(.unclear)
+            }
+            // The router's guess: Vanto types its own transcript, on a pause (TypingMode, source router).
+            let ids = segmentIDs.filter { id in buffer.segments.contains { $0.id == id } }
+            guard !ids.isEmpty else { return .skipped }   // already handed over (a second dictate in one reply)
+            buffer.claim(ids)
+            let piece = DictationRun.Piece(text: record.transcript, ids: ids)
+            let report: DictationController.Report
+            if dictation.isRunning {
+                report = await dictation.add(piece, at: lastSpeechEnd ?? Date())
+            } else {
+                report = await dictation.start(.implicit, source: .router, app: app, terminal: target == .terminal,
+                                               sessionID: sessionID, guessed: true, snap: snapshots.snapshot,
+                                               mediaPlaying: mediaPlaying, first: piece)
+            }
+            record.decisions.append("dictate → \(report.message)")
+            return .dictated(ok: report.ok, report.message)
         case .waitForMore:
             record.decisions.append("wait_for_more")
             return .waited
-        case .ignore:
-            record.decisions.append("ignore")
-            return .ignored
+        case .keep(let reason):
+            record.decisions.append(call.summary)
+            return .kept(reason)
         case .say(let message):
             record.decisions.append("say")
-            return .acted(ok: true, message)
+            return message.hasSuffix("?") ? .asked(message) : .acted(ok: true, message)
         case .endSession:
             record.decisions.append("end_session")
             return .ended
@@ -851,12 +1292,15 @@ final class SessionController {
                 record.decisions.append("confirm_pending → \(p.call.summary)")
                 record.irreversible = out.succeeded
                 return .acted(ok: out.succeeded, out.message)
-            case .startDictation(let target, let app, let sid, let text):
-                voiceDictation = (target, app, sid, text.map { [$0] } ?? [], Date())
+            case .startDictation(let target, let app, let sessionID, let text):
+                // A spoken start the router recognised: the same engine, typing on a pause.
                 record.decisions.append(toRun.summary)
-                hud.model.mode = .dictating
-                hud.model.liveText = text ?? ""
-                return .acted(ok: true, "Dictating — say “send it” or “done” when you're finished")
+                let first = text.flatMap { TextMatching.words($0).isEmpty ? nil : DictationRun.Piece(text: $0) }
+                let report = await dictation.start(.spoken, source: .router, app: app, terminal: target == .terminal,
+                                                   sessionID: sessionID, snap: snapshots.snapshot,
+                                                   mediaPlaying: mediaPlaying, first: first)
+                hud.model.mode = modeForIdle()
+                return .acted(ok: report.ok, report.ok ? "Dictating — say “send it” or “done” when you're finished" : report.message)
             default:
                 break
             }
@@ -895,57 +1339,6 @@ final class SessionController {
             }
             try? await Task.sleep(nanoseconds: 300_000_000)
         }
-    }
-
-    // MARK: Dictation started by voice
-
-    /// One segment while dictating by voice: kept as content unless it ends the dictation.
-    private func voiceDictationSegment(_ text: String) {
-        guard voiceDictation != nil else { return }
-        voiceDictation!.lastSpeech = Date()
-        let (content, end) = Dictation.endCommand(in: text)
-        if !content.isEmpty { voiceDictation!.chunks.append(content) }
-        hud.model.liveText = Dictation.join(voiceDictation!.chunks)
-        hud.model.mode = .dictating
-        if let end {
-            Task { await finishVoiceDictation(send: end == .send, cancel: end == .cancel, reason: "\(end)") }
-        }
-    }
-
-    /// Type everything dictated (locally collected words, so no router limits), and send it
-    /// if they said "send it".
-    private func finishVoiceDictation(send: Bool, cancel: Bool = false, reason: String) async {
-        guard let v = voiceDictation else { return }
-        voiceDictation = nil
-        let text = settings.cleanUpDictation ? Dictation.clean(v.chunks) : Dictation.join(v.chunks)
-        var record = CommandRecord(sessionID: sessionID, generation: generation, transcript: text)
-        record.tools = ["dictation"]
-        hud.model.liveText = ""
-        if cancel || text.isEmpty {
-            record.outcome = "ignored"
-            record.decisions = ["dictation ended (\(reason)), nothing typed"]
-            log.append(record)
-            hud.model.mode = modeForIdle()
-            hud.model.show(.info(cancel ? "Dictation cancelled" : "Nothing dictated"), for: 1.6)
-            return
-        }
-        state = .executing
-        hud.model.mode = .executing
-        var out = await executor.execute(.typeText(target: v.target, app: v.app, sessionID: v.sessionID, payload: text))
-        record.decisions = ["dictation (\(reason)) → type_text: \(out.succeeded ? "ok" : "failed: \(out.message)")"]
-        if out.succeeded && send {
-            out = await executor.execute(.submit(app: v.app, sendPhrase: "send it"))
-            record.decisions.append("submit → \(out.succeeded ? "ok" : "failed: \(out.message)")")
-            record.irreversible = out.succeeded
-        }
-        record.outcome = out.succeeded ? "ok" : "failed"
-        record.results = [out.message]
-        record.actionDoneAt = Date().timeIntervalSince1970
-        log.append(record)
-        if state == .executing { state = pending != nil ? .pending : .listening }
-        hud.model.mode = modeForIdle()
-        hud.model.draftPreview = executor.draft.map { $0.typedText }
-        hud.model.show(out.succeeded ? .success(out.message) : .failure(out.message), for: 2.5)
     }
 
     private func isDraftAction(_ call: ToolCall) -> Bool {

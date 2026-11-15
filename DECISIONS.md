@@ -215,3 +215,120 @@ option and noted it here. "Final review" refers to the PRD section that override
     are pressed when the control is gone, never while a text field has focus.
 59. **Actions that ran before newer speech cancelled the request go in the history** ("done
     while you were still talking"), so the merged request isn't done twice.
+
+## Never lose dictation (13 Nov, docs/specs/never-lose-dictation.md)
+
+60. **Words leave the buffer only with a disposition** (spec §3 I1): `dispose(_:as:)` with
+    acted, typed, kept(reason) or discarded. `consume`, `consumeAll` and `dropStale` are gone;
+    stale words are `kept(stale)`, a failed action's words `kept(failed)`, `ignore`
+    `kept(not_for_me)`, a session's leftovers `kept(session_ended)`. Speech while muted is
+    still not recorded (the person asked Vanto not to listen).
+61. **Speech history, not a 24-hour Kept store** (Deepam's choice: no expiry, no cap).
+    Every disposition is a line in ~/Library/Application Support/VoiceCommand/history.jsonl;
+    the Kept list is the kept and discarded lines. Only the file's tail is read at start;
+    "the one about X" falls back to reading the whole file.
+62. **Typing mode depends on where and how sure** (Deepam's choice, spec §10): live,
+    per-segment typing into assistants (Claude Code, Codex, Claude, ChatGPT, Cursor) and
+    long-form editors; one paste on a pause into message boxes (Slack, Messages, WhatsApp,
+    Mail/Gmail, X, LinkedIn, Discord, Teams) and unknown apps, and whenever the router (not
+    the device) decided or media is playing. Hold Fn still types on release.
+63. **The intent gate's thresholds** (3–4 and 9 Nov logs, 497 utterances hand-labelled in
+    Tools/intent-eval): certain command ≤ 12 words; certain dictation ≥ 14 words, a field or
+    prompt focused, first person or a greeting to someone, and none of: "can you"-style asks,
+    talk to Vanto about the screen ("you opened", "the other one", "go back"), screen words
+    (tab, window, button, video…), or a sentence that starts like a command. Result: 0
+    commands typed, 0 dictations as certain commands; 22 of 30 dictations decided locally.
+64. **A prompt to an assistant is never a certain command.** Prompts say "can you" and are
+    imperative ("Run the tests…"); with an assistant prompt focused only "Vanto, …" is
+    certain, everything else the router decides. Commands cost no extra latency: they went to
+    the router before too.
+65. **"Write" starts dictation only with "saying", a colon, "down" or "the following".**
+    "Write a post about X" is a request to compose (DECISIONS 55) and stays with the router;
+    "type a message saying X" types X without a router call. A polite "can you type/dictate…"
+    needs a "saying" too.
+66. **Recovery phrases need something to recover**: "that was a command" / "scratch that"
+    only after typing, "type that instead" only after an action or with words kept, "copy it"
+    only with words kept (otherwise it's an ordinary copy). "Never mind" erases a run under
+    3 s old; an older run's words are kept. "Cancel dictation" always erases (discarded, still
+    in the history).
+67. **Router `dictate` has no payload; `ignore` became `keep(reason)`.** Vanto types its own
+    transcript, so nothing is paraphrased and a long prompt can't hit max_tokens. `keep` takes
+    only noise / not_for_me / unclear; the words go to the speech history, never dropped.
+    `type_text` stays for text after an instruction ("ask claude code…", "type…").
+68. **A clarifying question keeps the words it was about.** `asked_about` carries them to the
+    next turn, so "Claude Code" completes "enter dictation into code". Until answered they are
+    kept(unclear), so an unanswered question loses nothing.
+69. **LLM evals pass at ≥ 98% overall; deterministic unit tests at 100%** (owner, 13 Nov).
+    Router eval is sampled, so a 1–2% margin is noise, not a regression.
+70. **One dictation engine, `DictationController`** (spec §5.5). Hold Fn, spoken starts
+    ("type…", "dictate into Claude Code"), plain speech and the router's `dictate` and
+    `start_dictation` all go through it; the old `dictated` and `voiceDictation` paths and the
+    type_text stand-in are gone. A run is pinned to one place (a terminal session, a text box,
+    or an app whose box Accessibility can't see) and every step checks that place is still in
+    front before typing. The run's state (`DictationRun`) is pure and unit-tested in the core.
+71. **Words handed to a run are claimed, not consumed.** `TranscriptBuffer.claim` takes them
+    out of the next utterance; the run disposes them as typed when they land, or kept with the
+    reason (moved_away, nowhere_to_type) when they can't. A session that ends before a pause
+    paste keeps them (session_ended); the hotkey and "end the session" type them first.
+72. **Hold Fn no longer touches the clipboard** (loss path 9). A paste where no text box can be
+    seen, even after asking Electron apps for their tree, still pastes but is recorded as
+    kept(nowhere_to_type) and the HUD says it's in the Kept list. A password field is never
+    typed into; the words are kept.
+73. **Focus moving away pauses the run.** The next words start a new run only if a text box is
+    focused there, otherwise they're kept(moved_away) with "say 'type it' to put them here";
+    anything that reads like a command is decided as usual. A terminal whose sessions the
+    snapshot didn't read never counts as moved.
+74. **A command during a run ends the run first**: waiting words are typed, the text stays
+    unsent, then the router runs. The router is told the run's target (`dictation_run`), so a
+    follow-up it calls `dictate` starts again in the same place.
+75. **"Type it" refers to words kept in the last 10 minutes**; "the one about X" searches the
+    whole history. Recovery after an action ("type that instead") undoes it only when that
+    action left the undo entry on top, so an older action is never undone by mistake.
+76. **"Type what I say when I'm not giving a command" off**: implicit starts go to the router,
+    and a router `dictate` with no run going is kept(unclear). Spoken starts still work.
+77. **Speech that stops a continuous scroll** is the "stop" only if it's ≤ 4 words and says
+    "stop" or doesn't read like a command (loss path 7): "scroll up" now runs.
+78. **Words lost is measured two ways, both must be 0.** Each disposition is logged per segment
+    (`kind: disposition`), and each command record lists the segments it covered (`segments`):
+    a routed segment with no disposition line is lost. In the app, `DispositionLedger` notes
+    every segment heard and every disposition written to the history; anything heard but never
+    written is counted on the session record (`wordsLost`) and logged. Logs from before 13 Nov
+    have no segments and are left out of the measure, not counted as lost.
+79. **The router-reply disposition rule moved to the core** (`ReplyOutcome.disposition`), so the
+    session invariant test (spec §7.1) fuzzes the rule the app uses: random speech, gate
+    decisions, replies (errors and timeouts leave words waiting), runs, focus changes, stale
+    sweeps and session ends. Every segment heard gets exactly one disposition.
+80. **intent-eval tries every utterance in four places** (a Slack box, a Claude Code prompt,
+    nothing focused, media playing), because logged speech has no recorded focus. It fails on
+    any command typed, any dictation as a certain command, or any background speech typed.
+    Recall isn't gated: what the gate isn't sure about goes to the router, which is the design.
+    With media playing, commands without a cue are kept as noise unless something was said
+    to Vanto in the last 10 s (spec §5.7); the eval sets no recent speech, so that number is a
+    worst case.
+81. **A failed route keeps its words at once** (`kept(error)`, `ReplyOutcome.errored`), replacing
+    #79's "errors and timeouts leave words waiting": waiting words were carried off as `acted`
+    by the next command, and "type it" couldn't find them. Newer speech cancelling a route
+    still leaves them waiting. Something that ran before the error is `acted`, never re-routed.
+82. **A run's silence counts from when speech stopped** (each segment's end), and a segment
+    still being decided holds it open, so a long segment can't end its own run before it's
+    added. Words added while the run's last step types are typed before it ends.
+83. **"Type the last one" / "the one about X" search kept words of any age**; a bare "type it"
+    still means the last 10 minutes (#75). They are never typed as content.
+84. **A run's place is one text box**, not the app: another note, channel or the search field
+    counts as moving away, and erasing ("scratch that", "cancel dictation") only backspaces in
+    the box that was typed into. Failed erases say so and keep the run for a retry.
+85. **The router's `dictate` / `start_dictation` honour `session_id` and the terminal app**, and a
+    guessed `dictate` never types into a plain shell; no run types at a password prompt.
+86. **Dictated text counts as an open draft for 20 s after its last words** (idle timeout, HUD,
+    the router's `draft_open`), so "send it" works right after a run but an old run doesn't
+    hold the mic on or make the router type later chatter.
+87. **"Media playing" means another process is running output** (Core Audio process list),
+    since Vanto's own echo cancellation keeps the output device running. Background speech is
+    still kept silently (spec §5.7): with the false signal gone, a HUD line per video sentence
+    would be noise.
+88. **router-eval passes at ≥ 98% overall and ≥ 95% in every named group** (DECISIONS 69, spec
+    §7.2); it used to pass at 90% and never checked dictate_keep.
+89. **The speech history's start reads at most ~4 MB of tail** (once it has 500 entries),
+    decoding each line once; older kept words are searched off the main actor. Quitting by
+    any route (logout, restart) ends the session, so waiting words are kept; a run that was
+    being pinned when the session ended never starts.

@@ -18,14 +18,25 @@ public struct RouterInput: Sendable {
     public var transcript: String
     /// The question the previous reply asked, if it asked one.
     public var lastQuestion: String?
+    /// What they said that the question was about ("Enter into dictation Code."), so a short
+    /// answer ("Claude Code") completes that request instead of starting a new one.
+    public var questionAbout: String?
     /// After look_again: what this request already did. The snapshot was read after it.
     public var alreadyDone: [String]?
+    /// Where typed text would land (from the intent context), so plain prose can be dictation.
+    public var focus: FocusKind?
+    /// A dictation run is going, and where it types ("Claude Code").
+    public var dictationRun: String?
+    /// The Mac is playing audio: speech may be the video, not the person.
+    public var mediaPlaying: Bool
 
     public init(history: String, snapshot: DesktopSnapshot, draft: Draft? = nil, pending: String? = nil, transcript: String,
-                lastQuestion: String? = nil, alreadyDone: [String]? = nil) {
+                lastQuestion: String? = nil, questionAbout: String? = nil, alreadyDone: [String]? = nil,
+                focus: FocusKind? = nil, dictationRun: String? = nil, mediaPlaying: Bool = false) {
         self.history = history; self.snapshot = snapshot; self.draft = draft
         self.pending = pending; self.transcript = transcript; self.lastQuestion = lastQuestion
-        self.alreadyDone = alreadyDone
+        self.questionAbout = questionAbout; self.alreadyDone = alreadyDone
+        self.focus = focus; self.dictationRun = dictationRun; self.mediaPlaying = mediaPlaying
     }
 }
 
@@ -85,6 +96,40 @@ public enum RouterPrompt {
     - If a command needs a detail they didn't give (a folder name, a message), call say and ask
       for it. Never put a placeholder like <UNKNOWN> in a command.
 
+    Dictation. Much of what people say is text to type, not a command. session_state focus says
+    where typed text would land: a text field, an assistant prompt (the input of Claude Code, Codex,
+    Claude, ChatGPT or Cursor chat: what is typed there is a prompt for that assistant), a shell, or
+    nothing. You are Vanto, the voice control; the assistant in an assistant prompt is someone else.
+    - You are addressed only when the words ask for something you can do on this Mac: switch, open,
+      go to, click, scroll, zoom, type, send, run, search, close, volume, make a folder, describe the
+      screen. Such a request is a command even with an assistant prompt focused ("create a directory
+      called demo" → terminal_run). Work only the assistant can do (fix the tests, plan features, look
+      into a bug, write code) is a prompt for it → dictate.
+    - With a text field or assistant prompt focused, words that are themselves the text (a message,
+      a reply, an email, a note, a prompt, thinking out loud for an assistant) with no request to you
+      → dictate, target omitted. This holds when they say "you", "can you", "send me", "I want you
+      to", "we should": a message is addressed to its reader and a prompt for Claude Code to Claude,
+      not to you. Pauses, "um", false starts and half-finished sentences are still dictation.
+    - type_text is only for text that follows an instruction to you ("type hello team", "ask claude
+      code why…", "tell the team…", "a message saying…"), with the instruction left out of the
+      payload. With no such instruction the whole transcript is the text: dictate, never type_text,
+      whatever is focused (Claude Code, Claude, Notes, Slack). An instruction to start ("take a note",
+      "I'll dictate") is start_dictation.
+    - dictation_run active, or a draft open: everything that is not a clear command continues it →
+      dictate, even a short or unfinished sentence. Never keep words while a run or a draft is open.
+    - Words meant to be read by someone (a person, or the assistant in an assistant prompt) are
+      dictate, never keep: they are for the reader, and typing them is what the person wants. The one
+      exception: a short casual line that could not be meant for the box ("yeah I'll grab lunch with
+      you in ten minutes" with a code review comment box focused) is talk to someone in the room →
+      keep(reason: not_for_me).
+    - Prose with nothing to type into (focus nothing, or a plain shell) → keep(reason: unclear).
+      Never type prose into a shell as a command.
+    - media_playing and the words are the video (dialogue, narration, lyrics), not the person →
+      keep(reason: noise). Stray fragments that ask for nothing → keep(reason: unclear). keep never
+      loses them: the person can get them back.
+    - keep is never for a request. A misheard request ("Mkdir volume full" is "make the volume
+      full") is acted on by its meaning, or asked about with say.
+
     Rules of thumb:
     - "switch to X", "go to X", "open X" where X is an app: open_app with the app's name.
       Use focus_window only when they name a specific window of an app with several windows.
@@ -134,7 +179,8 @@ public enum RouterPrompt {
       symbols written out ("dash dash watch" → "--watch"). A goal described in words
       ("clean up the build folder") → terminal_run source composed with an honest risk label.
       Commands go to a shell session that is not running claude or codex (prefer the [selected]
-      one among those) unless they name another; typing into a claude session is type_text.
+      one among those) unless they name another, even when a claude session is focused. Words for
+      a claude session are dictate, or type_text only after "ask/tell claude code…".
     - Corrections replace the earlier request: "open slack, no wait, discord" → only open_app Discord.
       If a correction refers to an action already in session_history, call undo_last first and
       then the corrected action.
@@ -146,9 +192,12 @@ public enum RouterPrompt {
       A plain "go back" is the browser's Back (browser_navigate back); only a correction ("no, go
       back", "wrong one, go back") right after a switch is undo_last.
     - If you_just_asked is set, a short "yes", "yeah", "sure" accepts what the question offered:
-      do that action now. "no" or another request moves on.
-    - "that's all", "stop listening", "I'm done" → end_session. Chatter that is not addressed to
-      the computer → ignore. Trailing "um", "and", "so", "then", or a dangling "to" → wait_for_more.
+      do that action now. A short answer that fills in what you asked for (an app, a session, a tab,
+      a name: "Claude Code", "the Slack one", "demo") completes the request in asked_about: do what
+      those words asked, with the answer filled in, as if they had said it all at once. "no" or
+      another request moves on.
+    - "that's all", "stop listening", "I'm done" → end_session. Chatter to someone else, with
+      nothing focused to type into → keep(reason: not_for_me). Trailing "um", "and", "so", "then", or a dangling "to" → wait_for_more.
     - "hold on", "wait", "let me think" with nothing else → wait_for_more.
     - With a draft open: more dictated words → type_text continuing the same target; "new line" →
       newline; "clear that", "scratch that" → clear_typed; "send it" → submit. "post it", "click
@@ -181,7 +230,7 @@ public enum RouterPrompt {
     - "keep scrolling", "scroll until I say stop", "scroll up continuously" → scroll with amount
       continuous. Anything they say next stops it (so a misheard "stop" still works). "…till I
       tell you to stop" is a complete command: start now, don't wait for the stop.
-    - A bare "stop", "store", "okay stop", "enough" is never end_session: ignore it. end_session
+    - A bare "stop", "store", "okay stop", "enough" is never end_session: keep(reason: noise). end_session
       only for "stop listening", "that's all", "I'm done", "shut down", "close/end the session"
       (often heard as "coke the session").
     - The transcript can start with leftover fragments ("Store.", half sentences) before a
@@ -219,8 +268,18 @@ public enum RouterPrompt {
     transcript: "that's all" → end_session()
     transcript: "in slack tell the team the deploy is done" → type_text(target: "chat_box", app: "Slack", payload: "the deploy is done")
     transcript: "send it" (draft open in Slack) → submit(app: "Slack", send_phrase: "send it")
-    transcript: "and also check the logs" (draft open for Claude Code) → type_text(target: "terminal", session_id: <draft's session>, payload: "and also check the logs")
-    transcript: "yeah I'll be there in five minutes" (said to someone in the room) → ignore()
+    transcript: "and also check the logs" (draft open for Claude Code) → dictate()
+    transcript: "So I think the onboarding is too long, can you look at the signup screens and tell me what we could cut" (focus: assistant prompt (Claude Code)) → dictate()
+    transcript: "I want you to add a dark mode to the settings page" (focus: assistant prompt (Claude Code)) → dictate()
+    transcript: "Can you explain why the login test is flaky and fix it?" (focus: assistant prompt (Claude Code)) → dictate()
+    transcript: "So that's the main thing." (dictation_run: typing into Claude Code) → dictate()
+    transcript: "Hey Priya, the deck is ready, I'll walk you through it tomorrow" (focus: text field (Slack)) → dictate()
+    transcript: "switch to chrome" (focus: text field (Slack)) → open_app(app: "Google Chrome")
+    transcript: "I think we should move the launch to next week because the flow isn't ready" (focus: nothing focused) → keep(reason: "unclear")
+    transcript: "Welcome to Arrakis. Thank you for the still seats." (media_playing: yes) → keep(reason: "noise")
+    transcript: "Mkdir volume full." → system_volume(action: "set", level: 100)
+    transcript: "Claude Code" (you_just_asked: "Which app should I dictate into?", asked_about: "Enter into dictation code") → start_dictation(target: "terminal", session_id: <session running claude>)
+    transcript: "yeah I'll be there in five minutes" (said to someone in the room) → keep(reason: "not_for_me")
     transcript: "put chrome on the left" → say(message: "I can't arrange windows yet.")
     transcript: "open netflix" (a Netflix tab is open in another window) → browser_switch_tab(tab_id: <the Netflix tab>)
     transcript: "go to x" → browser_switch_tab(tab_id: <tab on x.com>) if one is open, else browser_open_url(url: "https://x.com", new_tab: true)
@@ -244,7 +303,7 @@ public enum RouterPrompt {
     transcript: "yeah" (you_just_asked: "Do you want me to open Projects?") → click_element(name: "Projects")
     transcript: "no, that's the wrong one, can you go back?" (most recent: browser_switch_tab) → undo_last() only
     transcript: "Store. Scroll down till the bottom." → scroll(direction: "down", amount: "continuous")
-    transcript: "stop" → ignore()
+    transcript: "stop" → keep(reason: "noise")
     transcript: "reduce the volume" → system_volume(action: "down")
     transcript: "zoom in a bit" (Claude app in front) → menu_command(item: "Zoom In", menu: "View")
     transcript: "zoom in" (a news site in Chrome) → press_keys(keys: "cmd+=")
@@ -272,7 +331,13 @@ public enum RouterPrompt {
             state.append("draft_open: none")
         }
         state.append("pending_action: \(input.pending ?? "none")")
-        if let q = input.lastQuestion { state.append("you_just_asked: \"\(q)\"") }
+        if let f = input.focus { state.append("focus: \(f.label)") }
+        state.append("dictation_run: \(input.dictationRun.map { "typing into \($0) (not sent)" } ?? "none")")
+        if input.mediaPlaying { state.append("media_playing: yes") }
+        if let q = input.lastQuestion {
+            state.append("you_just_asked: \"\(q)\"")
+            if let about = input.questionAbout { state.append("asked_about: \"\(DesktopSnapshot.clip(about, 300))\"") }
+        }
 
         var done = ""
         if let steps = input.alreadyDone, !steps.isEmpty {

@@ -21,7 +21,7 @@ public struct CommandRecord: Codable, Sendable {
     public var tools: [String] = []
     public var decisions: [String] = []
     public var results: [String] = []
-    public var outcome: String = ""          // ok | failed | pending | waiting | ignored | error | cancelled
+    public var outcome: String = ""          // ok | failed | pending | waiting | kept | error | cancelled
     public var error: String?
     public var irreversible: Bool = false    // a submit or terminal command actually ran
     public var mismatchNotes: [String] = []
@@ -32,6 +32,16 @@ public struct CommandRecord: Codable, Sendable {
     /// Speech end → segment delivered (voice detection plus transcription), for latency work.
     public var segmentLagMs: Int?
     public var transcribeMs: Int?
+    // Never lose dictation (spec §5.8)
+    /// Which rule decided and why: "local: certain dictation (assistant prompt (Claude Code), 31 words)".
+    public var intent: String?
+    public var focusKind: String?
+    public var mediaPlaying: Bool?
+    /// Where the words ended up: "acted", "typed", "kept:failed"…
+    public var disposition: String?
+    /// The transcript buffer's segment IDs this utterance covered. Each gets a disposition
+    /// record; one without is words lost.
+    public var segments: [Int]?
 
     public init(id: String = UUID().uuidString, sessionID: String, generation: Int, transcript: String) {
         self.id = id; self.sessionID = sessionID; self.generation = generation; self.transcript = transcript
@@ -52,10 +62,24 @@ public struct CorrectionRecord: Codable, Sendable {
     public var kind = "correction"
     public var commandID: String
     public var sessionID: String
-    public var how: String          // undo | correction | cancel_pending
+    public var how: String          // undo | correction | cancel_pending | was_command | type_instead
     public var at: Double
     public init(commandID: String, sessionID: String, how: String, at: Date = Date()) {
         self.commandID = commandID; self.sessionID = sessionID; self.how = how; self.at = at.timeIntervalSince1970
+    }
+}
+
+/// Where some speech segments ended up (spec §3, §5.8): one line per disposition, written as the
+/// words leave the transcript buffer.
+public struct DispositionRecord: Codable, Sendable {
+    public var kind = "disposition"
+    public var sessionID: String
+    public var segments: [Int]
+    /// "acted", "typed", "kept:stale", "discarded"
+    public var disposition: String
+    public var at: Double
+    public init(sessionID: String, segments: [Int], disposition: String, at: Date = Date()) {
+        self.sessionID = sessionID; self.segments = segments; self.disposition = disposition; self.at = at.timeIntervalSince1970
     }
 }
 
@@ -67,6 +91,8 @@ public struct SessionRecord: Codable, Sendable {
     public var endReason: String
     /// Echo cancellation was on for this session's mic.
     public var echoCancel: Bool?
+    /// Segments heard this session that never got a disposition (must be 0).
+    public var wordsLost: Int?
     public init(sessionID: String, startedAt: Date, endedAt: Date, endReason: String) {
         self.sessionID = sessionID; self.startedAt = startedAt.timeIntervalSince1970
         self.endedAt = endedAt.timeIntervalSince1970; self.endReason = endReason

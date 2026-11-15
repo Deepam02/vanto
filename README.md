@@ -102,6 +102,45 @@ disables the Fn key. Change it in Settings.
 | "improve the English" / "make it shorter" | Rewrites the draft it typed; never sends; "undo" brings back the original |
 | "write a message, wait for me" | Dictation by voice: everything you say is collected until "send it" or "done" |
 
+### Just talking: dictation without a trigger
+
+With a text box focused, plain speech is typed: no "write this down" first. A short gate on
+your Mac decides each utterance before the router sees it. Certain commands ("switch to
+Chrome", "can you open my calendar") go to the router as before. Certain dictation (14 words
+or more of prose into a text box or an AI prompt, no "can you") is typed. Everything in
+between goes to the router, which can choose `dictate` or `keep` too.
+
+- **Where it types and how.** Into Claude Code / Codex sessions, Claude, ChatGPT, Cursor's
+  chat, Notes and editors it types as you go, mending pauses mid-sentence. Into message boxes
+  (Slack, Messages, WhatsApp, Mail/Gmail, X, LinkedIn, Discord, Teams) it pastes once you
+  pause, so a half-written message never sits there. It also pastes on a pause whenever the
+  router made the call or media is playing. Hold Fn still types on release.
+- **Nothing is sent by itself.** Only "send it" (or "send this message") at the end sends.
+  "Done" or "stop dictating" ends a run without sending.
+- **Background audio.** With a video playing, speech without a command cue is kept silently,
+  not typed.
+- **Settings → "Type what I say when I'm not giving a command"** (on by default). Off: the
+  router decides, as before, but words are still kept, never dropped.
+
+**Fixing a wrong guess:**
+
+| Say | What happens |
+| --- | --- |
+| "that was a command" | Removes what it just typed and runs those words as a command |
+| "type that instead" / "no, type that" | Undoes the last action if it can, then types its words |
+| "scratch that" | Removes the last typed chunk (kept as discarded) |
+| "never mind" / "cancel dictation" | "Never mind" erases a run under 3 s old (an older run stops and its waiting words are kept); "cancel dictation" always erases |
+| "type it" / "paste it" / "type the one about the deck" | Types the newest kept words, or the ones about X |
+| "copy it" | Copies the newest kept words |
+| "what did you keep?" | Shows the Kept list in the HUD |
+| "Vanto, …" | Always a command, even mid-dictation |
+
+**Speech history and Kept.** Every utterance ends up acted on, typed, kept (noise, unclear,
+nowhere to type, a failure, the session ended) or discarded by you, never silently dropped.
+Each is one line in `~/Library/Application Support/VoiceCommand/history.jsonl`: local only,
+never sent, no expiry. The menu bar's **Kept** submenu shows the last 10 kept items; click one
+to copy it. Settings → **Clear speech history…** deletes the file.
+
 **Safety rules that always hold:** silence never sends; a send needs your spoken word after
 the text; a terminal command runs straight away only if you dictated it word for word, it's
 read-only, and it's not on the deny-list (rm, git push, deploys, …) — everything else waits for
@@ -114,7 +153,8 @@ waits for "yes".
 
 Commit delay (default 450 ms after you stop talking), session idle timeout (20 s – 5 min),
 "Thinking pauses" (filler words and trailing "and"/"so" always wait), built-in mic (default
-on, keeps AirPods in high-quality mode), Fn on/off, fallback chord.
+on, keeps AirPods in high-quality mode), Fn on/off, fallback chord, "Type what I say when I'm
+not giving a command" (default on), and "Clear speech history…".
 
 `~/Library/Application Support/VoiceCommand/AppHints.json` controls how each app's chat box is
 found (Cursor = ⌘L if not already focused; Claude/ChatGPT/Codex = bottom text area; Slack =
@@ -131,6 +171,25 @@ corrections). Turn it into the PRD's success-criteria table:
 swift run log-report
 ```
 
+Each record also says how the intent gate decided (`intent`), what was focused (`focusKind`),
+whether media was playing, and where the words went (`disposition`); each disposition is its
+own `disposition` line by segment. log-report adds words lost (segments without a disposition:
+must be 0), typed-then-"that was a command" (false dictation), "type that instead" (false
+command), and kept items later typed or copied back.
+
+## Intent eval
+
+```sh
+swift run -c release intent-eval     # --verbose lists every decision
+```
+
+Runs the local intent gate (no API calls) over `Tools/intent-eval/labelled-utterances.json`:
+every logged utterance, hand-labelled command / dictation / mixed / background, plus 61
+persona examples (emails, Slack replies, notes, Claude Code prompts, commands). It prints
+per-class precision and recall in four contexts (a Slack box, a Claude Code prompt, nothing
+focused, media playing) and fails if any command is certain dictation, any dictation a certain
+command, or any background speech is typed.
+
 ## Router eval
 
 ```sh
@@ -138,9 +197,9 @@ ANTHROPIC_API_KEY=$(security find-generic-password -s VoiceCommand -a anthropic-
   swift run -c release router-eval            # --filter id, --repeat N, --verbose
 ```
 
-Runs `Tools/router-eval/golden-set.json` (44 cases) against the API and prints accuracy and
-p50/p90 time to first tool call. Acceptance is ≥ 90% accuracy (last result: 98.5%,
-p50 ~760 ms). If your API key isn't scoped to a workspace, also set `ANTHROPIC_WORKSPACE_ID`
+Runs `Tools/router-eval/golden-set.json` (134 cases, including the `dictate_keep` group) against
+the API and prints accuracy per group and p50/p90 time to first tool call. Being an LLM eval,
+the bar is ≥ 98% overall, not 100% (last result, --repeat 3: 98.3%, p50 ~920 ms). If your API key isn't scoped to a workspace, also set `ANTHROPIC_WORKSPACE_ID`
 (and the Workspace ID field in Settings).
 
 ## Executor check without the router (M4)
@@ -173,7 +232,8 @@ Sources/VoiceCommandCore/   Foundation-only: router (prompt, tool schemas, SSE c
 Sources/VoiceCommand/       the app: App/ (menu bar, settings, permissions, hotkeys),
                             Audio/, Context/, Executor/, Session/, UI/
 Sources/router-eval/        golden-set runner        Sources/log-report/  log → criteria table
+Sources/intent-eval/        local intent gate on labelled speech
 Tests/                      unit tests (scripts/test.sh)
-Tools/                      golden set, scripted executor run
+Tools/                      golden set, labelled utterances, scripted executor run
 Vendor/KeyboardShortcuts/   vendored, patched for a CLT-only build
 ```

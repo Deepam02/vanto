@@ -11,12 +11,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let hud = HUDPanel()
     private let speech = SpeechEngine()
     private let log = CommandLog()
+    /// One speech history for the session, the menu's Kept list and Settings' "Clear".
+    private let speechHistory = SpeechHistory()
     private lazy var hints = AppHints.loadOrInstall()
     private lazy var snapshots = SnapshotBuilder(hints: hints)
     private lazy var executor = Executor(hints: hints, snapshots: snapshots)
     private lazy var client = ClaudeClient(apiKey: APIKeyStore.load())
     private lazy var session = SessionController(speech: speech, snapshots: snapshots, executor: executor,
-                                                 client: client, hud: hud, log: log)
+                                                 client: client, hud: hud, log: log, speechHistory: speechHistory)
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -180,6 +182,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if active {
             menu.addItem(item(session.isMuted ? "Resume Listening" : "Pause Listening", #selector(toggleMute)))
         }
+        menu.addItem(keptMenu())
         menu.addItem(.separator())
         menu.addItem(item("Show Context…", #selector(showContext)))
         menu.addItem(item("Settings…", #selector(showSettings), key: ","))
@@ -187,6 +190,58 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(item("Open Log Folder", #selector(openLogs)))
         menu.addItem(.separator())
         menu.addItem(item("Quit VoiceCommand", #selector(quit), key: "q"))
+    }
+
+    /// The last 10 kept items (not acted on, not typed), newest first; click one to copy it.
+    private func keptMenu() -> NSMenuItem {
+        let parent = NSMenuItem(title: "Kept", action: nil, keyEquivalent: "")
+        let sub = NSMenu()
+        let kept = speechHistory.kept(limit: 10)
+        if kept.isEmpty {
+            let none = NSMenuItem(title: "Nothing kept", action: nil, keyEquivalent: "")
+            none.isEnabled = false
+            sub.addItem(none)
+        }
+        let time = RelativeDateTimeFormatter()
+        time.unitsStyle = .short
+        for e in kept {
+            let one = e.text.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+            let i = item(DesktopSnapshot.clip(one, 60), #selector(copyKept(_:)))
+            i.representedObject = e.text
+            i.toolTip = "\(e.text)\n\n\(Self.keptWhy(e.disposition))\(e.app.map { ", in \($0)" } ?? ""), \(time.localizedString(for: e.date, relativeTo: Date()))"
+            sub.addItem(i)
+        }
+        sub.addItem(.separator())
+        let hint = NSMenuItem(title: "Click to copy — or say “type it” with a text box focused", action: nil, keyEquivalent: "")
+        hint.isEnabled = false
+        sub.addItem(hint)
+        parent.submenu = sub
+        return parent
+    }
+
+    private static func keptWhy(_ d: Disposition) -> String {
+        switch d {
+        case .discarded: return "You removed it"
+        case .kept(let r):
+            switch r {
+            case .noise: return "Sounded like background speech"
+            case .notForMe: return "Not for Vanto"
+            case .unclear: return "Unclear what to do"
+            case .stale: return "Waited too long"
+            case .failed: return "The action failed"
+            case .error: return "Router error"
+            case .nowhereToType: return "No text box to type into"
+            case .movedAway: return "You moved to another app"
+            case .sessionEnded: return "The session ended"
+            case .neverMind: return "You said never mind"
+            }
+        case .acted, .typed: return ""
+        }
+    }
+
+    @objc private func copyKept(_ sender: NSMenuItem) {
+        guard let text = sender.representedObject as? String else { return }
+        PasteService.copy(text)
     }
 
     private func item(_ title: String, _ action: Selector, key: String = "") -> NSMenuItem {
@@ -198,15 +253,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func toggleSession() { session.toggle() }
     @objc private func toggleMute() { session.setMuted(!session.isMuted) }
     @objc private func openLogs() { NSWorkspace.shared.open(CommandLog.defaultURL.deletingLastPathComponent()) }
-    @objc private func quit() {
+    @objc private func quit() { NSApp.terminate(nil) }
+
+    /// Every way out (the menu's Quit, logout, restart, shutdown) ends the session first, so
+    /// words still waiting are kept in the speech history and the session record is written.
+    func applicationWillTerminate(_ notification: Notification) {
         session.end(reason: "quit")
         log.flush()
-        NSApp.terminate(nil)
     }
 
     @objc func showSettings() {
         windows.show("settings", title: "VoiceCommand Settings", size: NSSize(width: 560, height: 620)) {
-            SettingsView(onOpenPermissions: { [weak self] in self?.showPermissions() })
+            SettingsView(onOpenPermissions: { [weak self] in self?.showPermissions() },
+                         onClearHistory: { [weak self] in self?.speechHistory.clear() })
         }
     }
 

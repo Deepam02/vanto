@@ -2,8 +2,10 @@ import Foundation
 import VoiceCommandCore
 
 // router-eval: runs the golden set against the Claude API and prints accuracy and
-// p50/p90 time to first tool call. Acceptance gates on accuracy (≥ 90%); latency is
-// reported against the PRD's 600 ms goal but doesn't gate (Deepam: accuracy first).
+// p50/p90 time to first tool call. Acceptance gates on accuracy: ≥ 98% overall (LLM evals
+// are noisy, so not 100%; DECISIONS 69) and ≥ 95% in every named group, such as
+// dictate_keep (spec §7.2). Latency is reported against the PRD's 600 ms goal but doesn't
+// gate (Deepam: accuracy first).
 //
 // Usage: router-eval [--set path] [--filter substr] [--repeat N] [--verbose]
 // Needs ANTHROPIC_API_KEY in the environment (and ANTHROPIC_WORKSPACE_ID for keys that
@@ -98,6 +100,8 @@ var ttfts: [Int] = []
 var totals: [Int] = []
 var cacheReads = 0
 var failures: [String] = []
+/// Pass/total per case group ("" for the cases without one), reported separately.
+var byGroup: [String: (passed: Int, total: Int)] = [:]
 
 for round in 0..<opts.repeatCount {
     for c in cases {
@@ -115,6 +119,9 @@ for round in 0..<opts.repeatCount {
         var verdict = Grader.grade(c, calls: r.calls, fixtures: set.fixtures)
         if let e = r.error { verdict.pass = false; verdict.reasons.insert("error: \(e)", at: 0) }
         if verdict.pass { passed += 1 }
+        let g = c.group ?? ""
+        byGroup[g, default: (0, 0)].total += 1
+        if verdict.pass { byGroup[g, default: (0, 0)].passed += 1 }
         let calls = r.calls.map { call -> String in
             let parsed = (try? ToolCall.parse(name: call.name, input: call.input))?.summary ?? call.name + "(unparseable)"
             return parsed
@@ -140,11 +147,25 @@ let accuracy = total == 0 ? 0 : Double(passed) / Double(total) * 100
 let p50 = percentile(ttfts, 0.5), p90 = percentile(ttfts, 0.9)
 print("")
 print(String(format: "accuracy: %.1f%% (%d/%d)", accuracy, passed, total))
+if byGroup.count > 1 {
+    for (g, r) in byGroup.sorted(by: { $0.key < $1.key }) {
+        print(String(format: "  %@: %.1f%% (%d/%d)", g.isEmpty ? "other cases" : g, Double(r.passed) / Double(r.total) * 100, r.passed, r.total))
+    }
+}
 print("time to first tool call: p50 \(p50.map { "\($0) ms" } ?? "n/a"), p90 \(p90.map { "\($0) ms" } ?? "n/a")")
 print("full reply: p50 \(percentile(totals, 0.5).map { "\($0) ms" } ?? "n/a"), p90 \(percentile(totals, 0.9).map { "\($0) ms" } ?? "n/a")")
 print("cache read tokens: \(cacheReads)")
 if !failures.isEmpty { print("failed: \(failures.joined(separator: ", "))") }
-let ok = accuracy >= 90
-print(ok ? "M3 acceptance: PASS (accuracy ≥ 90%)" : "M3 acceptance: FAIL (accuracy below 90%)")
+let overallBar = 98.0, groupBar = 95.0
+let weakGroups = byGroup.filter { !$0.key.isEmpty && Double($0.value.passed) / Double($0.value.total) * 100 < groupBar }.keys.sorted()
+let ok = accuracy >= overallBar && weakGroups.isEmpty
+if ok {
+    print("acceptance: PASS (accuracy ≥ \(Int(overallBar))%, every group ≥ \(Int(groupBar))%)")
+} else {
+    var why: [String] = []
+    if accuracy < overallBar { why.append("accuracy below \(Int(overallBar))%") }
+    if !weakGroups.isEmpty { why.append("below \(Int(groupBar))% in \(weakGroups.joined(separator: ", "))") }
+    print("acceptance: FAIL (\(why.joined(separator: "; ")))")
+}
 if let p50, p50 > 600 { print("note: p50 time to first tool call \(p50) ms is above the PRD's 600 ms goal (informational)") }
 exit(ok ? 0 : 1)

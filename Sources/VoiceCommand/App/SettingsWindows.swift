@@ -31,7 +31,10 @@ struct SettingsView: View {
     @ObservedObject var settings = AppSettings.shared
     @State private var apiKey: String = ""
     @State private var keySaved = APIKeyStore.load() != nil
+    @State private var confirmClear = false
+    @State private var cleared = false
     var onOpenPermissions: () -> Void
+    var onClearHistory: () -> Void = {}
 
     var body: some View {
         Form {
@@ -58,6 +61,20 @@ struct SettingsView: View {
                 }
                 Text("Set System Settings › Keyboard › “Press 🌐 key to” to “Do Nothing”, or macOS also opens the emoji picker or dictation.")
                     .font(.caption).foregroundStyle(.secondary)
+            }
+            Section("Dictation") {
+                Toggle("Type what I say when I'm not giving a command", isOn: $settings.implicitDictation)
+                Text("With a text box focused, plain speech is typed without “type…” first. Off: only what you ask to be typed is typed. Either way, words that aren't typed or acted on are kept in the menu bar's Kept list.")
+                    .font(.caption).foregroundStyle(.secondary)
+                HStack {
+                    Button("Clear speech history…") { confirmClear = true }
+                    if cleared { Text("Cleared").font(.caption).foregroundStyle(.secondary) }
+                }
+                .confirmationDialog("Clear your speech history?", isPresented: $confirmClear) {
+                    Button("Clear speech history", role: .destructive) { onClearHistory(); cleared = true }
+                } message: {
+                    Text("Everything you've said and where it went, including the Kept list. It's stored only on this Mac.")
+                }
             }
             Section("Timing") {
                 Stepper("Commit delay after you stop: \(settings.commitDelayMs) ms", value: $settings.commitDelayMs, in: 250...1500, step: 50)

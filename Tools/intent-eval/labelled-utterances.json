@@ -1,0 +1,2630 @@
+{
+ "about": "Utterances for the intent gate (docs/specs/never-lose-dictation.md §7). log-N is row N of the routed commands in commands.jsonl (3-4 Nov and 9 Nov sessions), hand-labelled; persona-N are written examples of emails, Slack replies, notes, prompts and commands. Labels: command, dictation, mixed (both in one utterance), background (not said to Vanto, or noise).",
+ "cases": [
+  {
+   "id": "log-1",
+   "text": "Hi, so can you Google Chrome?",
+   "label": "command"
+  },
+  {
+   "id": "log-2",
+   "text": "Can you open a new tab",
+   "label": "command"
+  },
+  {
+   "id": "log-3",
+   "text": "Let's go to Claude",
+   "label": "command"
+  },
+  {
+   "id": "log-4",
+   "text": "Uh go back Google Chrome and open a ChatGPT's website.",
+   "label": "command"
+  },
+  {
+   "id": "log-5",
+   "text": "Can you open LinkedIn?",
+   "label": "command"
+  },
+  {
+   "id": "log-6",
+   "text": "Sorry, can you switch to the different Chrome profile",
+   "label": "command"
+  },
+  {
+   "id": "log-7",
+   "text": "Like there are two different Chrome windows, right? Can you go to the other one?",
+   "label": "command"
+  },
+  {
+   "id": "log-8",
+   "text": "Okay.",
+   "label": "background"
+  },
+  {
+   "id": "log-9",
+   "text": "Can you open terminal?",
+   "label": "command"
+  },
+  {
+   "id": "log-10",
+   "text": "Can you open a different terminal, not this one",
+   "label": "command"
+  },
+  {
+   "id": "log-11",
+   "text": "Can you run the command which tells me what other folders are there in this directory?",
+   "label": "command"
+  },
+  {
+   "id": "log-12",
+   "text": "Can you run the ls command?",
+   "label": "command"
+  },
+  {
+   "id": "log-13",
+   "text": "I think the terminal session is open, right? You can you just need to Activity Monitor.",
+   "label": "command"
+  },
+  {
+   "id": "log-14",
+   "text": "I think the terminal session is open, right? You can you just need to Activity Monitor. Can you Google Chrome",
+   "label": "command"
+  },
+  {
+   "id": "log-15",
+   "text": "Can you go to context.dev?",
+   "label": "command"
+  },
+  {
+   "id": "log-16",
+   "text": "Can you go to context.dev",
+   "label": "command"
+  },
+  {
+   "id": "log-17",
+   "text": "Can you open Slack?",
+   "label": "command"
+  },
+  {
+   "id": "log-18",
+   "text": "Can you go to Deepungoyl profile",
+   "label": "command"
+  },
+  {
+   "id": "log-19",
+   "text": "In Slack k what can you do?",
+   "label": "command"
+  },
+  {
+   "id": "log-20",
+   "text": "Can you draft a Slack Messages saying, Hi guys, how are you doing?",
+   "label": "command"
+  },
+  {
+   "id": "log-21",
+   "text": "Can you close tabs for me?",
+   "label": "command"
+  },
+  {
+   "id": "log-22",
+   "text": "Can you close Slack?",
+   "label": "command"
+  },
+  {
+   "id": "log-23",
+   "text": "Can you switch Google Chrome",
+   "label": "command"
+  },
+  {
+   "id": "log-24",
+   "text": "Open a new tab.",
+   "label": "command"
+  },
+  {
+   "id": "log-25",
+   "text": "Go to LinkedIn.",
+   "label": "command"
+  },
+  {
+   "id": "log-26",
+   "text": "Go open linkedin.com",
+   "label": "command"
+  },
+  {
+   "id": "log-27",
+   "text": "Can you what can you do on this side?",
+   "label": "command"
+  },
+  {
+   "id": "log-28",
+   "text": "Can you draft a prompt in for this? Like the prompt is I think we need to improve the redesigning of the screens. Um let me think. Like for example, we need to add some sort of Linear to it I guess. Uh and like",
+   "label": "mixed"
+  },
+  {
+   "id": "log-29",
+   "text": "Uh yeah, Linear.",
+   "label": "command"
+  },
+  {
+   "id": "log-30",
+   "text": "Can you Google Chrome?",
+   "label": "command"
+  },
+  {
+   "id": "log-31",
+   "text": "Can you switch tabs?",
+   "label": "command"
+  },
+  {
+   "id": "log-32",
+   "text": "Can you op switch windows? Like I have two different Chrome window, can you switch to the other one?",
+   "label": "command"
+  },
+  {
+   "id": "log-33",
+   "text": "Can you open Netflix?",
+   "label": "command"
+  },
+  {
+   "id": "log-34",
+   "text": "Go to Netflix.com",
+   "label": "command"
+  },
+  {
+   "id": "log-35",
+   "text": "In this tab only go to Netflix.com, don't switch",
+   "label": "command"
+  },
+  {
+   "id": "log-36",
+   "text": "Can you click on this? What are the different options you have on Netflix? What are the different options you have on Netflix? Also one more issue I'm facing is like when I open a N something like Netflix, it's being interfered by the voice in Netflix.",
+   "label": "command"
+  },
+  {
+   "id": "log-37",
+   "text": "Can you go to X.",
+   "label": "command"
+  },
+  {
+   "id": "log-38",
+   "text": "Go to Xcode",
+   "label": "command"
+  },
+  {
+   "id": "log-39",
+   "text": "Go to Twitter I'm not sure if I can do it. Go to Twitter",
+   "label": "command"
+  },
+  {
+   "id": "log-40",
+   "text": "Open Twitter.",
+   "label": "command"
+  },
+  {
+   "id": "log-41",
+   "text": "What are the different tabs which are open right now?",
+   "label": "command"
+  },
+  {
+   "id": "log-42",
+   "text": "Go to context.dev tab.",
+   "label": "command"
+  },
+  {
+   "id": "log-43",
+   "text": "Can you Google Chrome for me?",
+   "label": "command"
+  },
+  {
+   "id": "log-44",
+   "text": "Can you switch to different Chrome windows?",
+   "label": "command"
+  },
+  {
+   "id": "log-45",
+   "text": "And go to context.dev",
+   "label": "command"
+  },
+  {
+   "id": "log-46",
+   "text": "Hi.",
+   "label": "command"
+  },
+  {
+   "id": "log-47",
+   "text": "Hi. Can you input a Messages saying yeah, please connect with a human agent. I think it will be better if it is reviewed by a human Yeah.",
+   "label": "mixed"
+  },
+  {
+   "id": "log-48",
+   "text": "Can you edit this Messages and Improve its English",
+   "label": "command"
+  },
+  {
+   "id": "log-49",
+   "text": "The previous Messages which you had drafted and inputted, can you edit that?",
+   "label": "command"
+  },
+  {
+   "id": "log-50",
+   "text": "The previous Messages which you had drafted and inputted, can you edit that? Can you just say yeah, I can No, sorry, sorry. Can you say something like? Yeah, I think you should connect me with a human agent",
+   "label": "mixed"
+  },
+  {
+   "id": "log-51",
+   "text": "Send me this Messages.",
+   "label": "command"
+  },
+  {
+   "id": "log-52",
+   "text": "Can you open a terminal?",
+   "label": "command"
+  },
+  {
+   "id": "log-53",
+   "text": "Can you run the ls command",
+   "label": "command"
+  },
+  {
+   "id": "log-54",
+   "text": "In the terminal which you opened, can you run ls command?",
+   "label": "command"
+  },
+  {
+   "id": "log-55",
+   "text": "Open a terminal and run ls command",
+   "label": "command"
+  },
+  {
+   "id": "log-56",
+   "text": "Hi, what are the things you can do on this tab",
+   "label": "command"
+  },
+  {
+   "id": "log-57",
+   "text": "Can you zoom out a bit",
+   "label": "command"
+  },
+  {
+   "id": "log-58",
+   "text": "I'm on Figma, can you zoom out a bit?",
+   "label": "command"
+  },
+  {
+   "id": "log-59",
+   "text": "Can you go left or right",
+   "label": "command"
+  },
+  {
+   "id": "log-60",
+   "text": "I don't want you to move window left or right, I want you to move the Figma canvas left or right.",
+   "label": "command"
+  },
+  {
+   "id": "log-61",
+   "text": "Okay, can you open a terminal?",
+   "label": "command"
+  },
+  {
+   "id": "log-62",
+   "text": "Can you open a different window of a terminal",
+   "label": "command"
+  },
+  {
+   "id": "log-63",
+   "text": "Can you open any other different window of a terminal?",
+   "label": "command"
+  },
+  {
+   "id": "log-64",
+   "text": "Yeah, so in this window can you focus on it and run ls?",
+   "label": "command"
+  },
+  {
+   "id": "log-65",
+   "text": "Can you run LS",
+   "label": "command"
+  },
+  {
+   "id": "log-66",
+   "text": "Now the focus part is working but ah Last time it was not. Can you run the command which shows me the directory I'm on?",
+   "label": "command"
+  },
+  {
+   "id": "log-67",
+   "text": "Yeah.",
+   "label": "command"
+  },
+  {
+   "id": "log-69",
+   "text": "Okay. Uh can we open Claude?",
+   "label": "command"
+  },
+  {
+   "id": "log-70",
+   "text": "Can you focus on the text box?",
+   "label": "command"
+  },
+  {
+   "id": "log-71",
+   "text": "Can you send a Messages on Claude? Are you focused on any text box? Like, try to send this Messages. Hi, how are you doing?",
+   "label": "command"
+  },
+  {
+   "id": "log-72",
+   "text": "That's not good. I want you to be able to focus on textbooks. I want to you to control even more functions on each app Let's work on that but For now, I have focused on the text box. Can you write a Messages? It will take me some while to write this Messages wait for me. Okay, the Messages like I have shared lots of screens. So, based on these screens, I want you to like. plan, like work with me and brainstorm like when we should",
+   "label": "mixed"
+  },
+  {
+   "id": "log-73",
+   "text": "That's not good. I want you to be able to focus on textbooks. I want to you to control even more functions on each app Let's work on that but For now, I have focused on the text box. Can you write a Messages? It will take me some while to write this Messages wait for me. Okay, the Messages like I have shared lots of screens. So, based on these screens, I want you to like. plan, like work with me and brainstorm like when we should Um like how do I say it like Uh like when should we When should we how do I say like sorry for about that uh When should we have a proper",
+   "label": "mixed"
+  },
+  {
+   "id": "log-74",
+   "text": "That's not good. I want you to be able to focus on textbooks. I want to you to control even more functions on each app Let's work on that but For now, I have focused on the text box. Can you write a Messages? It will take me some while to write this Messages wait for me. Okay, the Messages like I have shared lots of screens. So, based on these screens, I want you to like. plan, like work with me and brainstorm like when we should Um like how do I say it like Uh like when should we When should we how do I say like sorry for about that uh When should we have a proper When should we introduce the Linear? That was the question, yeah.",
+   "label": "mixed"
+  },
+  {
+   "id": "log-75",
+   "text": "That's not good. I want you to be able to focus on textbooks. I want to you to control even more functions on each app Let's work on that but For now, I have focused on the text box. Can you write a Messages? It will take me some while to write this Messages wait for me. Okay, the Messages like I have shared lots of screens. So, based on these screens, I want you to like. plan, like work with me and brainstorm like when we should Um like how do I say it like Uh like when should we When should we how do I say like sorry for about that uh When should we have a proper When should we introduce the Linear? That was the question, yeah. Like when should we introduce the sidebar",
+   "label": "mixed"
+  },
+  {
+   "id": "log-76",
+   "text": "That's not good. I want you to be able to focus on textbooks. I want to you to control even more functions on each app Let's work on that but For now, I have focused on the text box. Can you write a Messages? It will take me some while to write this Messages wait for me. Okay, the Messages like I have shared lots of screens. So, based on these screens, I want you to like. plan, like work with me and brainstorm like when we should Um like how do I say it like Uh like when should we When should we how do I say like sorry for about that uh When should we have a proper When should we introduce the Linear? That was the question, yeah. Like when should we introduce the sidebar Send it.",
+   "label": "mixed"
+  },
+  {
+   "id": "log-78",
+   "text": "Can you go to a new tab?",
+   "label": "command"
+  },
+  {
+   "id": "log-79",
+   "text": "Can you go to a n any existing tab called Blue Yo",
+   "label": "command"
+  },
+  {
+   "id": "log-80",
+   "text": "Yeah, can you go to Conversations on this tab",
+   "label": "command"
+  },
+  {
+   "id": "log-81",
+   "text": "Can you go to the coils part on this tab or the limits part on this tab",
+   "label": "command"
+  },
+  {
+   "id": "log-82",
+   "text": "Can you open a blood terminal?",
+   "label": "command"
+  },
+  {
+   "id": "log-83",
+   "text": "Run Ellis command",
+   "label": "command"
+  },
+  {
+   "id": "log-84",
+   "text": "Run the command which shows me all the directories inside it.",
+   "label": "command"
+  },
+  {
+   "id": "log-86",
+   "text": "Yeah. Focus on the terminal",
+   "label": "command"
+  },
+  {
+   "id": "log-87",
+   "text": "Focus on the terminal.",
+   "label": "command"
+  },
+  {
+   "id": "log-88",
+   "text": "Switch to a terminal and focus on it",
+   "label": "command"
+  },
+  {
+   "id": "log-89",
+   "text": "Can L S command",
+   "label": "command"
+  },
+  {
+   "id": "log-90",
+   "text": "Can L S command Run it",
+   "label": "command"
+  },
+  {
+   "id": "log-91",
+   "text": "Ellis Commander on it.",
+   "label": "command"
+  },
+  {
+   "id": "log-92",
+   "text": "Run TWD command.",
+   "label": "command"
+  },
+  {
+   "id": "log-93",
+   "text": "Run twd command the command to show directories",
+   "label": "command"
+  },
+  {
+   "id": "log-94",
+   "text": "Hi, can you switch Google Chrome",
+   "label": "command"
+  },
+  {
+   "id": "log-95",
+   "text": "Can you switch to the different Chrome window",
+   "label": "command"
+  },
+  {
+   "id": "log-96",
+   "text": "Can you go to Figma? I think we are already on Figma.",
+   "label": "command"
+  },
+  {
+   "id": "log-97",
+   "text": "Can you zoom in a bit?",
+   "label": "command"
+  },
+  {
+   "id": "log-98",
+   "text": "Zoom in a bit more.",
+   "label": "command"
+  },
+  {
+   "id": "log-99",
+   "text": "Zoom in.",
+   "label": "command"
+  },
+  {
+   "id": "log-100",
+   "text": "Can you go to the left side?",
+   "label": "command"
+  },
+  {
+   "id": "log-101",
+   "text": "Zoom out and go to left.",
+   "label": "command"
+  },
+  {
+   "id": "log-102",
+   "text": "Okay good. Can you go to a tab called Blue Eo?",
+   "label": "command"
+  },
+  {
+   "id": "log-103",
+   "text": "Bluey or blue Notion or something like that",
+   "label": "command"
+  },
+  {
+   "id": "log-104",
+   "text": "Bluey or blue Notion or something like that Can you go to a tab called Blue You?",
+   "label": "command"
+  },
+  {
+   "id": "log-105",
+   "text": "What are the different tabs you see? I need to go to one tab called Blue You",
+   "label": "command"
+  },
+  {
+   "id": "log-106",
+   "text": "Blue IO Go to it. Google Chrome tab called Blue IO",
+   "label": "command"
+  },
+  {
+   "id": "log-107",
+   "text": "Blue IO.",
+   "label": "command"
+  },
+  {
+   "id": "log-108",
+   "text": "B Pwd O go to this tab.",
+   "label": "command"
+  },
+  {
+   "id": "log-109",
+   "text": "Can you go to GitHub?",
+   "label": "command"
+  },
+  {
+   "id": "log-110",
+   "text": "Can you go back to Figma?",
+   "label": "command"
+  },
+  {
+   "id": "log-111",
+   "text": "Can you go to Claude?",
+   "label": "command"
+  },
+  {
+   "id": "log-112",
+   "text": "Can you switch to the cl clawed window, not the tab?",
+   "label": "command"
+  },
+  {
+   "id": "log-113",
+   "text": "Can you focus on the Messages bar?",
+   "label": "command"
+  },
+  {
+   "id": "log-114",
+   "text": "Sorry, Ca in Claude Code you focus on the text bar?",
+   "label": "command"
+  },
+  {
+   "id": "log-115",
+   "text": "Can you s in Claude Code you send a Messages for me?",
+   "label": "command"
+  },
+  {
+   "id": "log-116",
+   "text": "Can you s in Claude Code you send a Messages for me? Open Claude Code right, how are you?",
+   "label": "command"
+  },
+  {
+   "id": "log-117",
+   "text": "Can you s in Claude Code you send a Messages for me? Open Claude Code right, how are you? Open Slack",
+   "label": "command"
+  },
+  {
+   "id": "log-118",
+   "text": "Can you s in Claude Code you send a Messages for me? Open Claude Code right, how are you? Open Slack Can you open Slack?",
+   "label": "command"
+  },
+  {
+   "id": "log-119",
+   "text": "Can you focus on Deepungoyal in the Messages bar",
+   "label": "command"
+  },
+  {
+   "id": "log-120",
+   "text": "In Slack, what all functions can you perform?",
+   "label": "command"
+  },
+  {
+   "id": "log-121",
+   "text": "Can you find a text box in Slack",
+   "label": "command"
+  },
+  {
+   "id": "log-122",
+   "text": "Go back Google Chrome.",
+   "label": "command"
+  },
+  {
+   "id": "log-123",
+   "text": "Go back to Figma",
+   "label": "command"
+  },
+  {
+   "id": "log-124",
+   "text": "Go back to the clawed window.",
+   "label": "command"
+  },
+  {
+   "id": "log-126",
+   "text": "Open the Limits tab.",
+   "label": "command"
+  },
+  {
+   "id": "log-127",
+   "text": "Open the Conversation tab.",
+   "label": "command"
+  },
+  {
+   "id": "log-128",
+   "text": "Go to Claude.",
+   "label": "command"
+  },
+  {
+   "id": "log-129",
+   "text": "Go to Claude Code click on Products",
+   "label": "command"
+  },
+  {
+   "id": "log-130",
+   "text": "Go to the Claude window.",
+   "label": "command"
+  },
+  {
+   "id": "log-131",
+   "text": "Slack on Products.",
+   "label": "command"
+  },
+  {
+   "id": "log-132",
+   "text": "Go to Claude Window",
+   "label": "command"
+  },
+  {
+   "id": "log-133",
+   "text": "In Claude Code you click on Products?",
+   "label": "command"
+  },
+  {
+   "id": "log-134",
+   "text": "Products. Can you Slack on Products in Claude",
+   "label": "command"
+  },
+  {
+   "id": "log-135",
+   "text": "Products. Can you Slack on Products in Claude In Claude Code you click on Products?",
+   "label": "command"
+  },
+  {
+   "id": "log-136",
+   "text": "Products. Can you Slack on Products in Claude In Claude Code you click on Products? Go to a terminal",
+   "label": "command"
+  },
+  {
+   "id": "log-137",
+   "text": "Go to a different terminal",
+   "label": "command"
+  },
+  {
+   "id": "log-138",
+   "text": "Open a new terminal",
+   "label": "command"
+  },
+  {
+   "id": "log-139",
+   "text": "Run Alis command",
+   "label": "command"
+  },
+  {
+   "id": "log-140",
+   "text": "Run it",
+   "label": "command"
+  },
+  {
+   "id": "log-141",
+   "text": "Go back to Claude Code and open a new project",
+   "label": "command"
+  },
+  {
+   "id": "log-142",
+   "text": "Can you open YouTube?",
+   "label": "command"
+  },
+  {
+   "id": "log-143",
+   "text": "Can you go to shorts?",
+   "label": "command"
+  },
+  {
+   "id": "log-144",
+   "text": "Can you switch",
+   "label": "command"
+  },
+  {
+   "id": "log-145",
+   "text": "Can you switch Go to the terminal.",
+   "label": "command"
+  },
+  {
+   "id": "log-146",
+   "text": "Create a new directory.",
+   "label": "command"
+  },
+  {
+   "id": "log-147",
+   "text": "No.",
+   "label": "command"
+  },
+  {
+   "id": "log-149",
+   "text": "Yeah. Go to terminal and create a new directory called dpump.",
+   "label": "command"
+  },
+  {
+   "id": "log-151",
+   "text": "Can you clear the terminal like currently there are too many commands on top of each other which you added? Can you backspace it?",
+   "label": "command"
+  },
+  {
+   "id": "log-152",
+   "text": "Don't clear it by a clear. I mean, can you like you have added an unknown command, you have added an MKDIR command, you have added a clear command. So, can you just remove all of them?",
+   "label": "command"
+  },
+  {
+   "id": "log-154",
+   "text": "Open Products.",
+   "label": "command"
+  },
+  {
+   "id": "log-155",
+   "text": "In Claude Code Products.",
+   "label": "command"
+  },
+  {
+   "id": "log-156",
+   "text": "In Claude Code you click on new",
+   "label": "command"
+  },
+  {
+   "id": "log-157",
+   "text": "In Claude Code you click on new In Claude Code, can you click on the button new",
+   "label": "command"
+  },
+  {
+   "id": "log-158",
+   "text": "Switch to Claude Window.",
+   "label": "command"
+  },
+  {
+   "id": "log-159",
+   "text": "In Claude Code, can you click on the button new",
+   "label": "command"
+  },
+  {
+   "id": "log-160",
+   "text": "Can you click on the cross?",
+   "label": "command"
+  },
+  {
+   "id": "log-161",
+   "text": "Can you click on later",
+   "label": "command"
+  },
+  {
+   "id": "log-162",
+   "text": "Let's go to the scheduled part of plot code.",
+   "label": "command"
+  },
+  {
+   "id": "log-163",
+   "text": "Let's go to scheduled",
+   "label": "command"
+  },
+  {
+   "id": "log-164",
+   "text": "Let's go to scheduled Can you go to scheduled?",
+   "label": "command"
+  },
+  {
+   "id": "log-165",
+   "text": "Can you go to one of my chat which is called Competitor Website Screenshot?",
+   "label": "command"
+  },
+  {
+   "id": "log-166",
+   "text": "Can you go to Recents and the onboarding sidebar integration?",
+   "label": "command"
+  },
+  {
+   "id": "log-167",
+   "text": "Let's go to Claude.",
+   "label": "command"
+  },
+  {
+   "id": "log-168",
+   "text": "Can you open a new Products?",
+   "label": "command"
+  },
+  {
+   "id": "log-170",
+   "text": "Yeah. Go to a new Products",
+   "label": "command"
+  },
+  {
+   "id": "log-171",
+   "text": "Can you go back to the chat?",
+   "label": "command"
+  },
+  {
+   "id": "log-172",
+   "text": "Can you go to the onboarding Linear integration Care?",
+   "label": "command"
+  },
+  {
+   "id": "log-174",
+   "text": "Can you change the effort level?",
+   "label": "command"
+  },
+  {
+   "id": "log-175",
+   "text": "Can you go to Slack?",
+   "label": "command"
+  },
+  {
+   "id": "log-176",
+   "text": "Uh draft a Messages for me saying Hello team.",
+   "label": "mixed"
+  },
+  {
+   "id": "log-177",
+   "text": "Can you",
+   "label": "command"
+  },
+  {
+   "id": "log-178",
+   "text": "Can you Undo this Messages, like don't send it",
+   "label": "command"
+  },
+  {
+   "id": "log-179",
+   "text": "In Slack, what else can you do?",
+   "label": "command"
+  },
+  {
+   "id": "log-180",
+   "text": "In Slack can you change the direct messages thread? Like there are lots of different threads. Can you click on one of them?",
+   "label": "command"
+  },
+  {
+   "id": "log-181",
+   "text": "Can you go to Deepangoyal?",
+   "label": "command"
+  },
+  {
+   "id": "log-182",
+   "text": "No in the direct Messages thread can you go to Debumboy",
+   "label": "command"
+  },
+  {
+   "id": "log-183",
+   "text": "Um Shut down for now.",
+   "label": "command"
+  },
+  {
+   "id": "log-185",
+   "text": "Scroll up a bit, like scroll up.",
+   "label": "command"
+  },
+  {
+   "id": "log-186",
+   "text": "Continue scrolling up till I tell you to Store.",
+   "label": "command"
+  },
+  {
+   "id": "log-187",
+   "text": "Continue scrolling up till I tell you to Store. Scroll up till I tell you to Store",
+   "label": "command"
+  },
+  {
+   "id": "log-188",
+   "text": "Continue scrolling up till I tell you to Store. Scroll up till I tell you to Store Scroll up till I tell you to Store.",
+   "label": "command"
+  },
+  {
+   "id": "log-189",
+   "text": "Continue scrolling up till I tell you to Store. Scroll up till I tell you to Store Scroll up till I tell you to Store. For some reason it is converting my command in from st stop to store",
+   "label": "command"
+  },
+  {
+   "id": "log-190",
+   "text": "Scroll up continuously.",
+   "label": "command"
+  },
+  {
+   "id": "log-191",
+   "text": "What can you do in this clawed window?",
+   "label": "command"
+  },
+  {
+   "id": "log-192",
+   "text": "Go to blue YouTube.",
+   "label": "command"
+  },
+  {
+   "id": "log-193",
+   "text": "Can you switch Google Chrome window?",
+   "label": "command"
+  },
+  {
+   "id": "log-194",
+   "text": "Go to Blue EO tab",
+   "label": "command"
+  },
+  {
+   "id": "log-195",
+   "text": "Go to what, sir?",
+   "label": "command"
+  },
+  {
+   "id": "log-196",
+   "text": "In blue you can click on WhatsApp.",
+   "label": "command"
+  },
+  {
+   "id": "log-197",
+   "text": "In blue you can click on WhatsApp. Go to what contacts?",
+   "label": "command"
+  },
+  {
+   "id": "log-198",
+   "text": "In blue you can click on WhatsApp. Go to what contacts? Let's go to the trends",
+   "label": "command"
+  },
+  {
+   "id": "log-199",
+   "text": "Can you go to conversations?",
+   "label": "command"
+  },
+  {
+   "id": "log-200",
+   "text": "Can you go to limits?",
+   "label": "command"
+  },
+  {
+   "id": "log-201",
+   "text": "Can you open the terminal?",
+   "label": "command"
+  },
+  {
+   "id": "log-202",
+   "text": "Can you open the terminal? Open a terminal window.",
+   "label": "command"
+  },
+  {
+   "id": "log-203",
+   "text": "Can you open the terminal? Open a terminal window. Open a terminal window.",
+   "label": "command"
+  },
+  {
+   "id": "log-204",
+   "text": "Scroll down",
+   "label": "command"
+  },
+  {
+   "id": "log-205",
+   "text": "Go to Figma.",
+   "label": "command"
+  },
+  {
+   "id": "log-206",
+   "text": "Go to Figma. Go to GitHub.",
+   "label": "command"
+  },
+  {
+   "id": "log-207",
+   "text": "Open terminal",
+   "label": "command"
+  },
+  {
+   "id": "log-208",
+   "text": "Switch to Claude.",
+   "label": "command"
+  },
+  {
+   "id": "log-209",
+   "text": "Go back to GitHub",
+   "label": "command"
+  },
+  {
+   "id": "log-210",
+   "text": "Open issues.",
+   "label": "command"
+  },
+  {
+   "id": "log-211",
+   "text": "Go back.",
+   "label": "command"
+  },
+  {
+   "id": "log-212",
+   "text": "Open the code",
+   "label": "command"
+  },
+  {
+   "id": "log-213",
+   "text": "Code in the GitHub tab",
+   "label": "command"
+  },
+  {
+   "id": "log-214",
+   "text": "Scroll down, scroll down two times.",
+   "label": "command"
+  },
+  {
+   "id": "log-215",
+   "text": "Go to Claude window and scroll up three times",
+   "label": "command"
+  },
+  {
+   "id": "log-216",
+   "text": "Scroll up four times",
+   "label": "command"
+  },
+  {
+   "id": "log-217",
+   "text": "Scroll up.",
+   "label": "command"
+  },
+  {
+   "id": "log-218",
+   "text": "Scroll up. In the end.",
+   "label": "command"
+  },
+  {
+   "id": "log-219",
+   "text": "Scroll up. In the end. Go to Claude Code Terminal.",
+   "label": "command"
+  },
+  {
+   "id": "log-220",
+   "text": "Different one, not this one",
+   "label": "command"
+  },
+  {
+   "id": "log-221",
+   "text": "Go to a different plot code terminal.",
+   "label": "command"
+  },
+  {
+   "id": "log-222",
+   "text": "Can you enter in this that I have had a new session and I want you to Preview it",
+   "label": "mixed"
+  },
+  {
+   "id": "log-223",
+   "text": "Send it.",
+   "label": "command"
+  },
+  {
+   "id": "log-224",
+   "text": "Closure.",
+   "label": "command"
+  },
+  {
+   "id": "log-225",
+   "text": "Henderson",
+   "label": "background"
+  },
+  {
+   "id": "log-226",
+   "text": "Store, Arik Bandojao.",
+   "label": "background"
+  },
+  {
+   "id": "log-227",
+   "text": "Open Figma.",
+   "label": "command"
+  },
+  {
+   "id": "log-229",
+   "text": "Zoom out, zoom out",
+   "label": "command"
+  },
+  {
+   "id": "log-230",
+   "text": "Zoom out again.",
+   "label": "command"
+  },
+  {
+   "id": "log-231",
+   "text": "Zoom out.",
+   "label": "command"
+  },
+  {
+   "id": "log-232",
+   "text": "Go to page 3",
+   "label": "command"
+  },
+  {
+   "id": "log-233",
+   "text": "Can you pick it from the Left side panel the page 3. Go there",
+   "label": "command"
+  },
+  {
+   "id": "log-235",
+   "text": "Go to Figma page 3",
+   "label": "command"
+  },
+  {
+   "id": "log-236",
+   "text": "Page three I said, why are you not able to go to it",
+   "label": "command"
+  },
+  {
+   "id": "log-237",
+   "text": "Open the pages list",
+   "label": "command"
+  },
+  {
+   "id": "log-238",
+   "text": "Now you can see there is Homepage 3 and page 2. Click on page 3",
+   "label": "command"
+  },
+  {
+   "id": "log-239",
+   "text": "Just page three",
+   "label": "command"
+  },
+  {
+   "id": "log-240",
+   "text": "Switch to Figma tab, like there are two Figma tabs open, right? Switch to a different one",
+   "label": "command"
+  },
+  {
+   "id": "log-241",
+   "text": "Zoom out, zoom out, zoom out.",
+   "label": "command"
+  },
+  {
+   "id": "log-243",
+   "text": "Coke session",
+   "label": "command"
+  },
+  {
+   "id": "log-244",
+   "text": "Coke the session.",
+   "label": "command"
+  },
+  {
+   "id": "log-245",
+   "text": "Shut off.",
+   "label": "command"
+  },
+  {
+   "id": "log-246",
+   "text": "What can you do here?",
+   "label": "command"
+  },
+  {
+   "id": "log-247",
+   "text": "Google Chrome.",
+   "label": "command"
+  },
+  {
+   "id": "log-249",
+   "text": "Click on Ecommerce.",
+   "label": "command"
+  },
+  {
+   "id": "log-250",
+   "text": "Go back to the Figma",
+   "label": "command"
+  },
+  {
+   "id": "log-251",
+   "text": "What can you do here",
+   "label": "command"
+  },
+  {
+   "id": "log-252",
+   "text": "Go back to the other Figma tab, not this one, but we have another Figma tab, right? Go back to it.",
+   "label": "command"
+  },
+  {
+   "id": "log-253",
+   "text": "Zoom out, zoom out.",
+   "label": "command"
+  },
+  {
+   "id": "log-254",
+   "text": "Go to plot",
+   "label": "command"
+  },
+  {
+   "id": "log-255",
+   "text": "Go to plot Yeah.",
+   "label": "command"
+  },
+  {
+   "id": "log-256",
+   "text": "Go to plot Yeah. Go to Claude.",
+   "label": "command"
+  },
+  {
+   "id": "log-257",
+   "text": "Scroll up till I tell you to stop",
+   "label": "command"
+  },
+  {
+   "id": "log-258",
+   "text": "Store.",
+   "label": "command"
+  },
+  {
+   "id": "log-259",
+   "text": "Store. Focus on the chat area and then scroll up till I tell you to Store.",
+   "label": "command"
+  },
+  {
+   "id": "log-260",
+   "text": "Store. Focus on the chat area and then scroll up till I tell you to Store. Focus on the chat area",
+   "label": "command"
+  },
+  {
+   "id": "log-261",
+   "text": "Store. Focus on the chat area and then scroll up till I tell you to Store. Focus on the chat area And then scroll up till I tell you to stop",
+   "label": "command"
+  },
+  {
+   "id": "log-262",
+   "text": "Store. Focus on the chat area and then scroll up till I tell you to Store. Focus on the chat area And then scroll up till I tell you to stop This is Notion, this session is Notion, Repeat this session.",
+   "label": "command"
+  },
+  {
+   "id": "log-265",
+   "text": "Can you Click on Files",
+   "label": "command"
+  },
+  {
+   "id": "log-266",
+   "text": "Can you keep scrolling up till I tell you to stop",
+   "label": "command"
+  },
+  {
+   "id": "log-268",
+   "text": "Store. Scroll down till the bottom.",
+   "label": "command"
+  },
+  {
+   "id": "log-269",
+   "text": "Store. Scroll down till the bottom. Scroll down.",
+   "label": "command"
+  },
+  {
+   "id": "log-270",
+   "text": "Store. Scroll down till the bottom. Scroll down. Backspace",
+   "label": "command"
+  },
+  {
+   "id": "log-271",
+   "text": "Store. Scroll down till the bottom. Scroll down. Backspace Store.",
+   "label": "command"
+  },
+  {
+   "id": "log-272",
+   "text": "Store. Scroll down till the bottom. Scroll down. Backspace Store. Store, stop, stop, Store.",
+   "label": "command"
+  },
+  {
+   "id": "log-273",
+   "text": "Scroll down to the bottom.",
+   "label": "command"
+  },
+  {
+   "id": "log-274",
+   "text": "Can you go to Figma?",
+   "label": "command"
+  },
+  {
+   "id": "log-275",
+   "text": "Can you go to Blue You?",
+   "label": "command"
+  },
+  {
+   "id": "log-276",
+   "text": "Can you go to Gmail",
+   "label": "command"
+  },
+  {
+   "id": "log-277",
+   "text": "Can you go to Gmail No, no, can you go back to Blue Yo?",
+   "label": "command"
+  },
+  {
+   "id": "log-279",
+   "text": "No, that's the wrong one. Can you go back?",
+   "label": "command"
+  },
+  {
+   "id": "log-280",
+   "text": "Can you go to Figma the other one",
+   "label": "command"
+  },
+  {
+   "id": "log-281",
+   "text": "Not this one, the other one",
+   "label": "command"
+  },
+  {
+   "id": "log-282",
+   "text": "Can you go to Chrome and YouTube?",
+   "label": "command"
+  },
+  {
+   "id": "log-283",
+   "text": "Can you play the video?",
+   "label": "command"
+  },
+  {
+   "id": "log-284",
+   "text": "What controls do you have here",
+   "label": "command"
+  },
+  {
+   "id": "log-285",
+   "text": "What controls do you have here Yeah.",
+   "label": "command"
+  },
+  {
+   "id": "log-286",
+   "text": "Can you open the music Calendar Arm?",
+   "label": "command"
+  },
+  {
+   "id": "log-287",
+   "text": "Can you open the music Calendar Arm? Can you turn down the volume?",
+   "label": "command"
+  },
+  {
+   "id": "log-288",
+   "text": "Don't mute it",
+   "label": "command"
+  },
+  {
+   "id": "log-289",
+   "text": "Don't mute it Reduce the volume.",
+   "label": "command"
+  },
+  {
+   "id": "log-290",
+   "text": "Unmute and then reduce it to fifty percent.",
+   "label": "command"
+  },
+  {
+   "id": "log-292",
+   "text": "Keep scrolling up.",
+   "label": "command"
+  },
+  {
+   "id": "log-293",
+   "text": "Go to the bottom.",
+   "label": "command"
+  },
+  {
+   "id": "log-295",
+   "text": "Reduce volume.",
+   "label": "command"
+  },
+  {
+   "id": "log-296",
+   "text": "Go to Netflix.",
+   "label": "command"
+  },
+  {
+   "id": "log-297",
+   "text": "Welcome to Aratus. YouTube the Imperial Ecologist.",
+   "label": "background"
+  },
+  {
+   "id": "log-298",
+   "text": "Welcome to Aratus. YouTube the Imperial Ecologist. Thank you for the still seats.",
+   "label": "background"
+  },
+  {
+   "id": "log-299",
+   "text": "Welcome to Aratus. YouTube the Imperial Ecologist. Thank you for the still seats. They are Fremen make",
+   "label": "background"
+  },
+  {
+   "id": "log-300",
+   "text": "What all windows are open?",
+   "label": "command"
+  },
+  {
+   "id": "log-301",
+   "text": "This answer is not being shown. What all can you do?",
+   "label": "command"
+  },
+  {
+   "id": "log-302",
+   "text": "Go to other other window.",
+   "label": "command"
+  },
+  {
+   "id": "log-303",
+   "text": "Can you go to Task Management?",
+   "label": "command"
+  },
+  {
+   "id": "log-304",
+   "text": "Go to Slack.",
+   "label": "command"
+  },
+  {
+   "id": "log-305",
+   "text": "Open my own DM",
+   "label": "command"
+  },
+  {
+   "id": "log-306",
+   "text": "Open the pump dm",
+   "label": "command"
+  },
+  {
+   "id": "log-307",
+   "text": "Open the Wom DM.",
+   "label": "command"
+  },
+  {
+   "id": "log-308",
+   "text": "Go to drafts.",
+   "label": "command"
+  },
+  {
+   "id": "log-309",
+   "text": "Go to draw.",
+   "label": "command"
+  },
+  {
+   "id": "log-310",
+   "text": "Go to draw. Go back to the terminal.",
+   "label": "command"
+  },
+  {
+   "id": "log-311",
+   "text": "Let's go to messages.",
+   "label": "command"
+  },
+  {
+   "id": "log-312",
+   "text": "Closure the messages.",
+   "label": "command"
+  },
+  {
+   "id": "log-313",
+   "text": "Closure this window.",
+   "label": "command"
+  },
+  {
+   "id": "log-314",
+   "text": "Switch terminal.",
+   "label": "command"
+  },
+  {
+   "id": "log-315",
+   "text": "Enter into dictation Code.",
+   "label": "dictation"
+  },
+  {
+   "id": "log-316",
+   "text": "Into Claude Ford",
+   "label": "command"
+  },
+  {
+   "id": "log-317",
+   "text": "So basically the thing which I need to convey is that uh I am currently running a session. I think we need to improve it like we need to plan out a few features like we we need to do some research and think what features are there. One way is to go around it by adding on features which are missing in my daily use case. That's fine but I don't think that will result in a Products because right now we are stitching features on top of each other. Instead, we should build a robust architecture, robust Products that it works with any and all use cases. I think we are lacking in that. We are still very wipe coding it to. You know. To fix a smaller issue, but we are not taking a look at the bigger picture.",
+   "label": "dictation"
+  },
+  {
+   "id": "log-318",
+   "text": "So basically the thing which I need to convey is that uh I am currently running a session. I think we need to improve it like we need to plan out a few features like we we need to do some research and think what features are there. One way is to go around it by adding on features which are missing in my daily use case. That's fine but I don't think that will result in a Products because right now we are stitching features on top of each other. Instead, we should build a robust architecture, robust Products that it works with any and all use cases. I think we are lacking in that. We are still very wipe coding it to. You know. To fix a smaller issue, but we are not taking a look at the bigger picture. Enter this prompt.",
+   "label": "mixed"
+  },
+  {
+   "id": "log-319",
+   "text": "So basically the thing which I need to convey is that uh I am currently running a session. I think we need to improve it like we need to plan out a few features like we we need to do some research and think what features are there. One way is to go around it by adding on features which are missing in my daily use case. That's fine but I don't think that will result in a Products because right now we are stitching features on top of each other. Instead, we should build a robust architecture, robust Products that it works with any and all use cases. I think we are lacking in that. We are still very wipe coding it to. You know. To fix a smaller issue, but we are not taking a look at the bigger picture. Enter this prompt. Send it.",
+   "label": "mixed"
+  },
+  {
+   "id": "log-320",
+   "text": "Store the session",
+   "label": "command"
+  },
+  {
+   "id": "log-321",
+   "text": "Let's stop the session.",
+   "label": "command"
+  },
+  {
+   "id": "log-322",
+   "text": "At the end of the day, I think we have to build a Products which is for any person, not a technical guy, but maybe even non-technical persons like PMs or everyday users, like marketing people or maybe editors, like it should work for any and all category of people. That's how we will grow it into a different.",
+   "label": "dictation"
+  },
+  {
+   "id": "log-323",
+   "text": "That's how we will grow it into a big Staging",
+   "label": "dictation"
+  },
+  {
+   "id": "log-324",
+   "text": "That's how we will grow it into a big Staging Sanded this.",
+   "label": "mixed"
+  },
+  {
+   "id": "log-325",
+   "text": "Can you dictate a Messages for him?",
+   "label": "command"
+  },
+  {
+   "id": "log-326",
+   "text": "Input: What is added, what is removed.",
+   "label": "command"
+  },
+  {
+   "id": "log-327",
+   "text": "Can you open Floyd?",
+   "label": "command"
+  },
+  {
+   "id": "log-328",
+   "text": "Open Claude.",
+   "label": "command"
+  },
+  {
+   "id": "log-329",
+   "text": "Zoom in a bit",
+   "label": "command"
+  },
+  {
+   "id": "log-330",
+   "text": "Can you scroll down",
+   "label": "command"
+  },
+  {
+   "id": "log-333",
+   "text": "Increase the volume.",
+   "label": "command"
+  },
+  {
+   "id": "log-335",
+   "text": "Can you set the volume at fifty-two Vercel?",
+   "label": "command"
+  },
+  {
+   "id": "log-336",
+   "text": "What all can you do?",
+   "label": "command"
+  },
+  {
+   "id": "log-337",
+   "text": "What can you do on this page",
+   "label": "command"
+  },
+  {
+   "id": "log-338",
+   "text": "Can you pause the video?",
+   "label": "command"
+  },
+  {
+   "id": "log-339",
+   "text": "Can you open the Senorita Zindigina Meligi Dubara video",
+   "label": "command"
+  },
+  {
+   "id": "log-340",
+   "text": "Ah.",
+   "label": "background"
+  },
+  {
+   "id": "log-341",
+   "text": "Ah. go back to the previous tab i in that tab only there was a Notion to open that",
+   "label": "command"
+  },
+  {
+   "id": "log-342",
+   "text": "Ah. go back to the previous tab i in that tab only there was a Notion to open that Like I said, go back to the previous job",
+   "label": "command"
+  },
+  {
+   "id": "log-343",
+   "text": "Go back to the previous tab, like you opened a new tab, right? So go back to the previous one.",
+   "label": "command"
+  },
+  {
+   "id": "log-344",
+   "text": "It was not Netflix.",
+   "label": "command"
+  },
+  {
+   "id": "log-345",
+   "text": "It was not Netflix. It was YouTube which was open, and inside that I asked you to open up Zindiki Nameliki Dubara Seniorita song.",
+   "label": "command"
+  },
+  {
+   "id": "log-346",
+   "text": "Also, the Netflix you opened, it started playing a video. Pause that video and go back to YouTube. And inside YouTube, I want you to open Senorita's Indigenous video.",
+   "label": "command"
+  },
+  {
+   "id": "log-347",
+   "text": "Also, the Netflix you opened, it started playing a video. Pause that video and go back to YouTube. And inside YouTube, I want you to open Senorita's Indigenous video. It's not.",
+   "label": "command"
+  },
+  {
+   "id": "log-348",
+   "text": "Now here can you open the video, Senorita, Zindigi na Malekidubaro?",
+   "label": "command"
+  },
+  {
+   "id": "log-349",
+   "text": "Go back to YouTube and inside YouTube open this video",
+   "label": "command"
+  },
+  {
+   "id": "log-350",
+   "text": "Can't you see the different options for different videos? Like I can see Saheba, I can see finding her, I can see I am done. Can you open I am done?",
+   "label": "command"
+  },
+  {
+   "id": "log-351",
+   "text": "Can you close this Youtube tab?",
+   "label": "command"
+  },
+  {
+   "id": "log-352",
+   "text": "Can you play the Senorita video on this tab?",
+   "label": "command"
+  },
+  {
+   "id": "log-354",
+   "text": "Uh reopen the YouTube which you closed",
+   "label": "command"
+  },
+  {
+   "id": "log-355",
+   "text": "No, not this one, you had to reopen the tab which you closed. For that there is a chrome shortcut or something",
+   "label": "command"
+  },
+  {
+   "id": "log-356",
+   "text": "Pause the video.",
+   "label": "command"
+  },
+  {
+   "id": "log-357",
+   "text": "Can you go on the next video?",
+   "label": "command"
+  },
+  {
+   "id": "log-358",
+   "text": "Can you go to previous video",
+   "label": "command"
+  },
+  {
+   "id": "log-359",
+   "text": "Can you go to the next and next video?",
+   "label": "command"
+  },
+  {
+   "id": "log-360",
+   "text": "Can you go to the previous video",
+   "label": "command"
+  },
+  {
+   "id": "log-361",
+   "text": "Go to the previous video, try to find it",
+   "label": "command"
+  },
+  {
+   "id": "log-362",
+   "text": "Can you go to X.com any open tab on it and just search for latest news?",
+   "label": "command"
+  },
+  {
+   "id": "log-363",
+   "text": "Can you make a post for me? Post like I have figured it out",
+   "label": "mixed"
+  },
+  {
+   "id": "log-364",
+   "text": "Can you undo this Messages?",
+   "label": "command"
+  },
+  {
+   "id": "log-365",
+   "text": "Can you write a very nice post about announcing yourself? You are Vanto",
+   "label": "command"
+  },
+  {
+   "id": "log-366",
+   "text": "I want you to go to X and write a post announcing",
+   "label": "command"
+  },
+  {
+   "id": "log-367",
+   "text": "I want you to go to X and write a post announcing Vanto to everyone.",
+   "label": "command"
+  },
+  {
+   "id": "log-368",
+   "text": "I want you to go to X and write a post announcing Vanto to everyone. Write a post Scraping",
+   "label": "command"
+  },
+  {
+   "id": "log-369",
+   "text": "I want you to go to X and write a post announcing Vanto to everyone. Write a post Scraping Hey guys, this post was sent to you by Vanto and S.",
+   "label": "mixed"
+  },
+  {
+   "id": "log-370",
+   "text": "I want you to go to X and write a post announcing Vanto to everyone. Write a post Scraping Hey guys, this post was sent to you by Vanto and S. Just dark.",
+   "label": "mixed"
+  },
+  {
+   "id": "log-371",
+   "text": "Go back. I think your drafting feature is still not good.",
+   "label": "command"
+  },
+  {
+   "id": "log-372",
+   "text": "Go to X again",
+   "label": "command"
+  },
+  {
+   "id": "log-373",
+   "text": "Make a post something like Hey guys, this post was made by Vanto.",
+   "label": "command"
+  },
+  {
+   "id": "log-374",
+   "text": "Make a post something like Hey guys, this post was made by Vanto. I did not have to use my hand on anything. All was done using voice. Just write it in a very beautiful manner",
+   "label": "mixed"
+  },
+  {
+   "id": "log-375",
+   "text": "Can you make this whole draft more sharp?",
+   "label": "command"
+  },
+  {
+   "id": "log-376",
+   "text": "Can you make this whole draft more sharp? And more Twitter friendly",
+   "label": "command"
+  },
+  {
+   "id": "log-377",
+   "text": "Send this post.",
+   "label": "command"
+  },
+  {
+   "id": "log-378",
+   "text": "Mkdir post.",
+   "label": "command"
+  },
+  {
+   "id": "log-379",
+   "text": "This post is fine.",
+   "label": "command"
+  },
+  {
+   "id": "log-380",
+   "text": "This post is fine. Just click on the post button so that it can be posted, bro.",
+   "label": "command"
+  },
+  {
+   "id": "log-381",
+   "text": "Can you cross?",
+   "label": "command"
+  },
+  {
+   "id": "log-382",
+   "text": "Click on the post button, which is not in the sidebar, but the post button which is in the center, which will actually post the Messages which you just typed.",
+   "label": "command"
+  },
+  {
+   "id": "log-383",
+   "text": "Nah, you are still not getting it.",
+   "label": "command"
+  },
+  {
+   "id": "log-384",
+   "text": "Nah, you are still not getting it. Close the session.",
+   "label": "command"
+  },
+  {
+   "id": "log-385",
+   "text": "Excellent.",
+   "label": "background"
+  },
+  {
+   "id": "log-386",
+   "text": "Mkdir volume full.",
+   "label": "command"
+  },
+  {
+   "id": "log-387",
+   "text": "Increase the volume",
+   "label": "command"
+  },
+  {
+   "id": "log-388",
+   "text": "Mkdir one hundred Vercel.",
+   "label": "command"
+  },
+  {
+   "id": "log-389",
+   "text": "Type a Messages saying yeah, push it for me",
+   "label": "dictation"
+  },
+  {
+   "id": "log-390",
+   "text": "Can you increase the volume, make it full",
+   "label": "command"
+  },
+  {
+   "id": "log-391",
+   "text": "Henderson.",
+   "label": "background"
+  },
+  {
+   "id": "log-392",
+   "text": "Henderson. Uh End the session.",
+   "label": "command"
+  },
+  {
+   "id": "log-393",
+   "text": "Let's Google Chrome",
+   "label": "command"
+  },
+  {
+   "id": "log-394",
+   "text": "Let's go to Youtube and play the music",
+   "label": "command"
+  },
+  {
+   "id": "log-395",
+   "text": "Can you play the mix barren animated love STORE",
+   "label": "command"
+  },
+  {
+   "id": "log-398",
+   "text": "Let's go to prone.",
+   "label": "command"
+  },
+  {
+   "id": "log-399",
+   "text": "Pause the video",
+   "label": "command"
+  },
+  {
+   "id": "log-400",
+   "text": "Google Chrome and pause the video.",
+   "label": "command"
+  },
+  {
+   "id": "log-401",
+   "text": "Go back to the terminal.",
+   "label": "command"
+  },
+  {
+   "id": "log-402",
+   "text": "Can you send a Messages in this terminal, in this clawed Codex session",
+   "label": "command"
+  },
+  {
+   "id": "log-403",
+   "text": "Uh like ask it like what different questions can I ask Vanto uh to make sure that these changes are fixed",
+   "label": "dictation"
+  },
+  {
+   "id": "log-405",
+   "text": "send it",
+   "label": "command"
+  },
+  {
+   "id": "log-406",
+   "text": "Make the volume full",
+   "label": "command"
+  },
+  {
+   "id": "log-407",
+   "text": "Mkdir fifty Vercel",
+   "label": "command"
+  },
+  {
+   "id": "log-409",
+   "text": "Can you Google Chrome, OpenX and write a post for me",
+   "label": "command"
+  },
+  {
+   "id": "log-410",
+   "text": "This post was written by Vando.",
+   "label": "dictation"
+  },
+  {
+   "id": "log-411",
+   "text": "Can you edit this draft and say this post was written by Vanto? Hey guys, this post was written by Vanto. It was written without using any mouse or keyboard.",
+   "label": "mixed"
+  },
+  {
+   "id": "log-412",
+   "text": "Can you make the overall post very good and sharp",
+   "label": "command"
+  },
+  {
+   "id": "log-413",
+   "text": "Can you make it more X friendly, like try to write it in a manner which is good for writing in X",
+   "label": "command"
+  },
+  {
+   "id": "log-414",
+   "text": "Ando",
+   "label": "command"
+  },
+  {
+   "id": "log-415",
+   "text": "Ando Go back to original",
+   "label": "command"
+  },
+  {
+   "id": "log-416",
+   "text": "Send it, post it.",
+   "label": "command"
+  },
+  {
+   "id": "log-417",
+   "text": "Posted",
+   "label": "background"
+  },
+  {
+   "id": "log-418",
+   "text": "Just make this post post.",
+   "label": "command"
+  },
+  {
+   "id": "log-419",
+   "text": "Go to Claude window",
+   "label": "command"
+  },
+  {
+   "id": "log-420",
+   "text": "Go to the Claude Codex Terminal session",
+   "label": "command"
+  },
+  {
+   "id": "log-422",
+   "text": "Can you in the t Claude Codex terminal send a Messages saying rebuild it and restart it for me?",
+   "label": "mixed"
+  },
+  {
+   "id": "log-423",
+   "text": "Yeah, send it.",
+   "label": "command"
+  },
+  {
+   "id": "log-425",
+   "text": "Can you quit Slack?",
+   "label": "command"
+  },
+  {
+   "id": "log-426",
+   "text": "Switch back to Claude",
+   "label": "command"
+  },
+  {
+   "id": "log-427",
+   "text": "Not this one, the other one which we were",
+   "label": "command"
+  },
+  {
+   "id": "log-428",
+   "text": "Not this one, the other one which we were Switch back to the other window which we were in in the Claude Codex session terminal",
+   "label": "command"
+  },
+  {
+   "id": "log-429",
+   "text": "Not this one, the other one which we were Switch back to the other window which we were in in the Claude Codex session terminal Like I said, go back to the Claude session terminal.",
+   "label": "command"
+  },
+  {
+   "id": "log-430",
+   "text": "Reduce volume to fifty percent.",
+   "label": "command"
+  },
+  {
+   "id": "log-431",
+   "text": "Make the volume full.",
+   "label": "command"
+  },
+  {
+   "id": "log-432",
+   "text": "Scroll up on the Claude Codex terminal",
+   "label": "command"
+  },
+  {
+   "id": "log-433",
+   "text": "Scroll a little bit more",
+   "label": "command"
+  },
+  {
+   "id": "log-434",
+   "text": "Go to X Google Chrome and search for news.",
+   "label": "command"
+  },
+  {
+   "id": "log-435",
+   "text": "Search for news on the X tab in Chrome",
+   "label": "command"
+  },
+  {
+   "id": "log-436",
+   "text": "Go to X.",
+   "label": "command"
+  },
+  {
+   "id": "log-437",
+   "text": "Click on the Cross button or close button on X",
+   "label": "command"
+  },
+  {
+   "id": "log-438",
+   "text": "Uh can you go to profi my profile",
+   "label": "command"
+  },
+  {
+   "id": "log-439",
+   "text": "Uh can you go to profi my profile Yeah.",
+   "label": "command"
+  },
+  {
+   "id": "log-440",
+   "text": "Scroll down a bit",
+   "label": "command"
+  },
+  {
+   "id": "log-441",
+   "text": "Force",
+   "label": "command"
+  },
+  {
+   "id": "log-442",
+   "text": "Force Scroll in STORE",
+   "label": "command"
+  },
+  {
+   "id": "log-443",
+   "text": "Scroll down Force.",
+   "label": "command"
+  },
+  {
+   "id": "log-444",
+   "text": "Uh game.",
+   "label": "background"
+  },
+  {
+   "id": "log-445",
+   "text": "Uh game. Brain",
+   "label": "background"
+  },
+  {
+   "id": "log-447",
+   "text": "Uh game. Brain Brain",
+   "label": "background"
+  },
+  {
+   "id": "log-448",
+   "text": "Uh game. Brain Brain Go to Claude.",
+   "label": "command"
+  },
+  {
+   "id": "log-449",
+   "text": "Go to the Voice Command Tool project",
+   "label": "command"
+  },
+  {
+   "id": "log-450",
+   "text": "Go to the name for open source mvp.",
+   "label": "command"
+  },
+  {
+   "id": "log-451",
+   "text": "Type in a message saying I want to go with the I want to find more better options.",
+   "label": "dictation"
+  },
+  {
+   "id": "log-452",
+   "text": "Type in a message saying I want to go with the I want to find more better options. I think voice AI native is very weird.",
+   "label": "dictation"
+  },
+  {
+   "id": "log-453",
+   "text": "Type in a message saying I want to go with the I want to find more better options. I think voice AI native is very weird. I it could work maybe like Force AI native task orchestrator could work but maybe find some other options. Send this message.",
+   "label": "mixed"
+  },
+  {
+   "id": "log-454",
+   "text": "Can you write a message saying like? I want to go with Voice AI Native Task Orchestrator.",
+   "label": "dictation"
+  },
+  {
+   "id": "log-456",
+   "text": "I want you to work on",
+   "label": "command"
+  },
+  {
+   "id": "log-457",
+   "text": "I want you to work on Uh I want you to work on the branding for Tranthor.",
+   "label": "dictation"
+  },
+  {
+   "id": "log-458",
+   "text": "Not Tranthor, I want you to work on the ba branding for Vanto, V Anto.",
+   "label": "mixed"
+  },
+  {
+   "id": "log-459",
+   "text": "Send this",
+   "label": "command"
+  },
+  {
+   "id": "log-460",
+   "text": "Can you go to YouTube?",
+   "label": "command"
+  },
+  {
+   "id": "log-461",
+   "text": "Can you go to YouTube? Yeah.",
+   "label": "command"
+  },
+  {
+   "id": "log-462",
+   "text": "Go to Youtube Google Chrome and play the song.",
+   "label": "command"
+  },
+  {
+   "id": "log-463",
+   "text": "Go back to the mid binal Reduce volume fifty percent and then go back to the middle na di hatere te lagani meniel. Claude.",
+   "label": "command"
+  },
+  {
+   "id": "log-465",
+   "text": "Click on the Banto Brain direction artifact.",
+   "label": "command"
+  },
+  {
+   "id": "log-466",
+   "text": "Can you type in a message in chat for me saying that work on a better Brain, like go with the very professional Brain, find a good accent color, do some research about it.",
+   "label": "dictation"
+  },
+  {
+   "id": "log-467",
+   "text": "Can you improve the this message like based on whatever context you think there is in this message can you improve it? Like a lot of the words were tr transcribed wrong in this message which you posted.",
+   "label": "command"
+  },
+  {
+   "id": "log-469",
+   "text": "Can you click on the three dots in the hey guys, this post was written by Tranthor.",
+   "label": "command"
+  },
+  {
+   "id": "log-470",
+   "text": "Can you click on the three dots in the hey guys, this post was written by Tranthor. Uh can you click on the three dots?",
+   "label": "command"
+  },
+  {
+   "id": "log-471",
+   "text": "On the x.com where we are currently, can you click on the three dots to edit the post which is which was made by me 10 minutes ago? The post called Hey guys, this post was written by Vanto. Basically, I want to edit this post so that editing option is there when we click on the three dots.",
+   "label": "command"
+  },
+  {
+   "id": "log-472",
+   "text": "Try to find the Notion.",
+   "label": "command"
+  },
+  {
+   "id": "log-473",
+   "text": "Try to find the option to edit this post",
+   "label": "command"
+  },
+  {
+   "id": "log-474",
+   "text": "What all can you do on this Seen?",
+   "label": "command"
+  },
+  {
+   "id": "log-477",
+   "text": "Go back to Claude.",
+   "label": "command"
+  },
+  {
+   "id": "log-478",
+   "text": "Now click on the three dots on the post may it may be called Hey guys, this post was written by Vanto. Basically I want to edit this post. I think the button option might be aga against uh something called as STORE or Slack",
+   "label": "command"
+  },
+  {
+   "id": "log-480",
+   "text": "Hey, can you Pick find the post called Hey Guys, this post was written by Finder",
+   "label": "command"
+  },
+  {
+   "id": "log-481",
+   "text": "Hey, can you Pick find the post called Hey Guys, this post was written by Finder Yeah.",
+   "label": "command"
+  },
+  {
+   "id": "log-482",
+   "text": "The post made by me twelve minutes ago, can you find it? Click on the more options on it and find the edit button",
+   "label": "command"
+  },
+  {
+   "id": "log-484",
+   "text": "Edit it",
+   "label": "command"
+  },
+  {
+   "id": "log-486",
+   "text": "Can you edit the overall message saying like this post was written and sent entirely by Vanto",
+   "label": "mixed"
+  },
+  {
+   "id": "log-487",
+   "text": "Make the overall post sound good.",
+   "label": "command"
+  },
+  {
+   "id": "log-488",
+   "text": "Not this, like re reverse it.",
+   "label": "command"
+  },
+  {
+   "id": "log-489",
+   "text": "Go back to the original one, the one which was earlier",
+   "label": "command"
+  },
+  {
+   "id": "log-490",
+   "text": "This post was Twitter.",
+   "label": "command"
+  },
+  {
+   "id": "log-491",
+   "text": "This post was Twitter. This was written and s posted entirely by Vanto, without any keyboard or mouse. That is what I want to say.",
+   "label": "mixed"
+  },
+  {
+   "id": "log-492",
+   "text": "This don't say this post, just say this",
+   "label": "command"
+  },
+  {
+   "id": "log-493",
+   "text": "Post it.",
+   "label": "command"
+  },
+  {
+   "id": "log-494",
+   "text": "Post it. or update it as I it is there.",
+   "label": "command"
+  },
+  {
+   "id": "log-495",
+   "text": "Up click on the update button",
+   "label": "command"
+  },
+  {
+   "id": "log-496",
+   "text": "No, these are weird, like I don't like the Brain. I really like the branding in the first one. Uh first signal one, like the color scheme and everything. Also this accent color is not good, the logo is not good. Try to find something else You don't have to stick with the V.",
+   "label": "dictation"
+  },
+  {
+   "id": "log-497",
+   "text": "Okay,",
+   "label": "command"
+  },
+  {
+   "id": "log-498",
+   "text": "Okay, Increase volume to hundred and then end with the second",
+   "label": "command"
+  },
+  {
+   "id": "log-499",
+   "text": "End of the file.",
+   "label": "command"
+  },
+  {
+   "id": "log-500",
+   "text": "End the Notion.",
+   "label": "command"
+  },
+  {
+   "id": "log-501",
+   "text": "Can you open Claude Corn terminal?",
+   "label": "command"
+  },
+  {
+   "id": "log-502",
+   "text": "Can you open Claude Corn terminal? Open clot Codex terminal.",
+   "label": "command"
+  },
+  {
+   "id": "log-503",
+   "text": "Can you open Claude Corn terminal? Open clot Codex terminal. Open the Claude Codex terminal",
+   "label": "command"
+  },
+  {
+   "id": "persona-1",
+   "text": "Hey Priya, the deck is ready and I added the numbers from last week, so I'll walk you through it tomorrow morning.",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-2",
+   "text": "Hi John, thanks for sending the contract over. I've gone through it and I have a couple of questions about the payment terms.",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-3",
+   "text": "I think we should move the launch to next Thursday because the onboarding flow still has a few rough edges that we need to fix.",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-4",
+   "text": "We need to refactor the auth middleware so that every handler checks the session token before it reads the request body.",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-5",
+   "text": "So the bug is that when I paste a long prompt the app freezes for a second, my guess is the tokenizer runs on the main thread.",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-6",
+   "text": "Meeting notes: we agreed that marketing owns the launch email, and I will send the final copy to legal by Wednesday.",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-7",
+   "text": "Just wanted to say the demo went really well today and the client asked us for a proposal by the end of next week.",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-8",
+   "text": "My plan for the weekend is to finish the chapter on pricing and then start outlining the section about our first customers.",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-9",
+   "text": "Hey team, quick update from my side, the migration finished last night and we haven't seen any errors in the logs since then.",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-10",
+   "text": "Dear Sarah, I'm writing to follow up on our conversation last week about the partnership and the timeline we discussed.",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-11",
+   "text": "That's how we will grow it into a big business.",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-12",
+   "text": "Yes, works for me.",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-13",
+   "text": "Can you send me the deck before the call tomorrow?",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-14",
+   "text": "Close the deal by Friday and let me know how it goes.",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-15",
+   "text": "Could you take a look at my pull request when you get a chance? Thanks!",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-16",
+   "text": "Honestly I'm not sure the new pricing page works, it feels cluttered and I would cut the comparison table entirely.",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-17",
+   "text": "Hey Arjun, are we still on for lunch on Friday? I was thinking we could try the new place near the office.",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-18",
+   "text": "Open Slack",
+   "label": "command"
+  },
+  {
+   "id": "persona-19",
+   "text": "Switch to Chrome.",
+   "label": "command"
+  },
+  {
+   "id": "persona-20",
+   "text": "Go to the design channel",
+   "label": "command"
+  },
+  {
+   "id": "persona-21",
+   "text": "Scroll down a bit.",
+   "label": "command"
+  },
+  {
+   "id": "persona-22",
+   "text": "Close this tab.",
+   "label": "command"
+  },
+  {
+   "id": "persona-23",
+   "text": "Can you open my calendar?",
+   "label": "command"
+  },
+  {
+   "id": "persona-24",
+   "text": "What can I do here?",
+   "label": "command"
+  },
+  {
+   "id": "persona-25",
+   "text": "Zoom in.",
+   "label": "command"
+  },
+  {
+   "id": "persona-26",
+   "text": "Mute the volume.",
+   "label": "command"
+  },
+  {
+   "id": "persona-27",
+   "text": "Open Slack and send a message to the design channel saying the build is ready",
+   "label": "command"
+  },
+  {
+   "id": "persona-28",
+   "text": "Search for flights to Bangalore next Friday.",
+   "label": "command"
+  },
+  {
+   "id": "persona-29",
+   "text": "Play the next video.",
+   "label": "command"
+  },
+  {
+   "id": "persona-30",
+   "text": "Go back.",
+   "label": "command"
+  },
+  {
+   "id": "persona-31",
+   "text": "Reopen the tab I just closed.",
+   "label": "command"
+  },
+  {
+   "id": "persona-32",
+   "text": "Okay so I think I want to go back to the previous tab where I had the YouTube video playing earlier today.",
+   "label": "command"
+  },
+  {
+   "id": "persona-33",
+   "text": "I would like you to find the email from Priya about the deck and open it in a new window for me.",
+   "label": "command"
+  },
+  {
+   "id": "persona-34",
+   "text": "Hi Maya, thanks for the intro to the Stripe team. I'd love to set up a call next week, does Tuesday or Wednesday afternoon work for you?",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-35",
+   "text": "Following up on my last email, I wanted to check whether you had a chance to review the revised quote, we can hold the price until the end of the month.",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-36",
+   "text": "Hey, I just pushed the fix for the login bug, can someone from QA give it a quick pass before we merge it into main?",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-37",
+   "text": "Sounds good, I'll take the onboarding tickets this sprint and pair with Ravi on the billing ones.",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-38",
+   "text": "Lol yes, I saw that too, I think the new design is way cleaner than the old one.",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-39",
+   "text": "Running about ten minutes late, start without me and I'll catch up on the notes.",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-40",
+   "text": "Ideas for the blog post: why voice beats typing for long prompts, the three mistakes we made with our first router, and what we learned from a week of logs.",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-41",
+   "text": "Groceries for the week, eggs, spinach, oat milk, two kinds of cheese, and something for Sunday dinner, maybe salmon.",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-42",
+   "text": "Note to self, ask the accountant whether the laptop counts as a business expense and send her the invoices before Friday.",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-43",
+   "text": "Look at the transcript buffer and make sure that every segment gets exactly one disposition, then write a fuzz test that tries random sequences of segments and session ends.",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-44",
+   "text": "I'm seeing a crash when the microphone changes in the middle of a session, can you find where we handle the device change and add a guard so it ends the session cleanly?",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-45",
+   "text": "Please rename the dictation controller's run property to current run and update every call site, and don't touch the tests yet, I'll do those myself.",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-46",
+   "text": "Write a short README section that explains how the speech history works, where the file lives, and how to clear it from settings.",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-47",
+   "text": "Explain why the router sometimes picks type text instead of terminal run when Claude Code is focused, I think it's the prompt rule about sessions.",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-48",
+   "text": "We spent most of the retro on the release process, and the main takeaway was that nobody owns the changelog, so I'm going to propose a rotation.",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-49",
+   "text": "Okay so my take is that we should charge per seat for teams and keep the solo plan flat, otherwise the pricing page gets confusing fast.",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-50",
+   "text": "Happy birthday Ana! Hope you have an amazing day and that the cake is better than last year's.",
+   "label": "dictation"
+  },
+  {
+   "id": "persona-51",
+   "text": "Open Notes.",
+   "label": "command"
+  },
+  {
+   "id": "persona-52",
+   "text": "Switch to the terminal running Claude.",
+   "label": "command"
+  },
+  {
+   "id": "persona-53",
+   "text": "Scroll to the top of the page.",
+   "label": "command"
+  },
+  {
+   "id": "persona-54",
+   "text": "Go to my inbox in Gmail.",
+   "label": "command"
+  },
+  {
+   "id": "persona-55",
+   "text": "Pause the music.",
+   "label": "command"
+  },
+  {
+   "id": "persona-56",
+   "text": "Can you open the Linear tab?",
+   "label": "command"
+  },
+  {
+   "id": "persona-57",
+   "text": "Close all the other tabs.",
+   "label": "command"
+  },
+  {
+   "id": "persona-58",
+   "text": "Send it.",
+   "label": "command"
+  },
+  {
+   "id": "persona-59",
+   "text": "Make the window full screen.",
+   "label": "command"
+  },
+  {
+   "id": "persona-60",
+   "text": "Open Slack and tell Priya the deck is ready and that I'll walk her through it tomorrow morning before standup.",
+   "label": "mixed"
+  },
+  {
+   "id": "persona-61",
+   "text": "And now, the weather for the weekend: sunshine across most of the country with a chance of showers in the north.",
+   "label": "background"
+  }
+ ]
+}

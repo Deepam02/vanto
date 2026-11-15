@@ -171,3 +171,69 @@ Plan and evidence: docs/plans/2026-11-09-session-fixes.md (60 commands, rows 366
   video" finishes (DECISIONS 56).
 - router-eval: 99 cases (19 new from 9 Nov), 100% over 3 runs (300/300); p50 time to first
   tool call ~920 ms. Unit tests: 63 pass.
+
+## Never lose dictation (branch feature/never-lose-dictation)
+
+Spec: docs/specs/never-lose-dictation.md; owner's decisions of 13 Nov in DECISIONS 61–62.
+- **Stage 1, core library** (VoiceCommandCore, unit-tested):
+  - `TranscriptBuffer` disposes instead of consuming; the app writes every disposition to the
+    speech history (`SpeechHistory`, history.jsonl) (DECISIONS 60, 61).
+  - `IntentGate` (rules 1–4 of §5.3, explicit starts, "Vanto, …", recovery phrases) and
+    `FocusKind.from(snapshot)`; on the labelled logs: 0 commands typed, 0 dictations as
+    certain commands, 22/30 dictations local (DECISIONS 63–65).
+  - `TypingMode` policy and surfaces (DECISIONS 62).
+  - `Dictation.mend` (live typing, same text as `clean`), recovery phrases, never-mind rule,
+    "send this message" ends a dictation (DECISIONS 66).
+  - Not yet wired: the gate, typing modes and recovery in the app (stage 3); router `dictate`
+    and `keep` (stage 2). Unit tests: 97 pass.
+- **Stage 2, router** (spec §5.4): `dictate(target?)` and `keep(reason)` tools, prompt rules
+  for dictation vs. commands (focus, `dictation_run`, `media_playing` in session_state),
+  clarifying-question carry-over via `asked_about` (DECISIONS 67–68). Golden set: ignore →
+  keep, 34 new `dictate_keep` cases from logs and persona prose. App: `dictate` types the
+  transcript via type_text as a stand-in until stage 3. Router eval: 99.3% (133/134),
+  dictate_keep 100% (34/34), p50 first tool call 906 ms (bar ≥ 98%, DECISIONS 69).
+
+- **Stage 3, app wiring** (spec §5.5–5.8, §8): every utterance goes through `IntentGate` to
+  the one dictation engine, the router, or the speech history (DECISIONS 70–77).
+  - `DictationController`: pinned place, live or paste-on-pause per `TypingMode`, mending,
+    focus change pauses and keeps, ends on "send it"/"done", a command, the session or 8 s /
+    4 s of silence; typing failures kept with the reason.
+  - Recovery on the device: "that was a command" (removes the typing, routes the words),
+    "type that instead" (undo, then type), "scratch that", "type it" / "copy it" / "what did
+    you keep?", "never mind" (erases only a run under 3 s).
+  - Loss paths 1–9 of §1 closed: keep(reason); stale → kept; failed actions and failed typing
+    → kept; session end keeps (hotkey and "end the session" type pending words first); never
+    mind keeps old runs; mute words acted; scroll-stop routes real commands; questions keep
+    their words; hold Fn keeps instead of overwriting the clipboard.
+  - HUD: "Dictating into X — 'send it' to send" badge, kept notes (noise silent), the
+    implicit-typing tip three times. Menu bar: Kept submenu (last 10, click to copy).
+    Settings: "Type what I say when I'm not giving a command", "Clear speech history".
+  - Log records carry `intent`, `focusKind`, `mediaPlaying`, `disposition` (§5.8).
+  - Unit tests: 109 pass (claimed words, `DictationRun`, moved-away rule).
+- **Stage 4, logging, eval, invariants, docs** (spec §5.8, §7; DECISIONS 78–80).
+  - Logs: per-segment `disposition` lines, `segments` on command records, `wordsLost` on
+    session records. log-report adds words lost (must be 0), false dictation ("that was a
+    command" per typed dictation, and per 50 commands), false command ("type that instead"),
+    kept items later typed or copied back. Old log lines still parse.
+  - `swift run intent-eval` (new target; `IntentEval` in the core): 525 labelled utterances
+    (464 logged + 61 persona). Hard rule holds in all four contexts. Slack box: commands
+    precision 99.7%, recall 67.7%; dictation precision 94.1%, recall 68.1% (same in a Claude
+    Code prompt); the rest goes to the router.
+  - Session invariant fuzz (`ReplyOutcome`, `DispositionLedger`, both used by the app); replay
+    of 3–4 Nov row 75 (kept, "type it" finds it) added to the existing 321–323, 314–315,
+    296–298 and 151 replays.
+  - README: just talking, typing modes, recovery phrases, speech history, the Settings toggle,
+    intent-eval.
+  - Unit tests: 115 pass. Router eval --repeat 3: 98.3% (395/402),
+    dictate_keep 98.0%, other 98.3%, p50 first tool call 916 ms; flaky misses nov4-mkdir,
+    nov9-youtube-then-video, nld-cc-can-you-prompt, nld-cc-refactor (no router code changed).
+
+- **Review fixes** (15 findings, DECISIONS 81–89): failed routes keep words (`kept(error)`);
+  run silence from segment end; trailing "cancel dictation" content discarded; "that was a
+  command" and "cancel dictation" erase first and report failure; named kept items recall
+  any age; router dictate keeps session_id, refuses plain shells and password prompts; run
+  pinned to one text box; dictated drafts expire after 20 s; "message to Priya saying…" and
+  "in the chat" aren't apps; media signal leaves Vanto out; session token stops runs pinned
+  across a session end; quit by any route ends the session; history start reads a bounded
+  tail. Unit tests: 121 pass. Router eval --repeat 1: 98.5% (132/134), dictate_keep 97.1%,
+  bar now ≥ 98% / groups ≥ 95%; misses nov4-mkdir, nld-cc-refactor (known flaky).

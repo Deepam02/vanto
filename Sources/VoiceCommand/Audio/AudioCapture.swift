@@ -66,6 +66,7 @@ final class AudioCapture {
             deviceChangeWork?.cancel()
             teardownEngine()
             currentDevice = nil
+            Self.voiceProcessingOn = false
         }
     }
 
@@ -87,6 +88,7 @@ final class AudioCapture {
             followsDefault = true
             deviceName = currentDevice.flatMap(Self.name(of:)) ?? "Default input"
         }
+        Self.voiceProcessingOn = cancelEcho
         if cancelEcho {
             try input.setVoiceProcessingEnabled(true)
             // Don't turn down the person's other audio while listening.
@@ -219,8 +221,50 @@ final class AudioCapture {
     }
 
     /// Is the Mac playing sound right now (a video, music, a call)? Echo cancellation adds
-    /// latency, so it's only worth turning on when there is something to cancel.
+    /// latency, so it's only worth turning on when there is something to cancel; the intent
+    /// gate's media rule (spec §5.7) also asks this for every utterance.
+    ///
+    /// Asks which processes are running output, leaving Vanto out: once echo cancellation is on,
+    /// Vanto's own voice-processing unit keeps the output device running, so the device-wide
+    /// flag would say "playing" for the rest of the session after the video is paused (review,
+    /// 14 Nov). Without the per-process answer, the device flag is used only while Vanto isn't
+    /// holding the device itself.
     static func outputIsPlaying() -> Bool {
+        if let others = otherProcessesPlaying() { return others }
+        if voiceProcessingOn { return false }
+        return outputDeviceRunning()
+    }
+
+    /// Set while this app's capture has echo cancellation (voice processing) on.
+    nonisolated(unsafe) static var voiceProcessingOn = false
+
+    /// Any process but this one running output, or nil when Core Audio can't say (macOS < 14).
+    private static func otherProcessesPlaying() -> Bool? {
+        let system = AudioObjectID(kAudioObjectSystemObject)
+        var addr = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyProcessObjectList, mScope: kAudioObjectPropertyScopeGlobal,
+                                              mElement: kAudioObjectPropertyElementMain)
+        var size: UInt32 = 0
+        guard AudioObjectGetPropertyDataSize(system, &addr, 0, nil, &size) == noErr else { return nil }
+        var ids = [AudioObjectID](repeating: 0, count: Int(size) / MemoryLayout<AudioObjectID>.size)
+        guard !ids.isEmpty, AudioObjectGetPropertyData(system, &addr, 0, nil, &size, &ids) == noErr else { return ids.isEmpty ? false : nil }
+        let me = getpid()
+        for id in ids {
+            var pid: pid_t = 0
+            var psize = UInt32(MemoryLayout<pid_t>.size)
+            var paddr = AudioObjectPropertyAddress(mSelector: kAudioProcessPropertyPID, mScope: kAudioObjectPropertyScopeGlobal,
+                                                   mElement: kAudioObjectPropertyElementMain)
+            guard AudioObjectGetPropertyData(id, &paddr, 0, nil, &psize, &pid) == noErr, pid != me else { continue }
+            var running: UInt32 = 0
+            var rsize = UInt32(MemoryLayout<UInt32>.size)
+            var raddr = AudioObjectPropertyAddress(mSelector: kAudioProcessPropertyIsRunningOutput, mScope: kAudioObjectPropertyScopeGlobal,
+                                                   mElement: kAudioObjectPropertyElementMain)
+            if AudioObjectGetPropertyData(id, &raddr, 0, nil, &rsize, &running) == noErr, running != 0 { return true }
+        }
+        return false
+    }
+
+    /// The default output device is running for some process (this one included).
+    private static func outputDeviceRunning() -> Bool {
         var addr = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyDefaultOutputDevice, mScope: kAudioObjectPropertyScopeGlobal,
                                               mElement: kAudioObjectPropertyElementMain)
         var out: AudioDeviceID = 0

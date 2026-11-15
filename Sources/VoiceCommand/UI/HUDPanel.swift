@@ -18,9 +18,24 @@ final class HUDModel: ObservableObject {
     @Published var warning: String?           // persistent one-liner (Secure Input, Fn tap off)
     /// A larger card under the bar ("what can you do here?"), easy to scan.
     @Published var card: HelpCard?
+    /// While a dictation run is going: "Dictating into Claude Code — “send it” to send".
+    @Published var badge: String?
+    /// A one-line tip under the bar for a few seconds (the first implicit typings).
+    @Published var note: String?
 
     private var flashTask: Task<Void, Never>?
     private var cardTask: Task<Void, Never>?
+    private var noteTask: Task<Void, Never>?
+
+    func showNote(_ text: String, for seconds: Double = 6) {
+        note = text
+        noteTask?.cancel()
+        noteTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+            self?.note = nil
+        }
+    }
 
     /// Show a card for a while; the next thing said hides it sooner.
     func showCard(_ c: HelpCard, for seconds: Double = 12) {
@@ -145,10 +160,16 @@ struct HUDView: View {
                     .truncationMode(.head)
                 Spacer(minLength: 0)
             }
+            if let b = model.badge {
+                Text(b).font(.system(size: 12, weight: .semibold)).foregroundStyle(.blue).lineLimit(1)
+            }
+            if let n = model.note {
+                Text(n).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(2)
+            }
             if let p = model.pendingPrompt {
                 Text(p).font(.system(size: 12, weight: .semibold)).foregroundStyle(.orange).lineLimit(2)
             }
-            if let d = model.draftPreview, model.pendingPrompt == nil {
+            if let d = model.draftPreview, model.pendingPrompt == nil, model.badge == nil {
                 Text("Draft (unsent): \(d)").font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(1).truncationMode(.head)
             }
             if let progress = model.downloadProgress {
@@ -168,7 +189,9 @@ struct HUDView: View {
         case .warming: return "Warming up…"
         case .muted: return "Paused — say “resume” or use the menu bar"
         case .listening where model.liveText.isEmpty: return "Listening…"
-        case .dictating where model.liveText.isEmpty: return "Dictating — release Fn, or say “send it” / “done”"
+        case .dictating where model.liveText.isEmpty:
+            // A run shows its own badge; hold Fn types on release.
+            return model.badge == nil ? "Dictating — release Fn to type it" : "Listening…"
         default: return model.liveText.isEmpty ? "Listening…" : model.liveText
         }
     }
